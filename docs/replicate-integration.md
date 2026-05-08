@@ -1,6 +1,6 @@
-# Integração com Replicate - Virtual Try-On
+# Integração com Replicate - Virtual Try-On (FanFrame)
 
-Este documento detalha como funciona a integração com a API do Replicate para gerar imagens de "provador virtual" e tudo que foi necessário para implementar.
+Este documento detalha como funciona a integração com a API do Replicate na plataforma multi-tenant **FanFrame** para gerar imagens de "provador virtual". Cada time (`teams.id`) pode ter o seu próprio `replicate_api_token` e `generation_prompt`, com fallback para o secret global `REPLICATE_API_TOKEN`.
 
 ---
 
@@ -29,10 +29,10 @@ Este documento detalha como funciona a integração com a API do Replicate para 
 
 ### Fluxo Resumido
 
-1. **Frontend** envia foto do usuário + camisa + fundo para `generate-tryon`
-2. **generate-tryon** faz upload da foto para storage e chama Replicate com webhook
+1. **Frontend** (rota `/{slug}`) envia foto do usuário + camisa + fundo + `teamId` para `generate-tryon`
+2. **generate-tryon** faz upload da foto para storage, resolve o token/prompt do time e chama Replicate com webhook
 3. **Replicate** processa a imagem (30-60 segundos)
-4. **replicate-webhook** recebe callback e atualiza `generation_queue`
+4. **replicate-webhook** recebe callback e atualiza `generation_queue` (com `team_id` associado)
 5. **Frontend** recebe atualização via Supabase Realtime e exibe resultado
 
 ---
@@ -115,6 +115,7 @@ POST /functions/v1/generate-tryon
   backgroundAssetUrl: string; // URL pública do cenário de fundo
   shirtId: string;            // ID da camisa para logs
   userId?: string;            // ID opcional do usuário
+  teamId?: string;            // ID do time (multi-tenant) para resolver token/prompt
 }
 ```
 
@@ -368,15 +369,22 @@ https://api.replicate.com/v1/models/bytedance/seedream-4.5/predictions
 
 ### Prompt Utilizado
 
+O prompt é resolvido em runtime a partir do time:
+
+1. `teams.generation_prompt` (customizado pelo admin no painel `/admin/teams/{slug}`)
+2. Fallback genérico (camisa + cenário + regras de preservação)
+
+Exemplo (genérico):
+
 ```
-Virtual try-on: Transform this person to wear the São Paulo FC jersey (Tricolor).
+Virtual try-on: Transform this person to wear the {team.name} jersey.
 
 RULES:
 - Preserve the person's face, body proportions and pose exactly
-- Replace only the upper body clothing with the São Paulo FC jersey
+- Replace only the upper body clothing with the provided jersey
 - Ensure realistic fabric folds and natural fit
-- Place the person in the museum background setting
-- Match lighting to indoor museum environment
+- Place the person in the provided background scene
+- Match lighting to the background environment
 - Maintain photorealistic quality, 8K resolution, sharp focus
 - Professional DSLR camera quality
 ```
@@ -414,7 +422,8 @@ const RECOVERY_TIME_MS = 2 * 60 * 1000; // 2 minutos
 ## Checklist para Novo Projeto
 
 ### 1. Secrets no Supabase
-- [ ] `REPLICATE_API_TOKEN` - Token da API Replicate
+- [ ] `REPLICATE_API_TOKEN` — Token padrão (fallback) da API Replicate
+- [ ] `REPLICATE_API_TOKEN` por time — opcional, configurável em `teams.replicate_api_token`
 
 ### 2. Banco de Dados
 - [ ] Tabela `generation_queue`

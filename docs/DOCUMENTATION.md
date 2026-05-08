@@ -311,6 +311,7 @@ Acessível em `/admin` com autenticação via Supabase Auth.
 ### Acesso Admin
 ```
 Email: admin@franframe.com
+Senha: Admin123@
 ```
 
 ---
@@ -371,6 +372,11 @@ O arquivo `vercel.json` configura SPA rewrites para que todas as rotas sejam tra
 ---
 
 ## Changelog
+
+### v2.1.0 (Maio 2026)
+- Documentação reorganizada (DOCUMENTATION, replicate-integration, design-system)
+- Refresh do design system com tokens semânticos consolidados
+- Branding dinâmico por time aplicado via CSS custom properties (`--primary-color`, `--secondary-color`)
 
 ### v2.0.0 (Abril 2026)
 - Migração para plataforma multi-tenant FanFrame
