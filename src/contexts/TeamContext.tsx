@@ -37,8 +37,6 @@ export interface TeamConfig {
   slug: string;
   name: string;
   subdomain: string;
-  wordpress_api_base: string;
-  purchase_urls: Record<string, string>;
   replicate_api_token: string | null;
   generation_prompt: string | null;
   shirts: TeamShirt[];
@@ -126,8 +124,6 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           slug: data.slug,
           name: data.name,
           subdomain: data.subdomain,
-          wordpress_api_base: data.wordpress_api_base,
-          purchase_urls: (data.purchase_urls as Record<string, string>) || {},
           replicate_api_token: data.replicate_api_token,
           generation_prompt: data.generation_prompt,
           shirts: (data.shirts as unknown as TeamShirt[]) || [],

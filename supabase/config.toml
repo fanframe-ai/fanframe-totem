@@ -14,6 +14,3 @@ verify_jwt = false
 
 [functions.health-check]
 verify_jwt = false
-
-[functions.fanframe-proxy]
-verify_jwt = false

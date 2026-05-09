@@ -35,18 +35,11 @@ interface BackgroundItem {
   visible: boolean;
 }
 
-interface PurchaseUrlEntry {
-  label: string;
-  url: string;
-}
-
 interface TeamData {
   id?: string;
   slug: string;
   name: string;
   subdomain: string;
-  wordpress_api_base: string;
-  purchase_urls: Record<string, string>;
   replicate_api_token: string | null;
   generation_prompt: string | null;
   shirts: ShirtItem[];
@@ -66,8 +59,6 @@ const emptyTeam: TeamData = {
   slug: "",
   name: "",
   subdomain: "",
-  wordpress_api_base: "",
-  purchase_urls: {},
   replicate_api_token: null,
   generation_prompt: null,
   shirts: [],
@@ -103,7 +94,6 @@ export default function TeamEdit() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [showToken, setShowToken] = useState(false);
-  const [purchaseUrls, setPurchaseUrls] = useState<PurchaseUrlEntry[]>([]);
 
   useEffect(() => {
     if (!isNew && slug) {
@@ -130,8 +120,6 @@ export default function TeamEdit() {
       slug: data.slug,
       name: data.name,
       subdomain: data.subdomain,
-      wordpress_api_base: data.wordpress_api_base,
-      purchase_urls: (data.purchase_urls as Record<string, string>) || {},
       replicate_api_token: data.replicate_api_token,
       generation_prompt: data.generation_prompt,
       shirts: (data.shirts as unknown as ShirtItem[]) || [],
@@ -146,9 +134,6 @@ export default function TeamEdit() {
     };
 
     setForm(teamData);
-    setPurchaseUrls(
-      Object.entries(teamData.purchase_urls).map(([label, url]) => ({ label, url }))
-    );
     setLoading(false);
   };
 
@@ -205,44 +190,21 @@ export default function TeamEdit() {
     updateField("backgrounds", form.backgrounds.filter((_, i) => i !== index));
   };
 
-  // --- Purchase URLs ---
-  const addPurchaseUrl = () => {
-    setPurchaseUrls([...purchaseUrls, { label: "", url: "" }]);
-  };
-
-  const updatePurchaseUrl = (index: number, field: "label" | "url", value: string) => {
-    const urls = [...purchaseUrls];
-    urls[index][field] = value;
-    setPurchaseUrls(urls);
-  };
-
-  const removePurchaseUrl = (index: number) => {
-    setPurchaseUrls(purchaseUrls.filter((_, i) => i !== index));
-  };
-
   // --- Save ---
   const handleSave = async () => {
     // Auto-fill required fields with defaults if empty
     const slug = form.slug || `time-${generateHash()}`;
     const name = form.name || "Novo Provador";
     const subdomain = form.subdomain || slug;
-    const wordpress_api_base = form.wordpress_api_base || "https://example.com/wp-json";
-    
-    const formToSave = { ...form, slug, name, subdomain, wordpress_api_base };
+
+    const formToSave = { ...form, slug, name, subdomain };
 
     setSaving(true);
-
-    const purchaseUrlsObj: Record<string, string> = {};
-    purchaseUrls.forEach((p) => {
-      if (p.label && p.url) purchaseUrlsObj[p.label] = p.url;
-    });
 
     const payload = {
       slug: formToSave.slug,
       name: formToSave.name,
       subdomain: formToSave.subdomain,
-      wordpress_api_base: formToSave.wordpress_api_base,
-      purchase_urls: purchaseUrlsObj,
       replicate_api_token: formToSave.replicate_api_token || null,
       generation_prompt: formToSave.generation_prompt || null,
       shirts: formToSave.shirts as any,
@@ -387,16 +349,6 @@ export default function TeamEdit() {
             <Card>
               <CardContent className="pt-6 space-y-4">
                 <div className="space-y-2">
-                  <Label>URL da API WordPress *</Label>
-                  <Input
-                    value={form.wordpress_api_base}
-                    onChange={(e) => updateField("wordpress_api_base", e.target.value)}
-                    placeholder="https://example.com/wp-json/vf-fanframe/v1"
-                  />
-                  <p className="text-xs text-muted-foreground">Endpoint base da API FanFrame no WordPress do time</p>
-                </div>
-
-                <div className="space-y-2">
                   <Label>Token Replicate API</Label>
                   <div className="flex gap-2">
                     <Input
@@ -421,37 +373,6 @@ export default function TeamEdit() {
                     rows={4}
                   />
                   <p className="text-xs text-muted-foreground">Prompt customizado para a IA de troca de roupa</p>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>URLs de Compra de Créditos</Label>
-                    <Button size="sm" variant="outline" onClick={addPurchaseUrl}>
-                      <Plus className="h-4 w-4 mr-1" /> Adicionar
-                    </Button>
-                  </div>
-                  {purchaseUrls.length === 0 && (
-                    <p className="text-sm text-muted-foreground py-2">Nenhuma URL de compra configurada</p>
-                  )}
-                  {purchaseUrls.map((entry, i) => (
-                    <div key={i} className="flex gap-2 items-center">
-                      <Input
-                        value={entry.label}
-                        onChange={(e) => updatePurchaseUrl(i, "label", e.target.value)}
-                        placeholder="Nome do pacote (ex: 5 créditos)"
-                        className="flex-1"
-                      />
-                      <Input
-                        value={entry.url}
-                        onChange={(e) => updatePurchaseUrl(i, "url", e.target.value)}
-                        placeholder="https://loja.com/pacote"
-                        className="flex-1"
-                      />
-                      <Button size="icon" variant="ghost" className="text-destructive shrink-0" onClick={() => removePurchaseUrl(i)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>
