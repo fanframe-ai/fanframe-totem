@@ -108,6 +108,10 @@ async function logGeneration(
     external_user_id?: string | null;
     shirt_id: string;
     status: string;
+    team_id?: string | null;
+    kiosk_session_id?: string | null;
+    payment_id?: string | null;
+    source?: string;
     error_message?: string | null;
     processing_time_ms?: number | null;
   }
@@ -118,6 +122,10 @@ async function logGeneration(
       external_user_id: data.external_user_id || null,
       shirt_id: data.shirt_id,
       status: data.status,
+      team_id: data.team_id || null,
+      kiosk_session_id: data.kiosk_session_id || null,
+      payment_id: data.payment_id || null,
+      source: data.source || "web",
     };
     if (data.error_message) payload.error_message = data.error_message;
     if (data.processing_time_ms) payload.processing_time_ms = data.processing_time_ms;
@@ -239,6 +247,10 @@ async function createQueueEntry(
     shirt_asset_url: string;
     background_asset_url: string;
     shirt_id: string;
+    team_id?: string | null;
+    kiosk_session_id?: string | null;
+    payment_id?: string | null;
+    source?: string;
   }
 ): Promise<void> {
   const { error } = await supabase.from("generation_queue").insert({
@@ -249,6 +261,10 @@ async function createQueueEntry(
     background_asset_url: data.background_asset_url,
     shirt_id: data.shirt_id,
     status: "pending",
+    team_id: data.team_id || null,
+    kiosk_session_id: data.kiosk_session_id || null,
+    payment_id: data.payment_id || null,
+    source: data.source || "web",
   });
 
   if (error) {
@@ -536,14 +552,28 @@ serve(async (req) => {
       );
     }
 
-    const { userImageBase64, shirtAssetUrl, backgroundAssetUrl, shirtId, userId, team_slug } = parsed as {
+    const {
+      userImageBase64,
+      shirtAssetUrl,
+      backgroundAssetUrl,
+      shirtId,
+      userId,
+      team_slug,
+      kiosk_session_id,
+      payment_id,
+      source,
+    } = parsed as {
       userImageBase64?: string;
       shirtAssetUrl?: string;
       backgroundAssetUrl?: string;
       shirtId?: string;
       userId?: string;
       team_slug?: string;
+      kiosk_session_id?: string;
+      payment_id?: string;
+      source?: string;
     };
+    const requestSource = source === "kiosk" ? "kiosk" : "web";
 
     console.log(`[${generationId}] Parsed payload:`, {
       hasUserImage: Boolean(userImageBase64),
@@ -552,6 +582,9 @@ serve(async (req) => {
       shirtId,
       userId: userId ? `${userId.substring(0, 8)}...` : null,
       team_slug: team_slug || "default",
+      kiosk_session_id: kiosk_session_id || null,
+      payment_id: payment_id || null,
+      source: requestSource,
     });
 
     stage = "validate_params";
@@ -607,6 +640,9 @@ serve(async (req) => {
     const userImageUrl = await uploadToStorage(supabase, userImageBase64, "user-photo.png", generationId);
     console.log(`[${generationId}] User image uploaded to temp storage`);
 
+    stage = "resolve_team_id";
+    const teamId = await getTeamId(supabase, team_slug);
+
     // Create queue entry
     stage = "create_queue_entry";
     await createQueueEntry(supabase, {
@@ -616,8 +652,22 @@ serve(async (req) => {
       shirt_asset_url: shirtAssetUrl,
       background_asset_url: backgroundAssetUrl,
       shirt_id: shirtId || "unknown",
+      team_id: teamId,
+      kiosk_session_id: kiosk_session_id || null,
+      payment_id: payment_id || null,
+      source: requestSource,
     });
     console.log(`[${generationId}] Queue entry created`);
+
+    if (requestSource === "kiosk" && kiosk_session_id) {
+      await supabase
+        .from("kiosk_sessions")
+        .update({
+          status: "generating",
+          generation_queue_id: generationId,
+        })
+        .eq("id", kiosk_session_id);
+    }
 
     // Log to generations table
     stage = "log_processing";
@@ -625,6 +675,10 @@ serve(async (req) => {
       external_user_id: userId || null,
       shirt_id: shirtId || "unknown",
       status: "processing",
+      team_id: teamId,
+      kiosk_session_id: kiosk_session_id || null,
+      payment_id: payment_id || null,
+      source: requestSource,
     });
 
     // Get generation prompt (team-specific or fallback)
@@ -683,9 +737,23 @@ serve(async (req) => {
         external_user_id: userId || null,
         shirt_id: shirtId || "unknown",
         status: "failed",
+        team_id: teamId,
+        kiosk_session_id: kiosk_session_id || null,
+        payment_id: payment_id || null,
+        source: requestSource,
         error_message: `Replicate API error: ${response.status}`,
         processing_time_ms: Date.now() - startTime,
       });
+
+      if (requestSource === "kiosk" && kiosk_session_id) {
+        await supabase
+          .from("kiosk_sessions")
+          .update({
+            status: "failed",
+            error_message: `Replicate API error: ${response.status}`,
+          })
+          .eq("id", kiosk_session_id);
+      }
 
       await recordFailure(supabase, generationId, `API error: ${response.status}`);
 
@@ -747,6 +815,7 @@ serve(async (req) => {
       await logGeneration(supabase, generationId, {
         shirt_id: "unknown",
         status: "failed",
+        source: "web",
         error_message: error instanceof Error ? error.message : "Unknown error",
         processing_time_ms: processingTime,
       });

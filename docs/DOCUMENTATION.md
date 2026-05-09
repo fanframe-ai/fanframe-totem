@@ -7,12 +7,11 @@ O **FanFrame** é uma plataforma multi-tenant de provadores virtuais. Permite cr
 ### URLs
 
 - **Produção**: https://franframe.vercel.app
-- **Preview Lovable**: https://franframe.lovable.app
 
 ### Supabase
 
-- **Project ID**: yxtglwbrdtwmxwrrhroy
-- **URL**: https://yxtglwbrdtwmxwrrhroy.supabase.co
+- **Project ID**: configurado em `VITE_SUPABASE_PROJECT_ID`
+- **URL**: configurada em `VITE_SUPABASE_URL`
 
 ---
 
@@ -80,7 +79,6 @@ O **FanFrame** é uma plataforma multi-tenant de provadores virtuais. Permite cr
 
 ### Deploy
 - **Vercel** — Hospedagem de produção com SPA rewrites
-- **Lovable** — Ambiente de desenvolvimento e preview
 
 ---
 
@@ -312,13 +310,16 @@ Senha: Admin123@
 | Nome | Descrição |
 |------|-----------|
 | `REPLICATE_API_TOKEN` | Token padrão do Replicate (fallback se time não tiver próprio) |
-| `ACCESS_PASSWORD` | Senha para criar primeiro admin |
+| `ADMIN_SETUP_KEY` | Chave para criar o primeiro admin |
+| `PAGBANK_API_TOKEN` | Token PagBank para PIX do totem |
+| `PAGBANK_API_BASE` | Base da API PagBank (`sandbox` ou produção) |
+| `KIOSK_SIMULATE_PAYMENTS` | Ativa pagamentos simulados para homologação local |
 
 ### Frontend (.env)
 ```env
-VITE_SUPABASE_PROJECT_ID="yxtglwbrdtwmxwrrhroy"
-VITE_SUPABASE_PUBLISHABLE_KEY="eyJhbGc..."
-VITE_SUPABASE_URL="https://yxtglwbrdtwmxwrrhroy.supabase.co"
+VITE_SUPABASE_PROJECT_ID="seu-project-ref"
+VITE_SUPABASE_PUBLISHABLE_KEY="sua-chave-publishable"
+VITE_SUPABASE_URL="https://seu-project-ref.supabase.co"
 ```
 
 ---

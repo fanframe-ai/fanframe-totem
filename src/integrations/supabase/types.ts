@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.4"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -106,10 +106,13 @@ export type Database = {
           created_at: string | null
           error_message: string | null
           id: string
+          kiosk_session_id: string | null
+          payment_id: string | null
           replicate_prediction_id: string | null
           result_image_url: string | null
           shirt_asset_url: string
           shirt_id: string
+          source: string
           started_at: string | null
           status: string
           team_id: string | null
@@ -122,10 +125,13 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           id?: string
+          kiosk_session_id?: string | null
+          payment_id?: string | null
           replicate_prediction_id?: string | null
           result_image_url?: string | null
           shirt_asset_url: string
           shirt_id: string
+          source?: string
           started_at?: string | null
           status?: string
           team_id?: string | null
@@ -138,10 +144,13 @@ export type Database = {
           created_at?: string | null
           error_message?: string | null
           id?: string
+          kiosk_session_id?: string | null
+          payment_id?: string | null
           replicate_prediction_id?: string | null
           result_image_url?: string | null
           shirt_asset_url?: string
           shirt_id?: string
+          source?: string
           started_at?: string | null
           status?: string
           team_id?: string | null
@@ -149,6 +158,20 @@ export type Database = {
           user_image_url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "generation_queue_kiosk_session_id_fkey"
+            columns: ["kiosk_session_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_queue_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_payments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "generation_queue_team_id_fkey"
             columns: ["team_id"]
@@ -165,8 +188,11 @@ export type Database = {
           error_message: string | null
           external_user_id: string | null
           id: string
+          kiosk_session_id: string | null
+          payment_id: string | null
           processing_time_ms: number | null
           shirt_id: string
+          source: string
           status: Database["public"]["Enums"]["generation_status"]
           team_id: string | null
         }
@@ -176,8 +202,11 @@ export type Database = {
           error_message?: string | null
           external_user_id?: string | null
           id?: string
+          kiosk_session_id?: string | null
+          payment_id?: string | null
           processing_time_ms?: number | null
           shirt_id: string
+          source?: string
           status?: Database["public"]["Enums"]["generation_status"]
           team_id?: string | null
         }
@@ -187,12 +216,29 @@ export type Database = {
           error_message?: string | null
           external_user_id?: string | null
           id?: string
+          kiosk_session_id?: string | null
+          payment_id?: string | null
           processing_time_ms?: number | null
           shirt_id?: string
+          source?: string
           status?: Database["public"]["Enums"]["generation_status"]
           team_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "generations_kiosk_session_id_fkey"
+            columns: ["kiosk_session_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_payments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "generations_team_id_fkey"
             columns: ["team_id"]
@@ -231,6 +277,287 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      kiosk_delivery_links: {
+        Row: {
+          created_at: string
+          download_count: number
+          expires_at: string
+          id: string
+          result_image_url: string
+          session_id: string
+          team_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          download_count?: number
+          expires_at: string
+          id?: string
+          result_image_url: string
+          session_id: string
+          team_id: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          download_count?: number
+          expires_at?: string
+          id?: string
+          result_image_url?: string
+          session_id?: string
+          team_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_delivery_links_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_delivery_links_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiosk_devices: {
+        Row: {
+          app_version: string | null
+          config: Json
+          created_at: string
+          device_code: string
+          device_secret_hash: string | null
+          id: string
+          label: string | null
+          last_seen_at: string | null
+          location: string | null
+          status: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          app_version?: string | null
+          config?: Json
+          created_at?: string
+          device_code: string
+          device_secret_hash?: string | null
+          id?: string
+          label?: string | null
+          last_seen_at?: string | null
+          location?: string | null
+          status?: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          app_version?: string | null
+          config?: Json
+          created_at?: string
+          device_code?: string
+          device_secret_hash?: string | null
+          id?: string
+          label?: string | null
+          last_seen_at?: string | null
+          location?: string | null
+          status?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_devices_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiosk_payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          device_id: string | null
+          expires_at: string | null
+          id: string
+          method: string
+          pagbank_charge_id: string | null
+          pagbank_order_id: string | null
+          paid_at: string | null
+          provider: string
+          provider_payload: Json
+          qr_code_text: string | null
+          qr_code_url: string | null
+          reference_id: string
+          session_id: string
+          status: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          device_id?: string | null
+          expires_at?: string | null
+          id?: string
+          method: string
+          pagbank_charge_id?: string | null
+          pagbank_order_id?: string | null
+          paid_at?: string | null
+          provider: string
+          provider_payload?: Json
+          qr_code_text?: string | null
+          qr_code_url?: string | null
+          reference_id: string
+          session_id: string
+          status?: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          device_id?: string | null
+          expires_at?: string | null
+          id?: string
+          method?: string
+          pagbank_charge_id?: string | null
+          pagbank_order_id?: string | null
+          paid_at?: string | null
+          provider?: string
+          provider_payload?: Json
+          qr_code_text?: string | null
+          qr_code_url?: string | null
+          reference_id?: string
+          session_id?: string
+          status?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_payments_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_payments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_payments_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kiosk_sessions: {
+        Row: {
+          amount_cents: number
+          completed_at: string | null
+          created_at: string
+          currency: string
+          delivery_expires_at: string | null
+          delivery_token: string | null
+          device_id: string | null
+          error_message: string | null
+          generation_queue_id: string | null
+          id: string
+          metadata: Json
+          payment_id: string | null
+          result_image_url: string | null
+          selected_background_id: string | null
+          selected_shirt_id: string | null
+          status: string
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          delivery_expires_at?: string | null
+          delivery_token?: string | null
+          device_id?: string | null
+          error_message?: string | null
+          generation_queue_id?: string | null
+          id?: string
+          metadata?: Json
+          payment_id?: string | null
+          result_image_url?: string | null
+          selected_background_id?: string | null
+          selected_shirt_id?: string | null
+          status?: string
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          completed_at?: string | null
+          created_at?: string
+          currency?: string
+          delivery_expires_at?: string | null
+          delivery_token?: string | null
+          device_id?: string | null
+          error_message?: string | null
+          generation_queue_id?: string | null
+          id?: string
+          metadata?: Json
+          payment_id?: string | null
+          result_image_url?: string | null
+          selected_background_id?: string | null
+          selected_shirt_id?: string | null
+          status?: string
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kiosk_sessions_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_sessions_generation_queue_id_fkey"
+            columns: ["generation_queue_id"]
+            isOneToOne: false
+            referencedRelation: "generation_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_sessions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "kiosk_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kiosk_sessions_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rate_limits: {
         Row: {
@@ -337,6 +664,13 @@ export type Database = {
           generation_prompt: string | null
           id: string
           is_active: boolean | null
+          kiosk_currency: string
+          kiosk_default_mode: string
+          kiosk_enabled: boolean
+          kiosk_price_cents: number
+          kiosk_show_background_step: boolean
+          kiosk_show_shirt_step: boolean
+          kiosk_timeout_seconds: number
           logo_url: string | null
           name: string
           primary_color: string | null
@@ -356,6 +690,13 @@ export type Database = {
           generation_prompt?: string | null
           id?: string
           is_active?: boolean | null
+          kiosk_currency?: string
+          kiosk_default_mode?: string
+          kiosk_enabled?: boolean
+          kiosk_price_cents?: number
+          kiosk_show_background_step?: boolean
+          kiosk_show_shirt_step?: boolean
+          kiosk_timeout_seconds?: number
           logo_url?: string | null
           name: string
           primary_color?: string | null
@@ -375,6 +716,13 @@ export type Database = {
           generation_prompt?: string | null
           id?: string
           is_active?: boolean | null
+          kiosk_currency?: string
+          kiosk_default_mode?: string
+          kiosk_enabled?: boolean
+          kiosk_price_cents?: number
+          kiosk_show_background_step?: boolean
+          kiosk_show_shirt_step?: boolean
+          kiosk_timeout_seconds?: number
           logo_url?: string | null
           name?: string
           primary_color?: string | null

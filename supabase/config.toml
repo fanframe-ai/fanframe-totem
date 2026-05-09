@@ -1,4 +1,4 @@
-project_id = "qmjvsftlounkitclmzzw"
+project_id = "dzfbjscrpxhpyeimggut"
 
 [functions.create-first-admin]
 verify_jwt = false
@@ -14,3 +14,15 @@ verify_jwt = false
 
 [functions.health-check]
 verify_jwt = false
+
+[functions.create-kiosk-payment]
+verify_jwt = false
+
+[functions.pagbank-webhook]
+verify_jwt = false
+
+[functions.create-delivery-link]
+verify_jwt = false
+
+[functions.manage-admin-users]
+verify_jwt = true

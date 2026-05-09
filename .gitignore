@@ -10,7 +10,15 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+release
+supabase/.temp
+.chrome-kiosk-check/
+kiosk-portrait-*.png
 *.local
+.env
+.env.*
+!.env.example
+!apps/**/.env.example
 
 # Editor directories and files
 .vscode/*

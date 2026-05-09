@@ -221,6 +221,17 @@ serve(async (req) => {
       // Update generations table
       await updateGenerationsTable(supabase, queueEntry, "completed", undefined, processingTimeMs || undefined);
 
+      if (queueEntry.kiosk_session_id) {
+        await supabase
+          .from("kiosk_sessions")
+          .update({
+            status: "completed",
+            result_image_url: permanentImageUrl,
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", queueEntry.kiosk_session_id);
+      }
+
       // Reset circuit breaker on success
       await recordSuccessCircuit(supabase, queueEntry.id);
 
@@ -250,6 +261,17 @@ serve(async (req) => {
       }
 
       await updateGenerationsTable(supabase, queueEntry, "failed", errorMessage, processingTimeMs || undefined);
+
+      if (queueEntry.kiosk_session_id) {
+        await supabase
+          .from("kiosk_sessions")
+          .update({
+            status: "failed",
+            error_message: errorMessage,
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", queueEntry.kiosk_session_id);
+      }
 
       // Record failure in circuit breaker
       try {

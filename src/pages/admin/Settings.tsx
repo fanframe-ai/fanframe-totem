@@ -2,8 +2,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, Database, Server, Hexagon } from "lucide-react";
-
-const SUPABASE_PROJECT_ID = "qmjvsftlounkitclmzzw";
+import { SUPABASE_PROJECT_ID } from "@/integrations/supabase/client";
 
 export default function AdminSettings() {
   return (

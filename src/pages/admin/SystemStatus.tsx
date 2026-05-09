@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
 import { 
   CheckCircle2, 
   XCircle, 
@@ -337,12 +337,12 @@ export default function AdminSystemStatus() {
     
     try {
       const response = await fetch(
-        "https://qmjvsftlounkitclmzzw.supabase.co/functions/v1/health-check",
+        `${SUPABASE_URL}/functions/v1/health-check`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtanZzZnRsb3Vua2l0Y2xtenp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2ODYwMzIsImV4cCI6MjA4ODI2MjAzMn0.HRQIpcyPb8ZJTLPQ9GzceqnrmrRlVT-JqVkun-l5JrI",
+            "Authorization": `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
           },
         }
       );

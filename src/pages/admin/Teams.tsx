@@ -16,6 +16,8 @@ interface TeamRow {
   shirts: any[];
   backgrounds: any[];
   is_active: boolean;
+  kiosk_enabled: boolean;
+  kiosk_price_cents: number;
 }
 
 export default function AdminTeams() {
@@ -32,7 +34,7 @@ export default function AdminTeams() {
     setLoading(true);
     const { data, error } = await supabase
       .from("teams")
-      .select("id, slug, name, subdomain, primary_color, shirts, backgrounds, is_active")
+      .select("id, slug, name, subdomain, primary_color, shirts, backgrounds, is_active, kiosk_enabled, kiosk_price_cents")
       .order("created_at", { ascending: true });
 
     if (error) {

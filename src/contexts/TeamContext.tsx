@@ -48,6 +48,13 @@ export interface TeamConfig {
   watermark_url: string | null;
   is_active: boolean;
   text_overrides: TeamTextOverrides;
+  kiosk_enabled: boolean;
+  kiosk_price_cents: number;
+  kiosk_currency: string;
+  kiosk_timeout_seconds: number;
+  kiosk_default_mode: string;
+  kiosk_show_shirt_step: boolean;
+  kiosk_show_background_step: boolean;
 }
 
 interface TeamContextValue {
@@ -135,6 +142,13 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           watermark_url: data.watermark_url,
           is_active: data.is_active ?? true,
           text_overrides: (data.text_overrides as TeamTextOverrides) || {},
+          kiosk_enabled: data.kiosk_enabled ?? false,
+          kiosk_price_cents: data.kiosk_price_cents ?? 2500,
+          kiosk_currency: data.kiosk_currency || "BRL",
+          kiosk_timeout_seconds: data.kiosk_timeout_seconds ?? 60,
+          kiosk_default_mode: data.kiosk_default_mode || "standard",
+          kiosk_show_shirt_step: data.kiosk_show_shirt_step ?? true,
+          kiosk_show_background_step: data.kiosk_show_background_step ?? true,
         };
 
         console.log("[TeamContext] Team loaded:", teamConfig.name);

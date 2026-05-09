@@ -45,6 +45,21 @@ const EDGE_FUNCTIONS: EdgeFunction[] = [
     verifyJwt: true,
   },
   {
+    name: "create-kiosk-payment",
+    filePath: "supabase/functions/create-kiosk-payment/index.ts",
+    verifyJwt: false,
+  },
+  {
+    name: "pagbank-webhook",
+    filePath: "supabase/functions/pagbank-webhook/index.ts",
+    verifyJwt: false,
+  },
+  {
+    name: "create-delivery-link",
+    filePath: "supabase/functions/create-delivery-link/index.ts",
+    verifyJwt: false,
+  },
+  {
     name: "create-first-admin",
     filePath: "supabase/functions/create-first-admin/index.ts",
     verifyJwt: false,

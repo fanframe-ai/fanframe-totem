@@ -1,6 +1,8 @@
 // FanFrame asset configuration
 // Static asset URLs and helpers used by the wizard.
 
+import { SUPABASE_URL } from "@/integrations/supabase/client";
+
 // Background interface (kept for backward compat, re-exported from TeamContext types)
 export interface Background {
   id: string;
@@ -11,7 +13,7 @@ export interface Background {
 }
 
 // Supabase Storage base URL
-const STORAGE_BASE = "https://qmjvsftlounkitclmzzw.supabase.co/storage/v1/object/public/tryon-assets";
+const STORAGE_BASE = `${SUPABASE_URL}/storage/v1/object/public/tryon-assets`;
 
 // Legacy ASSET_URLS - kept as fallback, but TeamContext is the source of truth
 export const ASSET_URLS = {

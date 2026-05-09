@@ -11,10 +11,10 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Save, ArrowLeft, Plus, Eye, EyeOff, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-const STORAGE_BASE = "https://qmjvsftlounkitclmzzw.supabase.co/storage/v1/object/public/tryon-assets";
+const STORAGE_BASE = `${SUPABASE_URL}/storage/v1/object/public/tryon-assets`;
 
 interface ShirtItem {
   id: string;
@@ -51,6 +51,13 @@ interface TeamData {
   watermark_url: string | null;
   is_active: boolean;
   text_overrides: Record<string, string>;
+  kiosk_enabled: boolean;
+  kiosk_price_cents: number;
+  kiosk_currency: string;
+  kiosk_timeout_seconds: number;
+  kiosk_default_mode: string;
+  kiosk_show_shirt_step: boolean;
+  kiosk_show_background_step: boolean;
 }
 
 const generateHash = () => Math.random().toString(36).substring(2, 8);
@@ -69,6 +76,13 @@ const emptyTeam: TeamData = {
   logo_url: null,
   watermark_url: null,
   is_active: true,
+  kiosk_enabled: false,
+  kiosk_price_cents: 2500,
+  kiosk_currency: "BRL",
+  kiosk_timeout_seconds: 60,
+  kiosk_default_mode: "standard",
+  kiosk_show_shirt_step: true,
+  kiosk_show_background_step: true,
   text_overrides: {
     welcome_title: "VISTA A CAMISA",
     welcome_cta: "EXPERIMENTAR AGORA",
@@ -131,6 +145,13 @@ export default function TeamEdit() {
       watermark_url: data.watermark_url,
       is_active: data.is_active ?? true,
       text_overrides: (data.text_overrides as Record<string, string>) || {},
+      kiosk_enabled: data.kiosk_enabled ?? false,
+      kiosk_price_cents: data.kiosk_price_cents ?? 2500,
+      kiosk_currency: data.kiosk_currency || "BRL",
+      kiosk_timeout_seconds: data.kiosk_timeout_seconds ?? 60,
+      kiosk_default_mode: data.kiosk_default_mode || "standard",
+      kiosk_show_shirt_step: data.kiosk_show_shirt_step ?? true,
+      kiosk_show_background_step: data.kiosk_show_background_step ?? true,
     };
 
     setForm(teamData);
@@ -216,6 +237,13 @@ export default function TeamEdit() {
       watermark_url: formToSave.watermark_url || null,
       is_active: formToSave.is_active,
       text_overrides: formToSave.text_overrides as any,
+      kiosk_enabled: formToSave.kiosk_enabled,
+      kiosk_price_cents: formToSave.kiosk_price_cents,
+      kiosk_currency: formToSave.kiosk_currency,
+      kiosk_timeout_seconds: formToSave.kiosk_timeout_seconds,
+      kiosk_default_mode: formToSave.kiosk_default_mode,
+      kiosk_show_shirt_step: formToSave.kiosk_show_shirt_step,
+      kiosk_show_background_step: formToSave.kiosk_show_background_step,
     };
 
     try {
@@ -284,9 +312,10 @@ export default function TeamEdit() {
 
         {/* Tabs */}
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid grid-cols-8 w-full">
+          <TabsList className="grid grid-cols-9 w-full">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="integration">Integração</TabsTrigger>
+            <TabsTrigger value="kiosk">Totem</TabsTrigger>
             <TabsTrigger value="shirts">Camisas</TabsTrigger>
             <TabsTrigger value="backgrounds">Cenários</TabsTrigger>
             <TabsTrigger value="texts">Textos</TabsTrigger>
@@ -345,6 +374,72 @@ export default function TeamEdit() {
           </TabsContent>
 
           {/* === INTEGRAÇÃO === */}
+          {/* === TOTEM === */}
+          <TabsContent value="kiosk">
+            <Card>
+              <CardContent className="pt-6 space-y-6">
+                <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                  <div>
+                    <h2 className="text-lg font-semibold">Modo Totem</h2>
+                    <p className="text-sm text-muted-foreground">Habilita este time para uso no software desktop Windows.</p>
+                  </div>
+                  <Switch checked={form.kiosk_enabled} onCheckedChange={(v) => updateField("kiosk_enabled", v)} />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Preco (centavos)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.kiosk_price_cents}
+                      onChange={(e) => updateField("kiosk_price_cents", Number(e.target.value) || 0)}
+                    />
+                    <p className="text-xs text-muted-foreground">2500 = R$ 25,00</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Moeda</Label>
+                    <Input value={form.kiosk_currency} disabled />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Timeout (segundos)</Label>
+                    <Input
+                      type="number"
+                      min={15}
+                      max={180}
+                      value={form.kiosk_timeout_seconds}
+                      onChange={(e) => updateField("kiosk_timeout_seconds", Number(e.target.value) || 60)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                    <div>
+                      <Label>Mostrar escolha de camisa</Label>
+                      <p className="text-xs text-muted-foreground">Se desligado, usa a primeira camisa visivel.</p>
+                    </div>
+                    <Switch checked={form.kiosk_show_shirt_step} onCheckedChange={(v) => updateField("kiosk_show_shirt_step", v)} />
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                    <div>
+                      <Label>Mostrar escolha de cenario</Label>
+                      <p className="text-xs text-muted-foreground">Se desligado, usa o primeiro cenario visivel.</p>
+                    </div>
+                    <Switch checked={form.kiosk_show_background_step} onCheckedChange={(v) => updateField("kiosk_show_background_step", v)} />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border bg-muted p-4">
+                  <Label>Configuracao local do PC</Label>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Instale o app Electron no Windows e configure <code>kiosk.config.json</code> com <code>teamSlug: "{form.slug || "slug-do-time"}"</code>.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="integration">
             <Card>
               <CardContent className="pt-6 space-y-4">

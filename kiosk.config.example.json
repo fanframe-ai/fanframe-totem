@@ -1,0 +1,13 @@
+{
+  "teamSlug": "seu-time",
+  "deviceCode": "totem-entrada-01",
+  "deviceSecret": "troque-este-segredo",
+  "fullscreen": true,
+  "kiosk": true,
+  "simulatePayments": true,
+  "payments": {
+    "simulate": true,
+    "plugpagCommand": "",
+    "plugpagArgs": []
+  }
+}
