@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTeam } from "@/contexts/TeamContext";
 import { useConsentLog } from "@/hooks/useConsentLog";
-import { useFanFrameAuth } from "@/hooks/useFanFrameAuth";
 import heic2any from "heic2any";
 
 // Formatos suportados pela API OpenAI
@@ -36,7 +35,6 @@ export const UploadScreen = ({
   const [isLoggingConsent, setIsLoggingConsent] = useState(false);
   const { toast } = useToast();
   const { logConsent, CONSENT_TEXT } = useConsentLog();
-  const { getStoredToken } = useFanFrameAuth();
   const { team } = useTeam();
   const t = team?.text_overrides || {};
 
@@ -228,8 +226,7 @@ export const UploadScreen = ({
                 onCheckedChange={async (checked) => {
                   if (checked) {
                     setIsLoggingConsent(true);
-                    const token = getStoredToken();
-                    const userId = token || `anonymous_${Date.now()}`;
+                    const userId = `anonymous_${Date.now()}`;
                     await logConsent(userId);
                     setIsLoggingConsent(false);
                   }
