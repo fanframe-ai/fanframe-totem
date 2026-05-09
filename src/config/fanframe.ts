@@ -1,45 +1,5 @@
-// FanFrame WordPress Integration Configuration
-// Now primarily driven by TeamContext, these remain as types and helpers
-
-// Flag para ativar/desativar integração
-export const FANFRAME_ENABLED = true;
-
-// LocalStorage keys - conforme documentação seção 9: "vf_app_token"
-export const FANFRAME_STORAGE_KEYS = {
-  appToken: "vf_app_token",
-  userId: "vf_user_id",
-  generationId: "vf_generation_id",
-} as const;
-
-// Error codes from API - conforme seção 5.3
-export const FANFRAME_ERROR_CODES = {
-  noCredits: "no_credits",
-} as const;
-
-// Tipos para respostas da API conforme documentação seção 5
-
-// 5.1 Exchange Response
-export interface ExchangeResponse {
-  ok: boolean;
-  app_token?: string;
-  user_id?: number;
-  expires_at?: string;
-  balance?: number;
-  error?: string;
-}
-
-// 5.2 Balance Response
-export interface BalanceResponse {
-  ok: boolean;
-  balance?: number;
-}
-
-// 5.3 Debit Response
-export interface DebitResponse {
-  ok: boolean;
-  balance_after?: number;
-  reason?: string;
-}
+// FanFrame asset configuration
+// Static asset URLs and helpers used by the wizard.
 
 // Background interface (kept for backward compat, re-exported from TeamContext types)
 export interface Background {
