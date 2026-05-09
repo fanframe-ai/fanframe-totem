@@ -39,21 +39,20 @@ O **FanFrame** é uma plataforma multi-tenant de provadores virtuais. Permite cr
                     ┌────────────────┼────────────────┐
                     │                │                │
                     ▼                ▼                ▼
-┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────────┐
-│   WordPress API      │  │  Supabase Edge       │  │  Supabase Database       │
-│   (por time)         │  │  Functions           │  │  (PostgreSQL)            │
-├──────────────────────┤  ├──────────────────────┤  ├──────────────────────────┤
-│ • Autenticação       │  │ • generate-tryon     │  │ • teams                  │
-│ • Saldo de créditos  │  │ • replicate-webhook  │  │ • generations            │
-│ • Débito de créditos │  │ • health-check       │  │ • generation_queue       │
-│ • Compra de créditos │  │ • create-first-admin │  │ • daily_stats            │
-└──────────────────────┘  └──────────┬───────────┘  │ • system_alerts          │
-                                     │              │ • health_checks          │
-                                     ▼              │ • user_roles             │
-                          ┌──────────────────────┐  │ • test_links             │
-                          │   Replicate API      │  │ • system_settings        │
-                          │   (Virtual Try-On)   │  │ • consent_logs           │
-                          └──────────────────────┘  └──────────────────────────┘
+┌──────────────────────┐  ┌──────────────────────────┐
+│  Supabase Edge       │  │  Supabase Database       │
+│  Functions           │  │  (PostgreSQL)            │
+├──────────────────────┤  ├──────────────────────────┤
+│ • generate-tryon     │  │ • teams                  │
+│ • replicate-webhook  │  │ • generation_queue       │
+│ • health-check       │  │ • test_links             │
+│ • create-first-admin │  │ • daily_stats / alerts   │
+└──────────┬───────────┘  │ • user_roles, etc.       │
+           ▼              └──────────────────────────┘
+┌──────────────────────┐
+│   Replicate API      │
+│   (Virtual Try-On)   │
+└──────────────────────┘
 ```
 
 ---
@@ -78,7 +77,6 @@ O **FanFrame** é uma plataforma multi-tenant de provadores virtuais. Permite cr
 
 ### APIs Externas
 - **Replicate API** — Geração de imagens (Virtual Try-On), token configurável por time
-- **WordPress REST API** — Sistema de créditos e autenticação de usuários (URL configurável por time)
 
 ### Deploy
 - **Vercel** — Hospedagem de produção com SPA rewrites
@@ -96,14 +94,12 @@ O sistema é multi-tenant. Cada time é uma linha na tabela `teams` com configur
 | `name` | Nome do time |
 | `shirts` | JSON com camisas disponíveis |
 | `backgrounds` | JSON com cenários de fundo |
-| `wordpress_api_base` | URL da API WordPress para créditos |
 | `replicate_api_token` | Token da API Replicate (próprio do time) |
 | `generation_prompt` | Prompt customizado para IA |
 | `primary_color` / `secondary_color` | Cores do branding |
 | `logo_url` / `watermark_url` | Logo e marca d'água |
 | `text_overrides` | Textos customizados da interface |
 | `tutorial_assets` | Assets do tutorial |
-| `purchase_urls` | URLs de compra de créditos |
 
 ### Fluxo de Acesso
 
@@ -120,17 +116,15 @@ O sistema é multi-tenant. Cada time é uma linha na tabela `teams` com configur
 
 ```
 1. ACESSO
-   └── Usuário acessa via franframe.vercel.app/{slug}?code=XXX
-       ou com token salvo no localStorage
+   └── Usuário acessa via franframe.vercel.app/{slug}
        ou via link de teste: franframe.vercel.app/{slug}?test_token=XXX
 
-2. AUTENTICAÇÃO
-   ├── Modo normal: Exchange do code por app_token via WordPress API do time
-   └── Modo teste: Validação do test_token na tabela test_links do Supabase
+2. CRÉDITOS
+   └── Validação do test_token na tabela test_links do Supabase
+       (sem créditos = não pode gerar imagem)
 
-3. WIZARD (7 etapas)
+3. WIZARD (6 etapas)
    ├── Welcome → Tela inicial com branding do time
-   ├── Buy Credits → Comprar/atualizar créditos
    ├── Tutorial → Explicação do processo
    ├── Shirt Selection → Escolher camisa
    ├── Background Selection → Escolher cenário
@@ -138,7 +132,7 @@ O sistema é multi-tenant. Cada time é uma linha na tabela `teams` com configur
    └── Result → Ver imagem gerada
 
 4. GERAÇÃO (Arquitetura Assíncrona)
-   ├── Débito de 1 crédito (WordPress API ou test_links)
+   ├── Débito de 1 crédito (test_links)
    ├── Chamada à Edge Function generate-tryon
    ├── Criação de job na fila (generation_queue)
    ├── Chamada assíncrona ao Replicate
@@ -155,7 +149,7 @@ O sistema é multi-tenant. Cada time é uma linha na tabela `teams` com configur
 
 ## Links de Teste
 
-O sistema suporta links de teste que funcionam sem integração WordPress, com créditos limitados armazenados no Supabase.
+O acesso ao provador é controlado por links de teste com créditos limitados armazenados no Supabase.
 
 - Criados pelo painel admin em `/admin/teams/{slug}`
 - Formato: `franframe.vercel.app/{slug}?test_token=XXX`
@@ -188,7 +182,6 @@ src/
 ├── components/
 │   ├── wizard/                  # Componentes do wizard
 │   │   ├── WelcomeScreen.tsx
-│   │   ├── BuyCreditsScreen.tsx
 │   │   ├── TutorialScreen.tsx
 │   │   ├── ShirtSelectionScreen.tsx
 │   │   ├── BackgroundSelectionScreen.tsx
@@ -196,8 +189,7 @@ src/
 │   │   ├── ResultScreen.tsx
 │   │   ├── HistoryScreen.tsx
 │   │   ├── TestResultScreen.tsx
-│   │   ├── StepIndicator.tsx
-│   │   └── AccessDeniedScreen.tsx
+│   │   └── StepIndicator.tsx
 │   │
 │   ├── admin/                   # Componentes do admin
 │   │   ├── AdminLayout.tsx
@@ -216,8 +208,6 @@ src/
 │   └── TeamContext.tsx           # Context multi-tenant do time
 │
 ├── hooks/
-│   ├── useFanFrameAuth.ts       # Autenticação via WordPress
-│   ├── useFanFrameCredits.ts    # Gerenciamento de créditos
 │   ├── useTestToken.ts          # Links de teste
 │   ├── useQueueSubscription.ts  # Realtime para fila de geração
 │   ├── useAdminAuth.ts          # Autenticação admin (Supabase Auth)
