@@ -7,8 +7,7 @@ import type { TeamShirt } from "@/contexts/TeamContext";
 import type { TeamBackground } from "@/contexts/TeamContext";
 import { useTeam } from "@/contexts/TeamContext";
 import { useToast } from "@/hooks/use-toast";
-import { useFanFrameCredits } from "@/hooks/useFanFrameCredits";
-import { FANFRAME_ERROR_CODES, getAssetFullUrl } from "@/config/fanframe";
+import { getAssetFullUrl } from "@/config/fanframe";
 import { useQueueSubscription, useQueueStatusCheck } from "@/hooks/useQueueSubscription";
 
 interface ResultScreenProps {
@@ -17,7 +16,6 @@ interface ResultScreenProps {
   selectedBackground: TeamBackground;
   balance: number;
   onTryAgain: () => void;
-  onBalanceUpdate: (newBalance: number) => void;
   onNoCredits: () => void;
   onHistory?: () => void;
   onTestDebit?: () => Promise<boolean>;
@@ -54,7 +52,6 @@ export const ResultScreen = ({
   selectedBackground,
   balance,
   onTryAgain,
-  onBalanceUpdate,
   onNoCredits,
   onHistory,
   onTestDebit,
@@ -71,12 +68,6 @@ export const ResultScreen = ({
   const hasDebitedRef = useRef(false);
   const { toast } = useToast();
   const { team } = useTeam();
-
-  const { 
-    debitCredit, 
-    generateGenerationId, 
-    clearGenerationId 
-  } = useFanFrameCredits();
 
   // Check queue status on mount (in case we missed realtime update)
   const { status: queueStatus, resultImageUrl, errorMessage } = useQueueStatusCheck(queueId);
@@ -116,7 +107,6 @@ export const ResultScreen = ({
     // Guard against double debit (polling + realtime can both fire)
     if (hasDebitedRef.current) {
       console.log("[ResultScreen] Debit already done, skipping duplicate");
-      clearGenerationId();
       completeProgress();
       await new Promise(resolve => setTimeout(resolve, 300));
       setGeneratedImage(imageUrl);
@@ -125,33 +115,14 @@ export const ResultScreen = ({
     }
     hasDebitedRef.current = true;
     
-    // Use test debit if in test mode
+    // Debit only happens in test mode (test_links). Admin preview & open access skip debit.
     if (onTestDebit) {
       const success = await onTestDebit();
       if (!success) {
         console.warn("[ResultScreen] Test debit falhou");
-        onBalanceUpdate(0);
-      }
-    } else {
-      // Debit credit after successful generation via WordPress
-      const localGenerationId = generateGenerationId();
-      const debitResult = await debitCredit(localGenerationId);
-
-      if (!debitResult.success) {
-        console.warn("[ResultScreen] Débito falhou após geração:", debitResult.errorCode);
-        
-        if (debitResult.errorCode === FANFRAME_ERROR_CODES.noCredits) {
-          onBalanceUpdate(0);
-        }
-      } else {
-        console.log("[ResultScreen] Débito autorizado! Saldo após:", debitResult.balanceAfter);
-        if (debitResult.balanceAfter !== undefined) {
-          onBalanceUpdate(debitResult.balanceAfter);
-        }
       }
     }
 
-    clearGenerationId();
     completeProgress();
     
     // Small delay to show 100% before displaying image
@@ -162,7 +133,6 @@ export const ResultScreen = ({
 
   const handleGenerationFailed = (errorMsg: string) => {
     console.error("[ResultScreen] Generation failed:", errorMsg);
-    clearGenerationId();
     completeProgress();
     setError(errorMsg);
     setIsGenerating(false);
@@ -229,17 +199,13 @@ export const ResultScreen = ({
         userImageLength: userImage.length,
       });
 
-      // Call generate-tryon (now returns immediately with queue info)
-      // Get FanFrame user ID from localStorage
-      const fanframeUserId = localStorage.getItem("vf_user_id");
-
       const { data, error: fnError } = await supabase.functions.invoke("generate-tryon", {
         body: {
           userImageBase64: userImage,
           shirtAssetUrl,
           backgroundAssetUrl,
           shirtId: selectedShirt.id,
-          userId: fanframeUserId,
+          userId: null,
           team_slug: team?.slug,
         },
       });
