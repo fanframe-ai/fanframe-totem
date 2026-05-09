@@ -343,13 +343,9 @@ O arquivo `vercel.json` configura SPA rewrites para que todas as rotas sejam tra
 **Causa**: Rota do React Router não reconhecida pelo servidor.
 **Solução**: Verificar se `vercel.json` tem o rewrite configurado.
 
-### Sessão expirada (401)
-**Causa**: Token WordPress expirado.
-**Solução**: Usuário deve reabrir pelo link original com `?code=`.
-
 ### Sem créditos
-**Causa**: Saldo zerado.
-**Solução**: Comprar créditos via link configurado no time ou usar link de teste.
+**Causa**: Sem `test_token` válido ou créditos do link esgotados.
+**Solução**: Solicitar novo link de teste no painel admin.
 
 ### Download abre link em vez de baixar
 **Causa**: CORS ou fallback incorreto.
@@ -362,6 +358,11 @@ O arquivo `vercel.json` configura SPA rewrites para que todas as rotas sejam tra
 ---
 
 ## Changelog
+
+### v2.2.0 (Maio 2026)
+- Removida integração WordPress/FanFrame-proxy
+- Acesso ao provador apenas via test_links (sem login de usuário final)
+- Removidas colunas `wordpress_api_base` e `purchase_urls` da tabela teams
 
 ### v2.1.0 (Maio 2026)
 - Documentação reorganizada (DOCUMENTATION, replicate-integration, design-system)
@@ -385,6 +386,5 @@ O arquivo `vercel.json` configura SPA rewrites para que todas as rotas sejam tra
 
 ### v1.0.0 (Janeiro 2026)
 - Lançamento inicial (Provador Tricolor Virtual)
-- Integração FanFrame/WordPress
 - Painel administrativo
 - 4 cenários de fundo, 3 camisas
