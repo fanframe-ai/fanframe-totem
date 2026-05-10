@@ -40,6 +40,17 @@ export function normalizeInstallCode(value: string) {
   return value.trim().toUpperCase().replace(/\s+/g, "-").replace(/-+/g, "-");
 }
 
+export async function hashKioskSecret(value: string) {
+  const data = new TextEncoder().encode(value.trim().toUpperCase());
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function verifyTechnicalPin(input: string, supportPinHash?: string | null) {
+  if (!supportPinHash) return false;
+  return (await hashKioskSecret(input)) === supportPinHash;
+}
+
 export function buildDeviceAuthHeaders(identity: DeviceIdentity) {
   return {
     "x-device-code": identity.deviceCode,

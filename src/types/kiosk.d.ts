@@ -13,6 +13,7 @@ export interface StoredDeviceIdentity {
   deviceSecret: string;
   deviceId: string;
   teamSlug?: string;
+  supportPinHash?: string | null;
   pairedAt: string;
 }
 

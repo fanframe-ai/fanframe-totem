@@ -19,6 +19,24 @@ export async function sha256(value: string) {
   return Array.from(new Uint8Array(hash)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+export function generateSupportPin() {
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+  return String(100000 + (values[0] % 900000));
+}
+
+export async function rotateDeviceSupportPin(deviceId: string) {
+  const supportPin = generateSupportPin();
+  const supportPinHash = await sha256(supportPin);
+  const { error } = await supabase
+    .from("kiosk_devices")
+    .update({ support_pin_hash: supportPinHash })
+    .eq("id", deviceId);
+  if (error) throw error;
+  await logAdminAudit("kiosk_devices", deviceId, "support_pin_rotated", {});
+  return supportPin;
+}
+
 export async function createInstallCode(deviceId: string, label: string, hoursValid = 72) {
   const code = generateHumanInstallCode(label);
   const codeHash = await sha256(code);

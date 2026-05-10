@@ -19,7 +19,7 @@ import {
   Users,
 } from "lucide-react";
 import { supabase, publicAssetUrl } from "./lib/supabase";
-import { createInstallCode, enqueueDeviceCommand, sha256 } from "./lib/deviceOperations";
+import { createInstallCode, enqueueDeviceCommand, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import type {
   CommandType,
   KioskDevice,
@@ -603,10 +603,11 @@ function Devices({ role }: { role: Role | null }) {
     owner_phone: "",
     status: "active",
     device_secret: "",
+    support_pin: "",
   };
   const [form, setForm] = useState(emptyDeviceForm);
   const [message, setMessage] = useState("");
-  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; deviceLabel: string } | null>(null);
+  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; deviceLabel: string; supportPin: string } | null>(null);
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
 
@@ -631,6 +632,7 @@ function Devices({ role }: { role: Role | null }) {
       install_status: "not_paired",
     };
     if (form.device_secret) payload.device_secret_hash = await sha256(form.device_secret);
+    if (form.support_pin) payload.support_pin_hash = await sha256(form.support_pin);
     const { error } = await supabase.from("kiosk_devices").upsert(payload, { onConflict: "device_code" });
     if (error) setMessage(error.message);
     else {
@@ -643,9 +645,11 @@ function Devices({ role }: { role: Role | null }) {
   async function generateInstall(device: KioskDevice) {
     setMessage("");
     try {
+      const supportPin = await rotateDeviceSupportPin(device.id);
       const result = await createInstallCode(device.id, device.label || device.device_code);
-      setInstallCode({ ...result, deviceLabel: device.label || device.device_code });
+      setInstallCode({ ...result, deviceLabel: device.label || device.device_code, supportPin });
       setMessage(`Codigo gerado para ${device.label || device.device_code}.`);
+      load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Erro ao gerar codigo.");
     }
@@ -679,6 +683,15 @@ function Devices({ role }: { role: Role | null }) {
             <input placeholder="Email do responsavel" value={form.owner_email} onChange={(e) => setForm({ ...form, owner_email: e.target.value })} />
             <input placeholder="Telefone do responsavel" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
             <input placeholder="Segredo do dispositivo" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
+            <input
+              placeholder="PIN tecnico (4 a 8 digitos)"
+              inputMode="numeric"
+              minLength={4}
+              maxLength={8}
+              pattern="[0-9]{4,8}"
+              value={form.support_pin}
+              onChange={(e) => setForm({ ...form, support_pin: e.target.value.replace(/\D/g, "").slice(0, 8) })}
+            />
             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
               <option value="active">Ativo</option>
               <option value="maintenance">Manutencao</option>
@@ -686,18 +699,19 @@ function Devices({ role }: { role: Role | null }) {
             </select>
             <button className="primary">Salvar</button>
           </form>
+          <p className="hint">O PIN tecnico manual nao e exibido depois de salvo. Ao gerar um codigo de instalacao, o painel cria um PIN novo automaticamente para enviar ao dono do totem.</p>
           {message && <p className="hint">{message}</p>}
           {installCode && (
             <div className="notice">
               <strong>Codigo de instalacao: {installCode.code}</strong>
-              <span>{installCode.deviceLabel} - expira em {dateTime(installCode.expiresAt)}</span>
+              <span>{installCode.deviceLabel} - PIN tecnico: {installCode.supportPin} - expira em {dateTime(installCode.expiresAt)}</span>
             </div>
           )}
         </section>
       )}
       {!canEditDevices && message && <div className="panel"><p className="hint">{message}</p></div>}
       <section className="panel">
-        <DataTable columns={["Totem", "Time", "Responsavel", "Status", "Pareamento", "Versao", "Ultimo contato", "Acoes"]}>
+        <DataTable columns={["Totem", "Time", "Responsavel", "Status", "Pareamento", "PIN", "Versao", "Ultimo contato", "Acoes"]}>
           {devices.map((d) => (
             <tr key={d.id}>
               <td><strong>{d.label || d.device_code}</strong><br /><span>{d.device_code}</span><br /><span>{d.location || "-"}</span></td>
@@ -705,6 +719,7 @@ function Devices({ role }: { role: Role | null }) {
               <td>{d.owner_name || "-"}<br /><span>{d.owner_phone || d.owner_email || ""}</span></td>
               <td><Badge value={deviceHealthLabel(d)} /></td>
               <td><Badge value={d.install_status || "not_paired"} /></td>
+              <td><Badge value={d.support_pin_hash ? "configurado" : "nao definido"} /></td>
               <td>{d.app_version || "-"}</td>
               <td>{dateTime(d.last_seen_at)}</td>
               <td className="actions-cell">
@@ -732,7 +747,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
   const [sessions, setSessions] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [message, setMessage] = useState("");
-  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string } | null>(null);
+  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; supportPin: string } | null>(null);
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
 
@@ -764,8 +779,9 @@ function DeviceDetail({ role }: { role: Role | null }) {
     if (!device) return;
     setMessage("");
     try {
+      const supportPin = await rotateDeviceSupportPin(device.id);
       const result = await createInstallCode(device.id, device.label || device.device_code);
-      setInstallCode(result);
+      setInstallCode({ ...result, supportPin });
       setMessage("Codigo de instalacao gerado.");
       load();
     } catch (error) {
@@ -831,7 +847,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
         {installCode && (
           <div className="notice">
             <strong>Codigo de instalacao: {installCode.code}</strong>
-            <span>Expira em {dateTime(installCode.expiresAt)}</span>
+            <span>PIN tecnico: {installCode.supportPin} - expira em {dateTime(installCode.expiresAt)}</span>
           </div>
         )}
       </section>
@@ -843,6 +859,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
           <div><strong>Responsavel</strong><span>{device.owner_name || "-"}</span></div>
           <div><strong>Email</strong><span>{device.owner_email || "-"}</span></div>
           <div><strong>Telefone</strong><span>{device.owner_phone || "-"}</span></div>
+          <div><strong>PIN tecnico</strong><span>{device.support_pin_hash ? "Configurado" : "Nao definido"}</span></div>
           <div><strong>Canal</strong><span>{device.update_channel || "stable"}</span></div>
         </div>
         <div className="panel settings-list">

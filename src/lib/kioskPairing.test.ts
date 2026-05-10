@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildDeviceAuthHeaders,
   classifyKioskError,
+  hashKioskSecret,
   normalizeInstallCode,
   shouldReportHealth,
+  verifyTechnicalPin,
 } from "./kiosk";
 
 describe("kiosk pairing helpers", () => {
@@ -30,5 +32,17 @@ describe("kiosk pairing helpers", () => {
     expect(classifyKioskError("network offline").code).toBe("NET-001");
     expect(classifyKioskError("pagbank timeout").code).toBe("PAY-001");
     expect(classifyKioskError("config fetch failed").code).toBe("CFG-001");
+  });
+
+  it("validates technical PINs against the paired device hash", async () => {
+    const hash = await hashKioskSecret("123456");
+    await expect(verifyTechnicalPin("123456", hash)).resolves.toBe(true);
+    await expect(verifyTechnicalPin(" 123456 ", hash)).resolves.toBe(true);
+    await expect(verifyTechnicalPin("654321", hash)).resolves.toBe(false);
+  });
+
+  it("rejects technical PINs when the device has no configured hash", async () => {
+    await expect(verifyTechnicalPin("4821", null)).resolves.toBe(false);
+    await expect(verifyTechnicalPin("123456", null)).resolves.toBe(false);
   });
 });

@@ -16,6 +16,7 @@ import {
   formatCurrencyFromCents,
   normalizeKioskTimeout,
   shouldReportHealth,
+  verifyTechnicalPin,
 } from "@/lib/kiosk";
 import type { KioskCardPaymentResult, KioskRuntimeConfig, KioskTechnicalStatus, StoredDeviceIdentity } from "@/types/kiosk";
 
@@ -139,6 +140,7 @@ export default function KioskPage() {
   const [technicalOpen, setTechnicalOpen] = useState(false);
   const [technicalUnlocked, setTechnicalUnlocked] = useState(false);
   const [pinInput, setPinInput] = useState("");
+  const [technicalPinError, setTechnicalPinError] = useState("");
   const [technicalStatus, setTechnicalStatus] = useState<KioskTechnicalStatus | null>(null);
   const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
@@ -619,6 +621,7 @@ export default function KioskPage() {
         deviceCode: paired.device.deviceCode,
         deviceSecret: paired.deviceSecret,
         teamSlug: paired.team?.slug,
+        supportPinHash: paired.device.supportPinHash || null,
         pairedAt: new Date().toISOString(),
       };
       await window.fanframeKiosk?.saveDeviceIdentity?.(stored);
@@ -745,22 +748,35 @@ export default function KioskPage() {
 
   const renderTechnicalOverlay = () => {
     if (!technicalOpen) return null;
-    // MVP fallback. In production this should come from a hashed device-level PIN.
-    const supportPin = "4821";
 
     return (
       <div className="technical-overlay">
         <section className="technical-panel">
           {!technicalUnlocked ? (
-            <form onSubmit={(event) => {
+            <form onSubmit={async (event) => {
               event.preventDefault();
-              if (pinInput === supportPin) setTechnicalUnlocked(true);
+              if (!identity?.supportPinHash) {
+                setTechnicalPinError("PIN tecnico nao configurado neste totem. Peca um novo codigo de instalacao ao administrador.");
+                return;
+              }
+              const isValidPin = await verifyTechnicalPin(pinInput, identity?.supportPinHash);
+              if (isValidPin) {
+                setTechnicalUnlocked(true);
+                setTechnicalPinError("");
+                return;
+              }
+              setTechnicalPinError("PIN invalido. Confira o PIN tecnico enviado pelo administrador.");
             }}>
               <h2>Modo tecnico</h2>
               <p>Area local limitada para o dono do totem testar conexao, camera, sincronizacao e reiniciar o app.</p>
               <input value={pinInput} onChange={(event) => setPinInput(event.target.value)} placeholder="PIN" type="password" />
+              {technicalPinError && <p>{technicalPinError}</p>}
               <button>Entrar</button>
-              <button type="button" onClick={() => setTechnicalOpen(false)}>Cancelar</button>
+              <button type="button" onClick={() => {
+                setTechnicalOpen(false);
+                setTechnicalPinError("");
+                setPinInput("");
+              }}>Cancelar</button>
             </form>
           ) : (
             <div>
@@ -789,6 +805,7 @@ export default function KioskPage() {
                 setTechnicalOpen(false);
                 setTechnicalUnlocked(false);
                 setPinInput("");
+                setTechnicalPinError("");
               }}>Voltar ao totem</button>
             </div>
           )}

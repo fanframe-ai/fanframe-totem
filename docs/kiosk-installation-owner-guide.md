@@ -6,7 +6,7 @@
 - Internet estavel.
 - Webcam conectada.
 - Maquininha PagBank/PlugPag configurada quando houver pagamento por cartao.
-- Codigo de instalacao enviado pelo administrador FanFrame.
+- Codigo de instalacao e PIN tecnico enviados pelo administrador FanFrame.
 
 ## Primeiro Acesso
 
@@ -18,7 +18,9 @@
 
 ## Testes Locais
 
-Abra o modo tecnico com `Ctrl + Shift + F12` e digite o PIN informado pelo administrador.
+Abra o modo tecnico com `Ctrl + Shift + F12` e digite o PIN tecnico informado pelo administrador.
+
+O PIN e exclusivo daquele totem. Se o administrador trocar o PIN, ele enviara um novo codigo de instalacao para parear o app novamente.
 
 Use:
 
