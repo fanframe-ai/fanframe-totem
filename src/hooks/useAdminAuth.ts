@@ -69,7 +69,7 @@ export function useAdminAuth() {
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
-        .in("role", ["admin", "super_admin"])
+        .in("role", ["admin", "super_admin", "support", "finance"])
         .maybeSingle();
 
       if (error) {

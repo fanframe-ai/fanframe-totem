@@ -99,6 +99,22 @@ function deviceHealthLabel(device: KioskDevice) {
   return "online";
 }
 
+function hasRole(role: Role | null, allowed: Role[]) {
+  return Boolean(role && allowed.includes(role));
+}
+
+function canManageBusiness(role: Role | null) {
+  return hasRole(role, ["super_admin", "admin"]);
+}
+
+function canSupportOperations(role: Role | null) {
+  return hasRole(role, ["super_admin", "admin", "support"]);
+}
+
+function canManageUsers(role: Role | null) {
+  return role === "super_admin";
+}
+
 async function uploadAsset(file: File, path: string) {
   const { error } = await supabase.storage.from("tryon-assets").upload(path, file, {
     upsert: true,
@@ -116,16 +132,15 @@ function useAuth() {
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .in("role", ["admin", "super_admin"])
-      .order("role", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .in("role", ["admin", "super_admin", "support", "finance"]);
 
-    if (error || !data) {
+    if (error || !data?.length) {
       setAuth({ loading: false, user, role: null, error: "Usuario sem permissao administrativa." });
       return;
     }
-    setAuth({ loading: false, user, role: data.role as Role, error: null });
+    const priority: Role[] = ["super_admin", "admin", "support", "finance"];
+    const role = priority.find((candidate) => data.some((row) => row.role === candidate)) || null;
+    setAuth({ loading: false, user, role, error: null });
   };
 
   useEffect(() => {
@@ -194,18 +209,30 @@ function Protected({ children, auth }: { children: React.ReactNode; auth: AuthSt
   return <>{children}</>;
 }
 
+function RoleGate({ role, allowed, children }: { role: Role | null; allowed: Role[]; children: React.ReactNode }) {
+  if (!hasRole(role, allowed)) {
+    return (
+      <>
+        <PageHeader title="Acesso restrito" subtitle="Seu perfil nao tem permissao para esta area." />
+        <div className="panel empty-state"><Shield size={28} /> Area bloqueada para este usuario.</div>
+      </>
+    );
+  }
+  return <>{children}</>;
+}
+
 function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode }) {
   const nav = [
-    ["/", LayoutDashboard, "Dashboard"],
-    ["/times", Shirt, "Times"],
-    ["/totens", Monitor, "Totens"],
-    ["/sessoes", Activity, "Sessoes"],
-    ["/pagamentos", CreditCard, "Pagamentos"],
-    ["/geracoes", ImageIcon, "Geracoes IA"],
-    ["/status", AlertTriangle, "Status"],
-    ["/usuarios", Users, "Usuarios"],
-    ["/configuracoes", Settings, "Configuracoes"],
-  ] as const;
+    { href: "/", Icon: LayoutDashboard, label: "Dashboard", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
+    { href: "/times", Icon: Shirt, label: "Times", roles: ["super_admin", "admin"] as Role[] },
+    { href: "/totens", Icon: Monitor, label: "Totens", roles: ["super_admin", "admin", "support"] as Role[] },
+    { href: "/sessoes", Icon: Activity, label: "Sessoes", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
+    { href: "/pagamentos", Icon: CreditCard, label: "Pagamentos", roles: ["super_admin", "admin", "finance"] as Role[] },
+    { href: "/geracoes", Icon: ImageIcon, label: "Geracoes IA", roles: ["super_admin", "admin", "support"] as Role[] },
+    { href: "/status", Icon: AlertTriangle, label: "Status", roles: ["super_admin", "admin", "support"] as Role[] },
+    { href: "/usuarios", Icon: Users, label: "Usuarios", roles: ["super_admin"] as Role[] },
+    { href: "/configuracoes", Icon: Settings, label: "Configuracoes", roles: ["super_admin", "admin"] as Role[] },
+  ].filter((item) => hasRole(auth.role, item.roles));
 
   return (
     <div className="app-shell">
@@ -218,7 +245,7 @@ function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode
           </div>
         </div>
         <nav>
-          {nav.map(([href, Icon, label]) => (
+          {nav.map(({ href, Icon, label }) => (
             <NavLink key={href} to={href} end={href === "/"}>
               <Icon size={18} />
               {label}
@@ -553,7 +580,7 @@ function TeamForm() {
   );
 }
 
-function Devices() {
+function Devices({ role }: { role: Role | null }) {
   const { teams } = useTeams();
   const [devices, setDevices] = useState<KioskDevice[]>([]);
   const emptyDeviceForm = {
@@ -570,6 +597,8 @@ function Devices() {
   const [form, setForm] = useState(emptyDeviceForm);
   const [message, setMessage] = useState("");
   const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; deviceLabel: string } | null>(null);
+  const canEditDevices = canManageBusiness(role);
+  const canOperate = canSupportOperations(role);
 
   const load = async () => {
     const { data } = await supabase.from("kiosk_devices").select("*, teams(name, slug)").order("created_at", { ascending: false });
@@ -625,35 +654,38 @@ function Devices() {
   return (
     <>
       <PageHeader title="Totens" subtitle="Dispositivos Windows instalados em pontos fisicos." />
-      <section className="panel">
-        <h2>Cadastrar ou atualizar totem</h2>
-        <form className="inline-form" onSubmit={save}>
-          <select value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })} required>
-            <option value="">Time</option>
-            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <input placeholder="device_code" value={form.device_code} onChange={(e) => setForm({ ...form, device_code: e.target.value })} required />
-          <input placeholder="Nome/label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
-          <input placeholder="Localizacao" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-          <input placeholder="Responsavel" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} />
-          <input placeholder="Email do responsavel" value={form.owner_email} onChange={(e) => setForm({ ...form, owner_email: e.target.value })} />
-          <input placeholder="Telefone do responsavel" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
-          <input placeholder="Segredo do dispositivo" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
-          <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            <option value="active">Ativo</option>
-            <option value="maintenance">Manutencao</option>
-            <option value="disabled">Desabilitado</option>
-          </select>
-          <button className="primary">Salvar</button>
-        </form>
-        {message && <p className="hint">{message}</p>}
-        {installCode && (
-          <div className="notice">
-            <strong>Codigo de instalacao: {installCode.code}</strong>
-            <span>{installCode.deviceLabel} - expira em {dateTime(installCode.expiresAt)}</span>
-          </div>
-        )}
-      </section>
+      {canEditDevices && (
+        <section className="panel">
+          <h2>Cadastrar ou atualizar totem</h2>
+          <form className="inline-form" onSubmit={save}>
+            <select value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })} required>
+              <option value="">Time</option>
+              {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <input placeholder="device_code" value={form.device_code} onChange={(e) => setForm({ ...form, device_code: e.target.value })} required />
+            <input placeholder="Nome/label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+            <input placeholder="Localizacao" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+            <input placeholder="Responsavel" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} />
+            <input placeholder="Email do responsavel" value={form.owner_email} onChange={(e) => setForm({ ...form, owner_email: e.target.value })} />
+            <input placeholder="Telefone do responsavel" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
+            <input placeholder="Segredo do dispositivo" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
+            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+              <option value="active">Ativo</option>
+              <option value="maintenance">Manutencao</option>
+              <option value="disabled">Desabilitado</option>
+            </select>
+            <button className="primary">Salvar</button>
+          </form>
+          {message && <p className="hint">{message}</p>}
+          {installCode && (
+            <div className="notice">
+              <strong>Codigo de instalacao: {installCode.code}</strong>
+              <span>{installCode.deviceLabel} - expira em {dateTime(installCode.expiresAt)}</span>
+            </div>
+          )}
+        </section>
+      )}
+      {!canEditDevices && message && <div className="panel"><p className="hint">{message}</p></div>}
       <section className="panel">
         <DataTable columns={["Totem", "Time", "Responsavel", "Status", "Pareamento", "Versao", "Ultimo contato", "Acoes"]}>
           {devices.map((d) => (
@@ -667,12 +699,12 @@ function Devices() {
               <td>{dateTime(d.last_seen_at)}</td>
               <td className="actions-cell">
                 <Link className="secondary link-button" to={`/totens/${d.id}`}>Abrir</Link>
-                <button className="secondary" onClick={() => generateInstall(d)}>Codigo</button>
-                <button className="secondary" onClick={() => sendCommand(d.id, "sync_config")}>Sync</button>
-                <button className="secondary" onClick={() => sendCommand(d.id, "send_diagnostics")}>Diagnostico</button>
-                <button className="secondary" onClick={() => sendCommand(d.id, "restart_app")}>Reiniciar</button>
-                <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Ativar</button>
-                <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Manutencao</button>
+                {canEditDevices && <button className="secondary" onClick={() => generateInstall(d)}>Codigo</button>}
+                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "sync_config")}>Sync</button>}
+                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "send_diagnostics")}>Diagnostico</button>}
+                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "restart_app")}>Reiniciar</button>}
+                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Ativar</button>}
+                {canOperate && <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Manutencao</button>}
               </td>
             </tr>
           ))}
@@ -682,7 +714,7 @@ function Devices() {
   );
 }
 
-function DeviceDetail() {
+function DeviceDetail({ role }: { role: Role | null }) {
   const { id } = useParams();
   const [device, setDevice] = useState<KioskDevice | null>(null);
   const [events, setEvents] = useState<KioskDeviceEvent[]>([]);
@@ -691,6 +723,8 @@ function DeviceDetail() {
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [message, setMessage] = useState("");
   const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string } | null>(null);
+  const canEditDevices = canManageBusiness(role);
+  const canOperate = canSupportOperations(role);
 
   const load = async () => {
     if (!id) return;
@@ -775,12 +809,13 @@ function DeviceDetail() {
           <p className="hint">O totem executa comandos quando sincronizar com a nuvem. Nao precisa acesso remoto ao Windows.</p>
         </div>
         <div className="actions-row">
-          <button className="secondary" onClick={generateInstall}>Gerar codigo</button>
-          <button className="secondary" onClick={() => sendCommand("sync_config")}>Sincronizar</button>
-          <button className="secondary" onClick={() => sendCommand("send_diagnostics")}>Pedir diagnostico</button>
-          <button className="secondary" onClick={() => sendCommand("restart_app")}>Reiniciar app</button>
-          <button className="secondary" onClick={() => sendCommand("exit_maintenance")}>Ativar</button>
-          <button className="danger" onClick={() => sendCommand("enter_maintenance")}>Manutencao</button>
+          {canEditDevices && <button className="secondary" onClick={generateInstall}>Gerar codigo</button>}
+          {canOperate && <button className="secondary" onClick={() => sendCommand("sync_config")}>Sincronizar</button>}
+          {canOperate && <button className="secondary" onClick={() => sendCommand("send_diagnostics")}>Pedir diagnostico</button>}
+          {canOperate && <button className="secondary" onClick={() => sendCommand("restart_app")}>Reiniciar app</button>}
+          {canOperate && <button className="secondary" onClick={() => sendCommand("exit_maintenance")}>Ativar</button>}
+          {canOperate && <button className="danger" onClick={() => sendCommand("enter_maintenance")}>Manutencao</button>}
+          {!canOperate && !canEditDevices && <span className="hint">Seu perfil permite somente visualizacao.</span>}
         </div>
         {message && <p className="hint">{message}</p>}
         {installCode && (
@@ -1049,7 +1084,7 @@ function UsersPage({ role }: { role: Role | null }) {
   const [password, setPassword] = useState("");
   const [newRole, setNewRole] = useState<Role>("admin");
   const [message, setMessage] = useState("");
-  const canManage = role === "super_admin";
+  const canManage = canManageUsers(role);
 
   const load = async () => {
     const { data, error } = await supabase.functions.invoke("manage-admin-users", { body: { action: "list" } });
@@ -1093,7 +1128,7 @@ function UsersPage({ role }: { role: Role | null }) {
 
   return (
     <>
-      <PageHeader title="Usuarios" subtitle="Crie operadores admin e super admins." />
+      <PageHeader title="Usuarios" subtitle="Crie operadores, suporte, financeiro e super admins." />
       <section className="panel">
         <h2>Novo usuario</h2>
         <form className="inline-form" onSubmit={create}>
@@ -1102,6 +1137,8 @@ function UsersPage({ role }: { role: Role | null }) {
           <select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
             <option value="admin">Operador admin</option>
             <option value="super_admin">Super admin</option>
+            <option value="support">Suporte operacional</option>
+            <option value="finance">Financeiro</option>
           </select>
           <button className="primary">Criar</button>
         </form>
@@ -1148,16 +1185,16 @@ function App() {
           <Layout auth={auth}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/times" element={<Teams />} />
-              <Route path="/times/:slug" element={<TeamForm />} />
-              <Route path="/totens" element={<Devices />} />
-              <Route path="/totens/:id" element={<DeviceDetail />} />
-              <Route path="/sessoes" element={<Sessions />} />
-              <Route path="/pagamentos" element={<Payments />} />
-              <Route path="/geracoes" element={<Generations />} />
-              <Route path="/status" element={<StatusPage />} />
-              <Route path="/usuarios" element={<UsersPage role={auth.role} />} />
-              <Route path="/configuracoes" element={<SettingsPage />} />
+              <Route path="/times" element={<RoleGate role={auth.role} allowed={["super_admin", "admin"]}><Teams /></RoleGate>} />
+              <Route path="/times/:slug" element={<RoleGate role={auth.role} allowed={["super_admin", "admin"]}><TeamForm /></RoleGate>} />
+              <Route path="/totens" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><Devices role={auth.role} /></RoleGate>} />
+              <Route path="/totens/:id" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><DeviceDetail role={auth.role} /></RoleGate>} />
+              <Route path="/sessoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support", "finance"]}><Sessions /></RoleGate>} />
+              <Route path="/pagamentos" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "finance"]}><Payments /></RoleGate>} />
+              <Route path="/geracoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><Generations /></RoleGate>} />
+              <Route path="/status" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><StatusPage /></RoleGate>} />
+              <Route path="/usuarios" element={<RoleGate role={auth.role} allowed={["super_admin"]}><UsersPage role={auth.role} /></RoleGate>} />
+              <Route path="/configuracoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin"]}><SettingsPage /></RoleGate>} />
             </Routes>
           </Layout>
         </Protected>

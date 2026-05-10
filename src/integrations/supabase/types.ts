@@ -836,7 +836,7 @@ export type Database = {
     Enums: {
       alert_severity: "info" | "warning" | "critical"
       alert_type: "error_spike" | "slow_processing" | "high_usage" | "api_error"
-      app_role: "admin" | "super_admin"
+      app_role: "admin" | "super_admin" | "support" | "finance"
       generation_status: "pending" | "processing" | "completed" | "failed"
     }
     CompositeTypes: {
@@ -967,7 +967,7 @@ export const Constants = {
     Enums: {
       alert_severity: ["info", "warning", "critical"],
       alert_type: ["error_spike", "slow_processing", "high_usage", "api_error"],
-      app_role: ["admin", "super_admin"],
+      app_role: ["admin", "super_admin", "support", "finance"],
       generation_status: ["pending", "processing", "completed", "failed"],
     },
   },

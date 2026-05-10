@@ -11,8 +11,11 @@ type Body = {
   user_id?: string;
   email?: string;
   password?: string;
-  role?: "admin" | "super_admin";
+  role?: "admin" | "super_admin" | "support" | "finance";
 };
+
+const supportedRoles = ["admin", "super_admin", "support", "finance"] as const;
+type SupportedRole = typeof supportedRoles[number];
 
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -56,7 +59,7 @@ serve(async (req) => {
       const { data: roles, error } = await adminClient
         .from("user_roles")
         .select("user_id, role, created_at")
-        .in("role", ["admin", "super_admin"])
+        .in("role", supportedRoles)
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -78,7 +81,7 @@ serve(async (req) => {
 
     if (action === "create") {
       if (!body.email || !body.password) return json({ error: "Missing email or password" }, 400);
-      const role = body.role === "super_admin" ? "super_admin" : "admin";
+      const role: SupportedRole = supportedRoles.includes(body.role as SupportedRole) ? body.role as SupportedRole : "admin";
       const { data: created, error: createError } = await adminClient.auth.admin.createUser({
         email: body.email,
         password: body.password,
