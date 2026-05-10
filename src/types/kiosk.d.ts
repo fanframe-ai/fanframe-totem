@@ -5,6 +5,8 @@ export interface KioskRuntimeConfig {
   appVersion?: string;
   kiosk?: boolean;
   fullscreen?: boolean;
+  autoLaunch?: boolean;
+  blockShortcuts?: boolean;
   simulatePayments?: boolean;
 }
 

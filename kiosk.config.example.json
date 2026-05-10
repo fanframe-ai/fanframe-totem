@@ -4,6 +4,8 @@
   "deviceSecret": "troque-este-segredo",
   "fullscreen": true,
   "kiosk": true,
+  "autoLaunch": true,
+  "blockShortcuts": true,
   "simulatePayments": true,
   "payments": {
     "simulate": true,

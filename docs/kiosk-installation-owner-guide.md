@@ -40,6 +40,19 @@ Use:
 - Sincronizar agora.
 - Reiniciar app.
 
+## Trocar O Pareamento
+
+Use somente quando o administrador FanFrame enviar um novo codigo de instalacao.
+
+1. Abra o modo tecnico com `Ctrl + Shift + F12`.
+2. Digite o PIN tecnico.
+3. Clique em `Reparear este totem`.
+4. Confirme o repareamento.
+5. Digite o novo codigo de instalacao.
+6. Confira se a tela inicial aparece com o time correto.
+
+Esse processo apaga apenas o pareamento local do PC. Times, precos, assets, prompt de IA e permissoes continuam controlados remotamente pelo painel.
+
 ## Quando Chamar Suporte
 
 Informe o codigo de erro exibido:

@@ -4,6 +4,11 @@ const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
+const {
+  isBlockedKioskShortcut,
+  isTechnicalShortcut,
+  shouldEnableAutoLaunch,
+} = require("./kiosk-hardening.cjs");
 
 let staticServer;
 
@@ -73,6 +78,8 @@ function loadKioskConfig() {
     appVersion: app.getVersion(),
     kiosk: fileConfig.kiosk !== false,
     fullscreen: fileConfig.fullscreen !== false,
+    autoLaunch: fileConfig.autoLaunch !== false,
+    blockShortcuts: fileConfig.blockShortcuts !== false,
     simulatePayments:
       process.env.FANFRAME_SIMULATE_PAYMENTS === "true" ||
       fileConfig.simulatePayments === true ||
@@ -188,8 +195,18 @@ async function startCardPayment(_event, request) {
   return runPlugPagCommand(config, request);
 }
 
+function configureAutoLaunch(config) {
+  if (process.platform !== "win32" || !app.isPackaged) return;
+
+  app.setLoginItemSettings({
+    openAtLogin: shouldEnableAutoLaunch(config),
+    path: process.execPath,
+  });
+}
+
 async function createWindow() {
   const config = loadKioskConfig();
+  configureAutoLaunch(config);
   const devServerArg = process.argv.find((arg) => arg.startsWith("--dev-server="));
   const devServerUrl = devServerArg?.split("=")[1] || process.env.VITE_DEV_SERVER_URL;
   const baseUrl = devServerUrl || await startStaticServer();
@@ -223,8 +240,13 @@ async function createWindow() {
   });
 
   win.webContents.on("before-input-event", (event, input) => {
-    if (input.control && input.shift && input.key.toLowerCase() === "f12" && input.type === "keyDown") {
+    if (isTechnicalShortcut(input)) {
       win.webContents.send("kiosk:open-technical-mode");
+      event.preventDefault();
+      return;
+    }
+
+    if (isBlockedKioskShortcut(input, config.kiosk && config.blockShortcuts)) {
       event.preventDefault();
     }
   });

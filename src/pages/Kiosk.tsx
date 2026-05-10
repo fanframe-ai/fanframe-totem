@@ -143,6 +143,7 @@ export default function KioskPage() {
   const [technicalPinError, setTechnicalPinError] = useState("");
   const [technicalStatus, setTechnicalStatus] = useState<KioskTechnicalStatus | null>(null);
   const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
+  const [repairConfirm, setRepairConfirm] = useState(false);
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
   const [selectedBackground, setSelectedBackground] = useState<TeamBackground | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -657,6 +658,28 @@ export default function KioskPage() {
     });
   };
 
+  const resetPairing = async () => {
+    stopCamera();
+    await window.fanframeKiosk?.clearDeviceIdentity?.();
+    localStorage.removeItem("fanframe:kiosk-team");
+    setIdentity(null);
+    setConfig((current) => ({
+      ...(current || browserPreviewConfig),
+      teamSlug: "",
+      deviceCode: "",
+      deviceSecret: "",
+    }));
+    setSlug("");
+    setPairingCode("");
+    setPairingError("");
+    setRepairConfirm(false);
+    setTechnicalOpen(false);
+    setTechnicalUnlocked(false);
+    setTechnicalPinError("");
+    setPinInput("");
+    setStep("pairing");
+  };
+
   const setTechnicalCheck = (key: keyof TechnicalChecks, patch: Partial<TechnicalCheck>) => {
     setTechnicalChecks((current) => ({
       ...current,
@@ -776,6 +799,7 @@ export default function KioskPage() {
                 setTechnicalOpen(false);
                 setTechnicalPinError("");
                 setPinInput("");
+                setRepairConfirm(false);
               }}>Cancelar</button>
             </form>
           ) : (
@@ -801,11 +825,21 @@ export default function KioskPage() {
               <button onClick={() => window.location.reload()}>Sincronizar agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
+              {!repairConfirm ? (
+                <button onClick={() => setRepairConfirm(true)}>Reparear este totem</button>
+              ) : (
+                <div className="technical-reset-confirm">
+                  <p>Isso remove o pareamento local. Use somente quando o administrador enviar um novo codigo de instalacao.</p>
+                  <button onClick={resetPairing}>Confirmar repareamento</button>
+                  <button onClick={() => setRepairConfirm(false)}>Cancelar repareamento</button>
+                </div>
+              )}
               <button onClick={() => {
                 setTechnicalOpen(false);
                 setTechnicalUnlocked(false);
                 setPinInput("");
                 setTechnicalPinError("");
+                setRepairConfirm(false);
               }}>Voltar ao totem</button>
             </div>
           )}

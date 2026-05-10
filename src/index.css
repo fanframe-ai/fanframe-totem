@@ -219,6 +219,15 @@
     color: #111827;
   }
 
+  .technical-reset-confirm {
+    display: grid;
+    gap: 12px;
+    border: 1px solid rgb(252 165 165 / 42%);
+    border-radius: 8px;
+    padding: 14px;
+    background: rgb(127 29 29 / 28%);
+  }
+
   .technical-status {
     display: grid;
     gap: 10px;

@@ -40,6 +40,23 @@ npm run dist:win:dir
 5. Abra o modo tecnico com `Ctrl + Shift + F12`.
 6. Digite o PIN tecnico e teste internet, camera e diagnostico.
 
+## Comportamento Kiosk No Windows
+
+Em builds instalados, o app inicia junto com o Windows por padrao e abre em tela cheia vertical. O modo kiosk tambem bloqueia atalhos comuns de fuga, como `Alt + F4`, `Alt + Tab`, `Ctrl + R`, `F5`, `F11` e `F12`. O atalho tecnico `Ctrl + Shift + F12` continua disponivel para suporte local.
+
+Para manutencao avancada no PC, use `kiosk.config.json`:
+
+```json
+{
+  "autoLaunch": false,
+  "blockShortcuts": false,
+  "fullscreen": false,
+  "kiosk": false
+}
+```
+
+Reative essas opcoes antes de devolver o PC para operacao no totem.
+
 ## Operacao Remota
 
 O painel mostra:
