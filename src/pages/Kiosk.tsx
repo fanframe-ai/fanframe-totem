@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Camera, CheckCircle2, CreditCard, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
+import { Camera, CheckCircle2, ChevronRight, CreditCard, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
@@ -162,6 +162,8 @@ export default function KioskPage() {
   const [deliveryQrImage, setDeliveryQrImage] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const shirtRailRef = useRef<HTMLDivElement | null>(null);
+  const backgroundRailRef = useRef<HTMLDivElement | null>(null);
   const { progress, complete } = useProgress(step === "generating");
 
   const timeoutSeconds = normalizeKioskTimeout(team?.kiosk_timeout_seconds);
@@ -201,6 +203,11 @@ export default function KioskPage() {
 
   const retryBoot = useCallback(() => {
     window.location.reload();
+  }, []);
+
+  const scrollRailForward = useCallback((rail: HTMLDivElement | null) => {
+    if (!rail) return;
+    rail.scrollBy({ left: Math.round(rail.clientWidth * 0.82), behavior: "smooth" });
   }, []);
 
   const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
@@ -973,22 +980,37 @@ export default function KioskPage() {
               <p className="text-lg uppercase text-muted-foreground font-black">Passo 1 de 3</p>
               <h2 className="text-6xl font-black uppercase leading-none mb-8">Escolha a camisa</h2>
             </div>
-            <div className="grid grid-cols-2 gap-5 flex-1 min-h-0 overflow-y-auto no-scrollbar pb-2">
-              {visibleShirts.map((shirt) => (
+            <div className="relative flex-1 min-h-0">
+              <div
+                ref={shirtRailRef}
+                className="h-full flex gap-5 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory pr-28 pb-2"
+              >
+                {visibleShirts.map((shirt) => (
+                  <button
+                    key={shirt.id}
+                    onClick={() => setSelectedShirt(shirt)}
+                    className={`snap-start shrink-0 w-[46%] h-full rounded-lg border-2 p-5 bg-card text-left transition flex flex-col ${
+                      selectedShirt?.id === shirt.id ? "border-primary bg-accent scale-[1.01]" : "border-border"
+                    }`}
+                  >
+                    <div className="aspect-square rounded-md bg-secondary mb-5 overflow-hidden shrink-0">
+                      <img src={shirt.imageUrl} alt={shirt.name} className="w-full h-full object-contain" />
+                    </div>
+                    <h3 className="text-2xl font-black uppercase leading-tight">{shirt.name}</h3>
+                    <p className="text-lg text-muted-foreground leading-snug mt-2 line-clamp-3">{shirt.subtitle}</p>
+                  </button>
+                ))}
+              </div>
+              {visibleShirts.length > 2 && (
                 <button
-                  key={shirt.id}
-                  onClick={() => setSelectedShirt(shirt)}
-                  className={`rounded-lg border-2 p-5 bg-card text-left transition min-h-[420px] ${
-                    selectedShirt?.id === shirt.id ? "border-primary bg-accent scale-[1.01]" : "border-border"
-                  }`}
+                  type="button"
+                  aria-label="Ver mais camisas"
+                  onClick={() => scrollRailForward(shirtRailRef.current)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-l-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center"
                 >
-                  <div className="aspect-square rounded-md bg-secondary mb-5 overflow-hidden">
-                    <img src={shirt.imageUrl} alt={shirt.name} className="w-full h-full object-contain" />
-                  </div>
-                  <h3 className="text-2xl font-black uppercase leading-tight">{shirt.name}</h3>
-                  <p className="text-lg text-muted-foreground leading-snug mt-2">{shirt.subtitle}</p>
+                  <ChevronRight className="w-12 h-12" strokeWidth={3} />
                 </button>
-              ))}
+              )}
             </div>
             <footer className="shrink-0 pt-7 grid grid-cols-[0.8fr_1.2fr] gap-5">
               <KioskButton variant="ghost" onClick={resetFlow} className="w-full">Cancelar</KioskButton>
@@ -1003,22 +1025,37 @@ export default function KioskPage() {
               <p className="text-lg uppercase text-muted-foreground font-black">Passo 2 de 3</p>
               <h2 className="text-6xl font-black uppercase leading-none mb-8">Escolha o cenario</h2>
             </div>
-            <div className="grid grid-cols-1 gap-5 flex-1 min-h-0 overflow-y-auto no-scrollbar pb-2">
-              {visibleBackgrounds.map((background) => (
+            <div className="relative flex-1 min-h-0">
+              <div
+                ref={backgroundRailRef}
+                className="h-full flex gap-5 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory pr-28 pb-2"
+              >
+                {visibleBackgrounds.map((background) => (
+                  <button
+                    key={background.id}
+                    onClick={() => setSelectedBackground(background)}
+                    className={`snap-start shrink-0 w-[78%] h-full rounded-lg border-2 p-5 bg-card text-left transition flex flex-col ${
+                      selectedBackground?.id === background.id ? "border-primary bg-accent scale-[1.01]" : "border-border"
+                    }`}
+                  >
+                    <div className="aspect-[16/9] rounded-md bg-secondary mb-5 overflow-hidden shrink-0">
+                      <img src={background.imageUrl} alt={background.name} className="w-full h-full object-cover" />
+                    </div>
+                    <h3 className="text-3xl font-black uppercase leading-tight">{background.name}</h3>
+                    <p className="text-xl text-muted-foreground mt-2 line-clamp-3">{background.subtitle}</p>
+                  </button>
+                ))}
+              </div>
+              {visibleBackgrounds.length > 1 && (
                 <button
-                  key={background.id}
-                  onClick={() => setSelectedBackground(background)}
-                  className={`rounded-lg border-2 p-5 bg-card text-left transition ${
-                    selectedBackground?.id === background.id ? "border-primary bg-accent scale-[1.01]" : "border-border"
-                  }`}
+                  type="button"
+                  aria-label="Ver mais cenarios"
+                  onClick={() => scrollRailForward(backgroundRailRef.current)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-l-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center"
                 >
-                  <div className="aspect-[16/9] rounded-md bg-secondary mb-5 overflow-hidden">
-                    <img src={background.imageUrl} alt={background.name} className="w-full h-full object-cover" />
-                  </div>
-                  <h3 className="text-3xl font-black uppercase leading-tight">{background.name}</h3>
-                  <p className="text-xl text-muted-foreground mt-2">{background.subtitle}</p>
+                  <ChevronRight className="w-12 h-12" strokeWidth={3} />
                 </button>
-              ))}
+              )}
             </div>
             <footer className="shrink-0 pt-7 grid grid-cols-[0.8fr_1.2fr] gap-5">
               <KioskButton variant="ghost" onClick={() => setStep("shirt")} className="w-full">Voltar</KioskButton>
