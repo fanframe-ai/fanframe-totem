@@ -1,4 +1,7 @@
-export type Role = "admin" | "super_admin";
+export type Role = "admin" | "super_admin" | "support" | "finance";
+export type InstallStatus = "not_paired" | "paired" | "revoked";
+export type CommandStatus = "pending" | "running" | "succeeded" | "failed" | "expired";
+export type CommandType = "sync_config" | "enter_maintenance" | "exit_maintenance" | "send_diagnostics" | "restart_app";
 
 export interface TeamAsset {
   id: string;
@@ -40,12 +43,54 @@ export interface KioskDevice {
   device_code: string;
   label: string | null;
   location: string | null;
+  owner_name?: string | null;
+  owner_email?: string | null;
+  owner_phone?: string | null;
+  install_status?: InstallStatus;
+  paired_at?: string | null;
+  config_version?: number;
+  expected_app_version?: string | null;
+  update_channel?: "stable" | "beta" | "maintenance";
+  support_pin_hash?: string | null;
+  last_health_at?: string | null;
+  last_health_status?: Record<string, unknown>;
+  last_error_code?: string | null;
+  last_error_message?: string | null;
+  maintenance_reason?: string | null;
   status: "active" | "maintenance" | "disabled";
   app_version: string | null;
   last_seen_at: string | null;
   config: Record<string, unknown>;
   created_at: string;
   teams?: { name: string; slug: string } | null;
+}
+
+export interface KioskDeviceEvent {
+  id: string;
+  device_id: string | null;
+  team_id: string | null;
+  session_id: string | null;
+  event_type: string;
+  severity: "debug" | "info" | "warning" | "error" | "critical";
+  error_code: string | null;
+  message: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface KioskDeviceCommand {
+  id: string;
+  device_id: string;
+  command_type: CommandType;
+  payload: Record<string, unknown>;
+  status: CommandStatus;
+  result: Record<string, unknown>;
+  error_message: string | null;
+  created_by: string | null;
+  created_at: string;
+  claimed_at: string | null;
+  completed_at: string | null;
+  expires_at: string;
 }
 
 export interface KioskSession {

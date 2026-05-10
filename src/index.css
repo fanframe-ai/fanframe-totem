@@ -169,6 +169,77 @@
   .btn-mobile-cta {
     @apply min-h-[56px] px-8 text-lg font-bold uppercase tracking-wide touch-active;
   }
+
+  .technical-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    background: rgb(0 0 0 / 78%);
+    padding: 24px;
+  }
+
+  .technical-panel {
+    width: min(720px, calc(100vw - 48px));
+    background: #111827;
+    color: #f9fafb;
+    border: 1px solid rgb(255 255 255 / 16%);
+    border-radius: 8px;
+    padding: 28px;
+  }
+
+  .technical-panel form,
+  .technical-panel > div {
+    display: grid;
+    gap: 16px;
+  }
+
+  .technical-panel h2 {
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .technical-panel input,
+  .technical-panel button {
+    min-height: 52px;
+    border-radius: 6px;
+    padding: 0 16px;
+    font-weight: 800;
+  }
+
+  .technical-panel input {
+    background: #030712;
+    border: 1px solid rgb(255 255 255 / 18%);
+    color: #f9fafb;
+  }
+
+  .technical-panel button {
+    background: #f9fafb;
+    color: #111827;
+  }
+
+  .technical-status {
+    display: grid;
+    gap: 10px;
+  }
+
+  .technical-status div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid rgb(255 255 255 / 12%);
+    padding-bottom: 8px;
+  }
+
+  .technical-status dt {
+    color: #9ca3af;
+  }
+
+  .technical-status dd {
+    font-weight: 800;
+    text-align: right;
+  }
 }
 
 @layer utilities {

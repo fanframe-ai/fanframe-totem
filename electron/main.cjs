@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, net, shell } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const http = require("node:http");
@@ -6,6 +6,31 @@ const os = require("node:os");
 const path = require("node:path");
 
 let staticServer;
+
+function identityPath() {
+  return path.join(app.getPath("userData"), "device-identity.json");
+}
+
+async function readIdentity() {
+  try {
+    return JSON.parse(await fs.promises.readFile(identityPath(), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+async function writeIdentity(identity) {
+  await fs.promises.mkdir(path.dirname(identityPath()), { recursive: true });
+  await fs.promises.writeFile(identityPath(), JSON.stringify(identity, null, 2), "utf8");
+}
+
+async function clearIdentity() {
+  try {
+    await fs.promises.unlink(identityPath());
+  } catch {
+    return;
+  }
+}
 
 function resolveDistDir() {
   const candidates = [
@@ -197,12 +222,32 @@ async function createWindow() {
     if (!url.startsWith(baseUrl)) event.preventDefault();
   });
 
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.control && input.shift && input.key.toLowerCase() === "f12" && input.type === "keyDown") {
+      win.webContents.send("kiosk:open-technical-mode");
+      event.preventDefault();
+    }
+  });
+
   await win.loadURL(`${baseUrl}/kiosk`);
 }
 
 app.whenReady().then(() => {
   ipcMain.handle("fanframe:get-config", () => loadKioskConfig());
   ipcMain.handle("fanframe:start-card-payment", startCardPayment);
+  ipcMain.handle("kiosk:load-device-identity", readIdentity);
+  ipcMain.handle("kiosk:save-device-identity", (_event, identity) => writeIdentity(identity));
+  ipcMain.handle("kiosk:clear-device-identity", clearIdentity);
+  ipcMain.handle("kiosk:get-technical-status", async () => ({
+    online: net.isOnline(),
+    appVersion: app.getVersion(),
+    deviceCode: (await readIdentity())?.deviceCode || null,
+    lastSyncAt: null,
+  }));
+  ipcMain.handle("kiosk:relaunch", async () => {
+    app.relaunch();
+    app.exit(0);
+  });
   createWindow();
 });
 

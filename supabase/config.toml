@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.manage-admin-users]
 verify_jwt = true
+
+[functions.redeem-kiosk-install-code]
+verify_jwt = false
+
+[functions.report-kiosk-health]
+verify_jwt = false
+
+[functions.poll-kiosk-commands]
+verify_jwt = false

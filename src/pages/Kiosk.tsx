@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Camera, CheckCircle2, CreditCard, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,19 @@ import { getAssetFullUrl } from "@/config/fanframe";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import {
   buildDeliveryUrl,
+  pollKioskCommand,
+  redeemInstallCode,
+  reportKioskHealth,
   filterVisibleAssets,
   formatCurrencyFromCents,
   normalizeKioskTimeout,
+  shouldReportHealth,
 } from "@/lib/kiosk";
-import type { KioskCardPaymentResult, KioskRuntimeConfig } from "@/types/kiosk";
+import type { KioskCardPaymentResult, KioskRuntimeConfig, KioskTechnicalStatus, StoredDeviceIdentity } from "@/types/kiosk";
 
 type KioskStep =
   | "boot"
+  | "pairing"
   | "maintenance"
   | "home"
   | "shirt"
@@ -106,8 +111,16 @@ function useProgress(isActive: boolean) {
 export default function KioskPage() {
   const { team, isLoading: teamLoading, error: teamError, setSlug } = useTeam();
   const [config, setConfig] = useState<KioskRuntimeConfig | null>(null);
+  const [identity, setIdentity] = useState<StoredDeviceIdentity | null>(null);
   const [step, setStep] = useState<KioskStep>("boot");
   const [error, setError] = useState<string | null>(null);
+  const [pairingCode, setPairingCode] = useState("");
+  const [pairingBusy, setPairingBusy] = useState(false);
+  const [pairingError, setPairingError] = useState("");
+  const [technicalOpen, setTechnicalOpen] = useState(false);
+  const [technicalUnlocked, setTechnicalUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [technicalStatus, setTechnicalStatus] = useState<KioskTechnicalStatus | null>(null);
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
   const [selectedBackground, setSelectedBackground] = useState<TeamBackground | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -130,6 +143,11 @@ export default function KioskPage() {
   const visibleShirts = useMemo(() => filterVisibleAssets(team?.shirts || []), [team?.shirts]);
   const visibleBackgrounds = useMemo(() => filterVisibleAssets(team?.backgrounds || []), [team?.backgrounds]);
   const priceLabel = formatCurrencyFromCents(team?.kiosk_price_cents || 0, team?.kiosk_currency || "BRL");
+  const activeDevice = useMemo(() => ({
+    deviceCode: identity?.deviceCode || config?.deviceCode || "",
+    deviceSecret: identity?.deviceSecret || config?.deviceSecret || "",
+  }), [config?.deviceCode, config?.deviceSecret, identity?.deviceCode, identity?.deviceSecret]);
+  const hasDeviceAuth = Boolean(activeDevice.deviceCode && activeDevice.deviceSecret);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -167,12 +185,26 @@ export default function KioskPage() {
       const runtimeConfig = window.fanframeKiosk
         ? await window.fanframeKiosk.getConfig()
         : { ...browserPreviewConfig, teamSlug: urlTeam };
+      const storedIdentity = await window.fanframeKiosk?.loadDeviceIdentity?.();
 
       setConfig(runtimeConfig);
+      if (storedIdentity) {
+        setIdentity(storedIdentity);
+        const pairedTeam = storedIdentity.teamSlug || runtimeConfig.teamSlug;
+        if (!pairedTeam) {
+          setError("Totem pareado sem time vinculado. Gere um novo codigo de instalacao.");
+          setStep("maintenance");
+          return;
+        }
+        localStorage.setItem("fanframe:kiosk-team", pairedTeam);
+        setSlug(pairedTeam);
+        return;
+      }
+
+      setIdentity(null);
 
       if (!runtimeConfig.teamSlug) {
-        setError("Configure o teamSlug do totem antes de iniciar.");
-        setStep("maintenance");
+        setStep("pairing");
         return;
       }
 
@@ -185,6 +217,72 @@ export default function KioskPage() {
       setStep("maintenance");
     });
   }, [setSlug]);
+
+  useEffect(() => {
+    return window.fanframeKiosk?.onOpenTechnicalMode?.(() => {
+      setTechnicalOpen(true);
+      window.fanframeKiosk?.getTechnicalStatus?.().then((status) => setTechnicalStatus(status)).catch(() => undefined);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!hasDeviceAuth) return;
+    let lastReportAt: number | null = null;
+    const interval = window.setInterval(async () => {
+      if (!shouldReportHealth(lastReportAt, 60_000)) return;
+      lastReportAt = Date.now();
+      const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+      await reportKioskHealth(activeDevice, {
+        health: {
+          appVersion: status?.appVersion || config?.appVersion || "browser",
+          online: status?.online ?? navigator.onLine,
+          currentScreen: step,
+          lastErrorCode: null,
+          lastErrorMessage: error,
+        },
+        event: { eventType: "health_reported", severity: "info", payload: { step } },
+      }).catch(() => undefined);
+    }, 10_000);
+    return () => window.clearInterval(interval);
+  }, [activeDevice, config?.appVersion, error, hasDeviceAuth, step]);
+
+  useEffect(() => {
+    if (!hasDeviceAuth) return;
+    const interval = window.setInterval(async () => {
+      const command = await pollKioskCommand(activeDevice).catch(() => null);
+      if (!command) return;
+      try {
+        if (command.command_type === "sync_config") window.location.reload();
+        if (command.command_type === "restart_app") await window.fanframeKiosk?.relaunch?.();
+        if (command.command_type === "enter_maintenance") {
+          setError("Totem em manutencao remota.");
+          setStep("maintenance");
+        }
+        if (command.command_type === "exit_maintenance") {
+          setError(null);
+          resetFlow();
+        }
+        if (command.command_type === "send_diagnostics") {
+          await reportKioskHealth(activeDevice, {
+            health: await window.fanframeKiosk?.getTechnicalStatus?.(),
+            event: { eventType: "diagnostics_sent", severity: "info", payload: { step } },
+          });
+        }
+        await pollKioskCommand(activeDevice, {
+          completeCommandId: command.id,
+          success: true,
+          result: { handledAt: new Date().toISOString() },
+        });
+      } catch (err) {
+        await pollKioskCommand(activeDevice, {
+          completeCommandId: command.id,
+          success: false,
+          errorMessage: err instanceof Error ? err.message : "Command failed",
+        }).catch(() => undefined);
+      }
+    }, 15_000);
+    return () => window.clearInterval(interval);
+  }, [activeDevice, hasDeviceAuth, resetFlow, step]);
 
   useEffect(() => {
     if (step !== "boot" || teamLoading) return;
@@ -306,8 +404,8 @@ export default function KioskPage() {
             action: "confirm_card",
             session_id: sessionId,
             payment_id: paymentId,
-            device_code: config.deviceCode,
-            device_secret: config.deviceSecret,
+            device_code: activeDevice.deviceCode,
+            device_secret: activeDevice.deviceSecret,
             plugpag_result: { approved: true, status: "approved", provider: "simulated_pix" },
           },
         });
@@ -331,7 +429,7 @@ export default function KioskPage() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [config, paymentId, paymentMethod, pixPayment, sessionId]);
+  }, [activeDevice.deviceCode, activeDevice.deviceSecret, config, paymentId, paymentMethod, pixPayment, sessionId]);
 
   const startSelection = () => {
     if (visibleShirts.length === 0 || visibleBackgrounds.length === 0) {
@@ -353,7 +451,7 @@ export default function KioskPage() {
   };
 
   const startPayment = async (method: PaymentMethod) => {
-    if (!team || !config || !selectedShirt || !selectedBackground) return;
+    if (!team || !config || !selectedShirt || !selectedBackground || !hasDeviceAuth) return;
     setPaymentMethod(method);
     setPaymentBusy(true);
     setError(null);
@@ -362,8 +460,8 @@ export default function KioskPage() {
       body: {
         action: "create",
         team_slug: team.slug,
-        device_code: config.deviceCode,
-        device_secret: config.deviceSecret,
+        device_code: activeDevice.deviceCode,
+        device_secret: activeDevice.deviceSecret,
         method,
         selected_shirt_id: selectedShirt.id,
         selected_background_id: selectedBackground.id,
@@ -401,8 +499,8 @@ export default function KioskPage() {
         action: "confirm_card",
         session_id: payment.sessionId,
         payment_id: payment.paymentId,
-        device_code: config.deviceCode,
-        device_secret: config.deviceSecret,
+        device_code: activeDevice.deviceCode,
+        device_secret: activeDevice.deviceSecret,
         plugpag_result: localPayment,
       },
     });
@@ -481,15 +579,135 @@ export default function KioskPage() {
     setQueueId(data.queueId);
   };
 
+  const pairDevice = async (event: FormEvent) => {
+    event.preventDefault();
+    setPairingBusy(true);
+    setPairingError("");
+    try {
+      const status = await window.fanframeKiosk?.getTechnicalStatus?.();
+      const paired = await redeemInstallCode(pairingCode, navigator.userAgent, status?.appVersion || config?.appVersion || "browser");
+      const stored: StoredDeviceIdentity = {
+        deviceId: paired.device.id,
+        deviceCode: paired.device.deviceCode,
+        deviceSecret: paired.deviceSecret,
+        teamSlug: paired.team?.slug,
+        pairedAt: new Date().toISOString(),
+      };
+      await window.fanframeKiosk?.saveDeviceIdentity?.(stored);
+      setIdentity(stored);
+      setConfig((current) => ({
+        ...(current || browserPreviewConfig),
+        teamSlug: stored.teamSlug || current?.teamSlug || "",
+        deviceCode: stored.deviceCode,
+        deviceSecret: stored.deviceSecret,
+      }));
+      if (stored.teamSlug) {
+        localStorage.setItem("fanframe:kiosk-team", stored.teamSlug);
+        setSlug(stored.teamSlug);
+        setStep("boot");
+      } else {
+        setPairingError("Codigo aceito, mas o time nao foi retornado. Gere um novo codigo no admin.");
+      }
+    } catch (err) {
+      setPairingError(err instanceof Error ? err.message : "Codigo de instalacao invalido.");
+    } finally {
+      setPairingBusy(false);
+    }
+  };
+
+  const openTechnicalMode = async () => {
+    setTechnicalOpen(true);
+    const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+    setTechnicalStatus(status || {
+      online: navigator.onLine,
+      appVersion: config?.appVersion || "browser",
+      deviceCode: activeDevice.deviceCode || null,
+      lastSyncAt: null,
+    });
+  };
+
+  const renderTechnicalOverlay = () => {
+    if (!technicalOpen) return null;
+    // MVP fallback. In production this should come from a hashed device-level PIN.
+    const supportPin = "4821";
+
+    return (
+      <div className="technical-overlay">
+        <section className="technical-panel">
+          {!technicalUnlocked ? (
+            <form onSubmit={(event) => {
+              event.preventDefault();
+              if (pinInput === supportPin) setTechnicalUnlocked(true);
+            }}>
+              <h2>Modo tecnico</h2>
+              <p>Area local limitada para o dono do totem testar conexao, camera, sincronizacao e reiniciar o app.</p>
+              <input value={pinInput} onChange={(event) => setPinInput(event.target.value)} placeholder="PIN" type="password" />
+              <button>Entrar</button>
+              <button type="button" onClick={() => setTechnicalOpen(false)}>Cancelar</button>
+            </form>
+          ) : (
+            <div>
+              <h2>Diagnostico do totem</h2>
+              <dl className="technical-status">
+                <div><dt>Internet</dt><dd>{technicalStatus?.online ? "Online" : "Offline"}</dd></div>
+                <div><dt>Versao</dt><dd>{String(technicalStatus?.appVersion || config?.appVersion || "browser")}</dd></div>
+                <div><dt>Dispositivo</dt><dd>{String(technicalStatus?.deviceCode || activeDevice.deviceCode || "nao pareado")}</dd></div>
+                <div><dt>Time</dt><dd>{team?.name || identity?.teamSlug || config?.teamSlug || "-"}</dd></div>
+              </dl>
+              <button onClick={() => window.location.reload()}>Sincronizar agora</button>
+              <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
+              <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
+              <button onClick={() => {
+                setTechnicalOpen(false);
+                setTechnicalUnlocked(false);
+                setPinInput("");
+              }}>Voltar ao totem</button>
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  };
+
   const shellStyle = team ? ({
     "--team-primary": team.primary_color,
     "--team-secondary": team.secondary_color,
   } as React.CSSProperties) : undefined;
 
+  if (step === "pairing") {
+    return (
+      <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-12">
+        <section className="w-full max-w-2xl rounded-lg border border-border bg-card p-10 text-center">
+          <p className="text-base uppercase text-muted-foreground font-black tracking-wide mb-4">FanFrame Totem</p>
+          <h1 className="text-6xl font-black uppercase leading-none mb-6">Conectar este totem</h1>
+          <p className="text-2xl leading-relaxed text-muted-foreground mb-10">
+            Digite o codigo de instalacao enviado pelo administrador.
+          </p>
+          <form onSubmit={pairDevice} className="grid gap-5">
+            <input
+              value={pairingCode}
+              onChange={(event) => setPairingCode(event.target.value)}
+              placeholder="Ex: RECIFE-001"
+              autoFocus
+              className="h-20 rounded-md border border-border bg-background px-6 text-center text-3xl font-black uppercase"
+            />
+            <KioskButton disabled={pairingBusy || !pairingCode.trim()} className="w-full">
+              {pairingBusy ? "Conectando..." : "Conectar"}
+            </KioskButton>
+          </form>
+          {pairingError && <p className="mt-8 text-destructive text-2xl font-bold leading-relaxed">{pairingError}</p>}
+          <button className="mt-8 text-muted-foreground underline" onClick={openTechnicalMode}>Abrir modo tecnico</button>
+        </section>
+        {renderTechnicalOverlay()}
+      </main>
+    );
+  }
+
   if (step === "boot" || teamLoading) {
     return (
       <main className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <Loader2 className="w-16 h-16 animate-spin text-primary" />
+        {renderTechnicalOverlay()}
       </main>
     );
   }
@@ -504,7 +722,9 @@ export default function KioskPage() {
           <KioskButton variant="secondary" onClick={retryBoot} className="w-full">
             Tentar novamente
           </KioskButton>
+          <button className="mt-8 text-muted-foreground underline" onClick={openTechnicalMode}>Abrir modo tecnico</button>
         </section>
+        {renderTechnicalOverlay()}
       </main>
     );
   }
@@ -707,6 +927,7 @@ export default function KioskPage() {
           </section>
         )}
       </div>
+      {renderTechnicalOverlay()}
     </main>
   );
 }

@@ -65,6 +65,26 @@ const EDGE_FUNCTIONS: EdgeFunction[] = [
     verifyJwt: false,
   },
   {
+    name: "manage-admin-users",
+    filePath: "supabase/functions/manage-admin-users/index.ts",
+    verifyJwt: true,
+  },
+  {
+    name: "redeem-kiosk-install-code",
+    filePath: "supabase/functions/redeem-kiosk-install-code/index.ts",
+    verifyJwt: false,
+  },
+  {
+    name: "report-kiosk-health",
+    filePath: "supabase/functions/report-kiosk-health/index.ts",
+    verifyJwt: false,
+  },
+  {
+    name: "poll-kiosk-commands",
+    filePath: "supabase/functions/poll-kiosk-commands/index.ts",
+    verifyJwt: false,
+  },
+  {
     name: "create-checkout",
     filePath: "supabase/functions/create-checkout/index.ts",
     verifyJwt: false,

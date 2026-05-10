@@ -24,6 +24,12 @@ npm run admin:build
 npm run dist:win
 ```
 
+## Operacao De Totens
+
+- Guia tecnico: `docs/kiosk-totem.md`
+- Guia do dono do totem: `docs/kiosk-installation-owner-guide.md`
+- Plano de rede gerenciada: `docs/superpowers/specs/2026-05-10-kiosk-network-operations-design.md`
+
 ## Variaveis
 
 Configure o Supabase via:

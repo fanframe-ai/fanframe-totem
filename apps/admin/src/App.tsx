@@ -19,7 +19,8 @@ import {
   Users,
 } from "lucide-react";
 import { supabase, publicAssetUrl } from "./lib/supabase";
-import type { KioskDevice, KioskPayment, KioskSession, Role, TeamAsset, TeamRow } from "./lib/types";
+import { createInstallCode, enqueueDeviceCommand, sha256 } from "./lib/deviceOperations";
+import type { CommandType, KioskDevice, KioskPayment, KioskSession, Role, TeamAsset, TeamRow } from "./lib/types";
 
 type AuthState = {
   loading: boolean;
@@ -78,6 +79,14 @@ function slugify(value: string) {
 function isOffline(lastSeen: string | null | undefined) {
   if (!lastSeen) return true;
   return Date.now() - new Date(lastSeen).getTime() > 5 * 60 * 1000;
+}
+
+function deviceHealthLabel(device: KioskDevice) {
+  if (device.status === "disabled") return "disabled";
+  if (device.status === "maintenance") return "maintenance";
+  if (isOffline(device.last_seen_at)) return "offline";
+  if (device.last_error_code) return "attention";
+  return "online";
 }
 
 async function uploadAsset(file: File, path: string) {
@@ -537,8 +546,20 @@ function TeamForm() {
 function Devices() {
   const { teams } = useTeams();
   const [devices, setDevices] = useState<KioskDevice[]>([]);
-  const [form, setForm] = useState({ team_id: "", device_code: "", label: "", location: "", status: "active", device_secret: "" });
+  const emptyDeviceForm = {
+    team_id: "",
+    device_code: "",
+    label: "",
+    location: "",
+    owner_name: "",
+    owner_email: "",
+    owner_phone: "",
+    status: "active",
+    device_secret: "",
+  };
+  const [form, setForm] = useState(emptyDeviceForm);
   const [message, setMessage] = useState("");
+  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; deviceLabel: string } | null>(null);
 
   const load = async () => {
     const { data } = await supabase.from("kiosk_devices").select("*, teams(name, slug)").order("created_at", { ascending: false });
@@ -554,15 +575,40 @@ function Devices() {
       device_code: form.device_code,
       label: form.label,
       location: form.location,
+      owner_name: form.owner_name,
+      owner_email: form.owner_email,
+      owner_phone: form.owner_phone,
       status: form.status,
+      install_status: "not_paired",
     };
     if (form.device_secret) payload.device_secret_hash = await sha256(form.device_secret);
     const { error } = await supabase.from("kiosk_devices").upsert(payload, { onConflict: "device_code" });
     if (error) setMessage(error.message);
     else {
       setMessage("Totem salvo.");
-      setForm({ team_id: "", device_code: "", label: "", location: "", status: "active", device_secret: "" });
+      setForm(emptyDeviceForm);
       load();
+    }
+  }
+
+  async function generateInstall(device: KioskDevice) {
+    setMessage("");
+    try {
+      const result = await createInstallCode(device.id, device.label || device.device_code);
+      setInstallCode({ ...result, deviceLabel: device.label || device.device_code });
+      setMessage(`Codigo gerado para ${device.label || device.device_code}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao gerar codigo.");
+    }
+  }
+
+  async function sendCommand(deviceId: string, command: CommandType) {
+    setMessage("");
+    try {
+      await enqueueDeviceCommand(deviceId, command);
+      setMessage(`Comando ${command} enviado.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao enviar comando.");
     }
   }
 
@@ -579,6 +625,9 @@ function Devices() {
           <input placeholder="device_code" value={form.device_code} onChange={(e) => setForm({ ...form, device_code: e.target.value })} required />
           <input placeholder="Nome/label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
           <input placeholder="Localizacao" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+          <input placeholder="Responsavel" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} />
+          <input placeholder="Email do responsavel" value={form.owner_email} onChange={(e) => setForm({ ...form, owner_email: e.target.value })} />
+          <input placeholder="Telefone do responsavel" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
           <input placeholder="Segredo do dispositivo" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
           <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
             <option value="active">Ativo</option>
@@ -588,29 +637,36 @@ function Devices() {
           <button className="primary">Salvar</button>
         </form>
         {message && <p className="hint">{message}</p>}
+        {installCode && (
+          <div className="notice">
+            <strong>Codigo de instalacao: {installCode.code}</strong>
+            <span>{installCode.deviceLabel} - expira em {dateTime(installCode.expiresAt)}</span>
+          </div>
+        )}
       </section>
       <section className="panel">
-        <DataTable columns={["Totem", "Time", "Local", "Status", "Versao", "Ultimo contato"]}>
+        <DataTable columns={["Totem", "Time", "Responsavel", "Status", "Pareamento", "Versao", "Ultimo contato", "Acoes"]}>
           {devices.map((d) => (
             <tr key={d.id}>
-              <td><strong>{d.label || d.device_code}</strong><br /><span>{d.device_code}</span></td>
+              <td><strong>{d.label || d.device_code}</strong><br /><span>{d.device_code}</span><br /><span>{d.location || "-"}</span></td>
               <td>{d.teams?.name || "-"}</td>
-              <td>{d.location || "-"}</td>
-              <td><Badge value={isOffline(d.last_seen_at) ? "offline" : d.status} /></td>
+              <td>{d.owner_name || "-"}<br /><span>{d.owner_phone || d.owner_email || ""}</span></td>
+              <td><Badge value={deviceHealthLabel(d)} /></td>
+              <td><Badge value={d.install_status || "not_paired"} /></td>
               <td>{d.app_version || "-"}</td>
               <td>{dateTime(d.last_seen_at)}</td>
+              <td className="actions-cell">
+                <button className="secondary" onClick={() => generateInstall(d)}>Codigo</button>
+                <button className="secondary" onClick={() => sendCommand(d.id, "sync_config")}>Sync</button>
+                <button className="secondary" onClick={() => sendCommand(d.id, "send_diagnostics")}>Diagnostico</button>
+                <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Manutencao</button>
+              </td>
             </tr>
           ))}
         </DataTable>
       </section>
     </>
   );
-}
-
-async function sha256(value: string) {
-  const data = new TextEncoder().encode(value);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function FilterBar({ filters, setFilters, teams }: { filters: Filters; setFilters: (filters: Filters) => void; teams: TeamRow[] }) {

@@ -94,9 +94,32 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       try {
         console.log("[TeamContext] Loading team for slug:", slug);
 
+        const publicTeamFields = `
+          id,
+          slug,
+          name,
+          subdomain,
+          shirts,
+          backgrounds,
+          tutorial_assets,
+          primary_color,
+          secondary_color,
+          logo_url,
+          watermark_url,
+          is_active,
+          text_overrides,
+          kiosk_enabled,
+          kiosk_price_cents,
+          kiosk_currency,
+          kiosk_timeout_seconds,
+          kiosk_default_mode,
+          kiosk_show_shirt_step,
+          kiosk_show_background_step
+        `;
+
         let { data, error: fetchError } = await supabase
           .from("teams")
-          .select("*")
+          .select(publicTeamFields)
           .eq("slug", slug)
           .eq("is_active", true)
           .maybeSingle();
@@ -104,7 +127,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         if (!data && !fetchError) {
           const result = await supabase
             .from("teams")
-            .select("*")
+            .select(publicTeamFields)
             .eq("subdomain", slug)
             .eq("is_active", true)
             .maybeSingle();
@@ -131,8 +154,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           slug: data.slug,
           name: data.name,
           subdomain: data.subdomain,
-          replicate_api_token: data.replicate_api_token,
-          generation_prompt: data.generation_prompt,
+          replicate_api_token: null,
+          generation_prompt: null,
           shirts: (data.shirts as unknown as TeamShirt[]) || [],
           backgrounds: (data.backgrounds as unknown as TeamBackground[]) || [],
           tutorial_assets: (data.tutorial_assets as { before: string; after: string }) || { before: "", after: "" },

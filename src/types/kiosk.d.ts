@@ -8,6 +8,21 @@ export interface KioskRuntimeConfig {
   simulatePayments?: boolean;
 }
 
+export interface StoredDeviceIdentity {
+  deviceCode: string;
+  deviceSecret: string;
+  deviceId: string;
+  teamSlug?: string;
+  pairedAt: string;
+}
+
+export interface KioskTechnicalStatus {
+  online: boolean;
+  appVersion: string;
+  deviceCode: string | null;
+  lastSyncAt: string | null;
+}
+
 export interface KioskCardPaymentRequest {
   sessionId: string;
   paymentId: string;
@@ -32,6 +47,12 @@ declare global {
     fanframeKiosk?: {
       getConfig: () => Promise<KioskRuntimeConfig>;
       startCardPayment: (request: KioskCardPaymentRequest) => Promise<KioskCardPaymentResult>;
+      loadDeviceIdentity: () => Promise<StoredDeviceIdentity | null>;
+      saveDeviceIdentity: (identity: StoredDeviceIdentity) => Promise<void>;
+      clearDeviceIdentity: () => Promise<void>;
+      getTechnicalStatus: () => Promise<KioskTechnicalStatus>;
+      relaunch: () => Promise<void>;
+      onOpenTechnicalMode: (callback: () => void) => () => void;
     };
   }
 }
