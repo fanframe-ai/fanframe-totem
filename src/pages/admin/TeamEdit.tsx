@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { TestLinksManager } from "@/components/admin/TestLinksManager";
 import { useParams, useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -109,13 +109,7 @@ export default function TeamEdit() {
   const [saving, setSaving] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
-  useEffect(() => {
-    if (!isNew && slug) {
-      loadTeam(slug);
-    }
-  }, [slug]);
-
-  const loadTeam = async (teamSlug: string) => {
+  const loadTeam = useCallback(async (teamSlug: string) => {
     setLoading(true);
     const { data, error } = await supabase
       .from("teams")
@@ -156,9 +150,15 @@ export default function TeamEdit() {
 
     setForm(teamData);
     setLoading(false);
-  };
+  }, [navigate, toast]);
 
-  const updateField = (field: keyof TeamData, value: any) => {
+  useEffect(() => {
+    if (!isNew && slug) {
+      loadTeam(slug);
+    }
+  }, [isNew, loadTeam, slug]);
+
+  const updateField = <K extends keyof TeamData>(field: K, value: TeamData[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -228,15 +228,15 @@ export default function TeamEdit() {
       subdomain: formToSave.subdomain,
       replicate_api_token: formToSave.replicate_api_token || null,
       generation_prompt: formToSave.generation_prompt || null,
-      shirts: formToSave.shirts as any,
-      backgrounds: formToSave.backgrounds as any,
-      tutorial_assets: formToSave.tutorial_assets as any,
+      shirts: formToSave.shirts,
+      backgrounds: formToSave.backgrounds,
+      tutorial_assets: formToSave.tutorial_assets,
       primary_color: formToSave.primary_color,
       secondary_color: formToSave.secondary_color,
       logo_url: formToSave.logo_url || null,
       watermark_url: formToSave.watermark_url || null,
       is_active: formToSave.is_active,
-      text_overrides: formToSave.text_overrides as any,
+      text_overrides: formToSave.text_overrides,
       kiosk_enabled: formToSave.kiosk_enabled,
       kiosk_price_cents: formToSave.kiosk_price_cents,
       kiosk_currency: formToSave.kiosk_currency,
@@ -248,17 +248,17 @@ export default function TeamEdit() {
 
     try {
       if (isNew) {
-        const { error } = await supabase.from("teams").insert(payload as any);
+        const { error } = await supabase.from("teams").insert(payload as never);
         if (error) throw error;
         toast({ title: "Time criado com sucesso!" });
         navigate("/admin/teams");
       } else {
-        const { error } = await supabase.from("teams").update(payload as any).eq("id", form.id!);
+        const { error } = await supabase.from("teams").update(payload as never).eq("id", form.id!);
         if (error) throw error;
         toast({ title: "Time atualizado!" });
       }
-    } catch (err: any) {
-      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erro ao salvar", description: err instanceof Error ? err.message : "Falha ao salvar time", variant: "destructive" });
     } finally {
       setSaving(false);
     }

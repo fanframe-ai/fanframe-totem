@@ -79,15 +79,19 @@ export const ResultScreen = ({
     } else if (queueStatus === "failed" && errorMessage && !error) {
       handleGenerationFailed(errorMessage);
     }
+    // The generation callbacks intentionally capture this render's queue state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queueStatus, resultImageUrl, errorMessage]);
 
   // Subscribe to queue updates via Realtime
   const handleRealtimeCompleted = useCallback(async (imageUrl: string) => {
     await handleGenerationComplete(imageUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRealtimeFailed = useCallback((errorMsg: string) => {
     handleGenerationFailed(errorMsg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePositionUpdate = useCallback((position: number) => {
@@ -253,6 +257,7 @@ export const ResultScreen = ({
     selectedShirt,
     selectedBackground,
     startProgressAnimation,
+    team?.slug,
     onNoCredits,
     toast
   ]);

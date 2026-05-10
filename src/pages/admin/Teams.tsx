@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,8 @@ interface TeamRow {
   name: string;
   subdomain: string;
   primary_color: string;
-  shirts: any[];
-  backgrounds: any[];
+  shirts: unknown[];
+  backgrounds: unknown[];
   is_active: boolean;
   kiosk_enabled: boolean;
   kiosk_price_cents: number;
@@ -26,11 +26,7 @@ export default function AdminTeams() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchTeams();
-  }, []);
-
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("teams")
@@ -43,11 +39,15 @@ export default function AdminTeams() {
       setTeams((data as unknown as TeamRow[]) || []);
     }
     setLoading(false);
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    fetchTeams();
+  }, [fetchTeams]);
 
   const handleDeactivate = async (team: TeamRow) => {
     if (!confirm(`Desativar "${team.name}"? Os dados serão preservados.`)) return;
-    const { error } = await supabase.from("teams").update({ is_active: false } as any).eq("id", team.id);
+    const { error } = await supabase.from("teams").update({ is_active: false } as never).eq("id", team.id);
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
@@ -95,7 +95,7 @@ export default function AdminTeams() {
                     <div>
                       <h3 className="font-semibold">{team.name}</h3>
                       <p className="text-xs text-muted-foreground">
-                        /{team.slug} · {(team.shirts as any[])?.length || 0} camisas · {(team.backgrounds as any[])?.length || 0} cenários
+                        /{team.slug} · {team.shirts?.length || 0} camisas · {team.backgrounds?.length || 0} cenários
                         {!team.is_active && " · Inativo"}
                       </p>
                     </div>

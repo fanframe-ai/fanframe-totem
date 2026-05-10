@@ -48,6 +48,11 @@ interface HealthCheck {
   created_at: string;
 }
 
+interface HealthCheckStats {
+  service_id: string;
+  uptime_percentage: number;
+}
+
 interface DayStatus {
   date: Date;
   status: ServiceStatus;
@@ -160,8 +165,8 @@ export default function AdminSystemStatus() {
         console.error("Error fetching stats:", statsError);
       }
 
-      const statsMap = new Map<string, any>();
-      (uptimeStats || []).forEach(stat => {
+      const statsMap = new Map<string, HealthCheckStats>();
+      ((uptimeStats || []) as HealthCheckStats[]).forEach(stat => {
         statsMap.set(stat.service_id, stat);
       });
 

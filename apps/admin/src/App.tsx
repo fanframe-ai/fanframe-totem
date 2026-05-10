@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import type { User } from "@supabase/supabase-js";
 import {
   Activity,
   AlertTriangle,
@@ -42,7 +43,7 @@ import type {
 
 type AuthState = {
   loading: boolean;
-  user: any | null;
+  user: User | null;
   role: Role | null;
   error: string | null;
 };
@@ -60,6 +61,33 @@ type AdminAuditEvent = {
   target_id: string | null;
   action: string;
   payload: Record<string, unknown>;
+  created_at: string;
+};
+
+type GenerationQueueRow = {
+  id: string;
+  source: string | null;
+  status: string;
+  shirt_id: string | null;
+  error_message: string | null;
+  created_at: string;
+  result_image_url: string | null;
+  teams?: { name: string; slug: string } | null;
+};
+
+type SystemAlertRow = {
+  id: string;
+  type: string;
+  severity: string;
+  message: string;
+  resolved: boolean;
+  created_at: string;
+};
+
+type AdminUserRow = {
+  id: string;
+  email: string;
+  role: Role;
   created_at: string;
 };
 
@@ -145,7 +173,7 @@ async function uploadAsset(file: File, path: string) {
 function useAuth() {
   const [auth, setAuth] = useState<AuthState>({ loading: true, user: null, role: null, error: null });
 
-  const loadRole = async (user: any) => {
+  const loadRole = async (user: User) => {
     const { data, error } = await supabase
       .from("user_roles")
       .select("role")
@@ -509,7 +537,7 @@ function TeamForm() {
     });
   }, [slug, isNew]);
 
-  const set = (key: keyof TeamRow, value: any) => setTeam((current) => ({ ...current, [key]: value }));
+  const set = <K extends keyof TeamRow>(key: K, value: TeamRow[K]) => setTeam((current) => ({ ...current, [key]: value }));
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -526,15 +554,15 @@ function TeamForm() {
     };
 
     const result = isNew
-      ? await supabase.from("teams").insert(payload as any).select("slug").single()
-      : await supabase.from("teams").update(payload as any).eq("id", team.id);
+      ? await supabase.from("teams").insert(payload).select("slug").single()
+      : await supabase.from("teams").update(payload).eq("id", team.id);
 
     setBusy(false);
     if (result.error) {
       setMessage(result.error.message);
       return;
     }
-    if (isNew) navigate(`/times/${(result.data as any).slug}`, { replace: true });
+    if (isNew && result.data?.slug) navigate(`/times/${result.data.slug}`, { replace: true });
     setMessage("Time salvo com sucesso.");
   }
 
@@ -587,8 +615,8 @@ function TeamForm() {
         </section>
 
         <section className="panel full">
-          <AssetEditor label="Camisas" teamSlug={team.slug || ""} type="shirts" assets={(team.shirts || []) as TeamAsset[]} onChange={(assets) => set("shirts", assets as any)} />
-          <AssetEditor label="Cenarios" teamSlug={team.slug || ""} type="backgrounds" assets={(team.backgrounds || []) as TeamAsset[]} onChange={(assets) => set("backgrounds", assets as any)} />
+          <AssetEditor label="Camisas" teamSlug={team.slug || ""} type="shirts" assets={(team.shirts || []) as TeamAsset[]} onChange={(assets) => set("shirts", assets)} />
+          <AssetEditor label="Cenarios" teamSlug={team.slug || ""} type="backgrounds" assets={(team.backgrounds || []) as TeamAsset[]} onChange={(assets) => set("backgrounds", assets)} />
         </section>
 
         {message && <div className="form-message full">{message}</div>}
@@ -636,7 +664,7 @@ function Devices({ role }: { role: Role | null }) {
   async function save(event: FormEvent) {
     event.preventDefault();
     setMessage("");
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       team_id: form.team_id,
       device_code: form.device_code,
       label: form.label,
@@ -804,7 +832,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!id) return;
     const [deviceRes, eventsRes, commandsRes, sessionsRes, paymentsRes] = await Promise.all([
       supabase.from("kiosk_devices").select("*, teams(name, slug)").eq("id", id).maybeSingle(),
@@ -824,9 +852,9 @@ function DeviceDetail({ role }: { role: Role | null }) {
     setCommands((commandsRes.data || []) as KioskDeviceCommand[]);
     setSessions((sessionsRes.data || []) as KioskSession[]);
     setPayments((paymentsRes.data || []) as KioskPayment[]);
-  };
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => { load(); }, [load]);
 
   async function generateInstall() {
     if (!device) return;
@@ -1047,7 +1075,7 @@ function Sessions() {
   const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 7 });
   const [rows, setRows] = useState<KioskSession[]>([]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const since = new Date(Date.now() - filters.days * 86400000).toISOString();
     let query = supabase
       .from("kiosk_sessions")
@@ -1059,8 +1087,8 @@ function Sessions() {
     if (filters.status) query = query.eq("status", filters.status);
     const { data } = await query;
     setRows((data || []) as KioskSession[]);
-  };
-  useEffect(() => { load(); }, [filters.teamId, filters.status, filters.days]);
+  }, [filters.days, filters.status, filters.teamId]);
+  useEffect(() => { load(); }, [load]);
 
   return (
     <>
@@ -1090,15 +1118,15 @@ function Payments() {
   const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 7 });
   const [rows, setRows] = useState<KioskPayment[]>([]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const since = new Date(Date.now() - filters.days * 86400000).toISOString();
     let query = supabase.from("kiosk_payments").select("*, teams(name, slug)").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
     if (filters.teamId) query = query.eq("team_id", filters.teamId);
     if (filters.status) query = query.eq("status", filters.status);
     const { data } = await query;
     setRows((data || []) as KioskPayment[]);
-  };
-  useEffect(() => { load(); }, [filters.teamId, filters.status, filters.days]);
+  }, [filters.days, filters.status, filters.teamId]);
+  useEffect(() => { load(); }, [load]);
 
   return (
     <>
@@ -1124,10 +1152,10 @@ function Payments() {
 }
 
 function Generations() {
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<GenerationQueueRow[]>([]);
   const load = async () => {
     const { data } = await supabase.from("generation_queue").select("*, teams(name, slug)").order("created_at", { ascending: false }).limit(300);
-    setRows(data || []);
+    setRows((data || []) as GenerationQueueRow[]);
   };
   useEffect(() => { load(); }, []);
   return (
@@ -1153,11 +1181,11 @@ function Generations() {
 }
 
 function StatusPage() {
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<SystemAlertRow[]>([]);
   const [devices, setDevices] = useState<KioskDevice[]>([]);
   const [auditEvents, setAuditEvents] = useState<AdminAuditEvent[]>([]);
   useEffect(() => {
-    supabase.from("system_alerts").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAlerts(data || []));
+    supabase.from("system_alerts").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAlerts((data || []) as SystemAlertRow[]));
     supabase.from("kiosk_devices").select("*, teams(name, slug)").order("last_seen_at", { ascending: false }).then(({ data }) => setDevices((data || []) as KioskDevice[]));
     supabase.from("kiosk_admin_audit_events").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAuditEvents((data || []) as AdminAuditEvent[]));
   }, []);
@@ -1219,7 +1247,7 @@ function StatusPage() {
 }
 
 function UsersPage({ role }: { role: Role | null }) {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newRole, setNewRole] = useState<Role>("admin");

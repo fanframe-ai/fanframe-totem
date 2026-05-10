@@ -14,7 +14,7 @@ interface HealthCheckResult {
   error_message?: string;
 }
 
-async function checkDatabase(supabase: any): Promise<HealthCheckResult> {
+async function checkDatabase(supabase: ReturnType<typeof createClient>): Promise<HealthCheckResult> {
   const start = Date.now();
   try {
     const { error } = await supabase.from("generations").select("id").limit(1);
@@ -39,7 +39,7 @@ async function checkDatabase(supabase: any): Promise<HealthCheckResult> {
   }
 }
 
-async function checkAuth(supabase: any): Promise<HealthCheckResult> {
+async function checkAuth(supabase: ReturnType<typeof createClient>): Promise<HealthCheckResult> {
   const start = Date.now();
   try {
     const { error } = await supabase.auth.getSession();

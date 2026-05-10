@@ -78,8 +78,8 @@ export function AssetCard({
       setDone(true);
       onImageUploaded?.(urlData.publicUrl);
       toast({ title: "Imagem atualizada!", description: label });
-    } catch (err: any) {
-      toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erro no upload", description: err instanceof Error ? err.message : "Falha ao enviar imagem", variant: "destructive" });
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

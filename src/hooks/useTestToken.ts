@@ -8,6 +8,12 @@ interface TestTokenState {
   testLinkId: string | null;
 }
 
+interface TestLinkCreditRow {
+  id: string;
+  credits_total: number;
+  credits_used: number;
+}
+
 /**
  * Hook para gerenciar links de teste com créditos limitados.
  * Quando ?test_token=XXX está na URL, o provador funciona sem WordPress
@@ -47,7 +53,7 @@ export function useTestToken() {
         return;
       }
 
-      const link = data as any;
+      const link = data as TestLinkCreditRow;
       const remaining = link.credits_total - link.credits_used;
 
       console.log("[TestToken] Token válido! Créditos restantes:", remaining);
@@ -76,7 +82,7 @@ export function useTestToken() {
 
     if (error || !data) return false;
 
-    const link = data as any;
+    const link = data as TestLinkCreditRow;
     if (link.credits_used >= link.credits_total) {
       setState(prev => ({ ...prev, testBalance: 0 }));
       return false;
@@ -84,7 +90,7 @@ export function useTestToken() {
 
     const { error: updateError } = await supabase
       .from("test_links")
-      .update({ credits_used: link.credits_used + 1 } as any)
+      .update({ credits_used: link.credits_used + 1 } as never)
       .eq("id", state.testLinkId);
 
     if (updateError) return false;
@@ -104,7 +110,7 @@ export function useTestToken() {
       .single();
 
     if (data) {
-      const link = data as any;
+      const link = data as TestLinkCreditRow;
       setState(prev => ({ ...prev, testBalance: link.credits_total - link.credits_used }));
     }
   }, [state.testLinkId]);

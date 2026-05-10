@@ -16,7 +16,11 @@ export function useAssetTextOverrides(settingsKey: string) {
         .eq("key", settingsKey)
         .maybeSingle();
       if (data?.value) {
-        try { setOverrides(JSON.parse(data.value)); } catch {}
+        try {
+          setOverrides(JSON.parse(data.value));
+        } catch (error) {
+          console.warn("[useAssetTextOverrides] Invalid overrides JSON", error);
+        }
       }
     })();
   }, [settingsKey]);

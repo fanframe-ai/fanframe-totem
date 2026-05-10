@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,7 @@ export function TestLinksManager({ teamId, teamSlug }: TestLinksManagerProps) {
 
   const publishedUrl = "https://franframe.vercel.app";
 
-  const fetchLinks = async () => {
+  const fetchLinks = useCallback(async () => {
     const { data, error } = await supabase
       .from("test_links")
       .select("*")
@@ -46,11 +46,11 @@ export function TestLinksManager({ teamId, teamSlug }: TestLinksManagerProps) {
       setLinks(data as TestLink[]);
     }
     setLoading(false);
-  };
+  }, [teamId]);
 
   useEffect(() => {
     if (teamId) fetchLinks();
-  }, [teamId]);
+  }, [teamId, fetchLinks]);
 
   const handleCreate = async () => {
     if (newCredits < 1) {
@@ -62,7 +62,7 @@ export function TestLinksManager({ teamId, teamSlug }: TestLinksManagerProps) {
       team_id: teamId,
       label: newLabel || "Link de teste",
       credits_total: newCredits,
-    } as any);
+    } as never);
 
     if (error) {
       toast({ title: "Erro ao criar link", description: error.message, variant: "destructive" });
@@ -76,7 +76,7 @@ export function TestLinksManager({ teamId, teamSlug }: TestLinksManagerProps) {
   };
 
   const handleToggle = async (id: string, active: boolean) => {
-    await supabase.from("test_links").update({ is_active: active } as any).eq("id", id);
+    await supabase.from("test_links").update({ is_active: active } as never).eq("id", id);
     fetchLinks();
   };
 

@@ -36,7 +36,11 @@ function useTextOverrides(settingsKey: string, defaults: { id: string; name: str
         .eq("key", settingsKey)
         .maybeSingle();
       if (data?.value) {
-        try { setOverrides(JSON.parse(data.value)); } catch {}
+        try {
+          setOverrides(JSON.parse(data.value));
+        } catch (error) {
+          console.warn("[Assets] Invalid text overrides JSON", error);
+        }
       }
       setLoaded(true);
     })();
@@ -123,8 +127,8 @@ function AssetCard({
       setPreviewUrl(urlData.publicUrl + "?t=" + Date.now());
       setDone(true);
       toast({ title: "Imagem atualizada!", description: label });
-    } catch (err: any) {
-      toast({ title: "Erro no upload", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Erro no upload", description: err instanceof Error ? err.message : "Falha ao enviar imagem", variant: "destructive" });
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

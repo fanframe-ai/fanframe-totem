@@ -33,7 +33,7 @@ async function createAlert(supabase: ReturnType<typeof createClient>, type: stri
 
 async function updateGenerationsTable(
   supabase: ReturnType<typeof createClient>,
-  queueEntry: any,
+  queueEntry: { id: string },
   status: "completed" | "failed",
   errorMessage?: string,
   processingTimeMs?: number
@@ -47,7 +47,7 @@ async function updateGenerationsTable(
       .single();
 
     if (existingGen) {
-      const updateData: any = {
+      const updateData: Record<string, string | number> = {
         status,
         completed_at: new Date().toISOString(),
       };

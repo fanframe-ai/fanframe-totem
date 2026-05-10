@@ -53,14 +53,18 @@ export const TestResultScreen = ({
     } else if (queueStatus === "failed" && errorMessage && !error) {
       handleGenerationFailed(errorMessage);
     }
+    // The generation callbacks intentionally capture this render's queue state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queueStatus, resultImageUrl, errorMessage]);
 
   const handleRealtimeCompleted = useCallback(async (imageUrl: string) => {
     await handleGenerationComplete(imageUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRealtimeFailed = useCallback((errorMsg: string) => {
     handleGenerationFailed(errorMsg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handlePositionUpdate = useCallback((position: number) => {
