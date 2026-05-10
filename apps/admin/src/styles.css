@@ -86,7 +86,7 @@ tbody tr:hover { background: #f9fafb; }
 .badge { display: inline-flex; min-height: 24px; align-items: center; border-radius: 999px; padding: 0 9px; background: #f3f4f6; color: #374151; font-weight: 800; font-size: 11px; text-transform: uppercase; }
 .badge.paid, .badge.completed, .badge.ativo, .badge.active, .badge.habilitado, .badge.online, .badge.paired { background: #d1fae5; color: var(--success); }
 .badge.pending, .badge.processing, .badge.warning, .badge.attention, .badge.maintenance, .badge.not_paired, .badge.update, .badge.desatualizado, .badge.sem, .badge.sem.alvo, .badge.sem.versao { background: #fef3c7; color: var(--warning); }
-.badge.failed, .badge.cancelled, .badge.offline, .badge.critical, .badge.desabilitado, .badge.disabled { background: #fee2e2; color: var(--danger); }
+.badge.failed, .badge.cancelled, .badge.offline, .badge.critical, .badge.desabilitado, .badge.disabled, .badge.payment { background: #fee2e2; color: var(--danger); }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .form-section { display: grid; gap: 14px; align-content: start; }

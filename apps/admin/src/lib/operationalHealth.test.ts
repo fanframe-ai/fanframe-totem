@@ -47,6 +47,22 @@ describe("operational health", () => {
     expect(issues.map((issue) => issue.type)).toEqual(["offline", "error", "version", "pairing"]);
   });
 
+  it("detects payment readiness failures from the latest health report", () => {
+    const issues = getOperationalIssues({
+      ...baseDevice,
+      last_health_status: {
+        paymentStatus: {
+          ready: false,
+          mode: "not_configured",
+          message: "PlugPag nao configurado neste PC.",
+        },
+      },
+    }, new Date("2026-05-10T12:00:00.000Z").getTime());
+
+    expect(issues.map((issue) => issue.type)).toEqual(["payment"]);
+    expect(issues[0]?.message).toContain("PlugPag nao configurado");
+  });
+
   it("builds a human location label from city, venue and location", () => {
     expect(buildDeviceLocationLabel(baseDevice)).toBe("Recife - Shopping Recife - Entrada principal");
     expect(buildDeviceLocationLabel({ ...baseDevice, city: null, venue: null, location: null })).toBe("-");

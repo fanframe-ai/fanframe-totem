@@ -1,6 +1,6 @@
 import type { KioskDevice } from "./types";
 
-export type OperationalIssueType = "offline" | "error" | "version" | "pairing" | "maintenance";
+export type OperationalIssueType = "offline" | "error" | "version" | "pairing" | "maintenance" | "payment";
 export type OperationalIssueSeverity = "warning" | "critical";
 
 export type OperationalIssue = {
@@ -27,6 +27,13 @@ export function getDeviceVersionStatus(device: Pick<KioskDevice, "app_version" |
 export function buildDeviceLocationLabel(device: Pick<KioskDevice, "city" | "venue" | "location">) {
   const parts = [device.city, device.venue, device.location].map((part) => part?.trim()).filter(Boolean);
   return parts.length ? parts.join(" - ") : "-";
+}
+
+function getPaymentStatus(device: KioskDevice) {
+  const health = device.last_health_status || {};
+  const paymentStatus = health.paymentStatus;
+  if (!paymentStatus || typeof paymentStatus !== "object") return null;
+  return paymentStatus as { ready?: unknown; message?: unknown };
 }
 
 export function getOperationalIssues(device: KioskDevice, now = Date.now()): OperationalIssue[] {
@@ -80,6 +87,17 @@ export function getOperationalIssues(device: KioskDevice, now = Date.now()): Ope
       deviceId: device.id,
       deviceLabel: label,
       message: `${label} esta em manutencao${device.maintenance_reason ? `: ${device.maintenance_reason}` : "."}`,
+    });
+  }
+
+  const paymentStatus = getPaymentStatus(device);
+  if (paymentStatus && paymentStatus.ready === false) {
+    issues.push({
+      type: "payment",
+      severity: "critical",
+      deviceId: device.id,
+      deviceLabel: label,
+      message: `${label} esta com pagamento indisponivel: ${String(paymentStatus.message || "sem detalhe")}.`,
     });
   }
 

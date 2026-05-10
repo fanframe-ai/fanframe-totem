@@ -909,6 +909,9 @@ function DeviceDetail({ role }: { role: Role | null }) {
   }
 
   const health = device.last_health_status || {};
+  const paymentStatus = health.paymentStatus && typeof health.paymentStatus === "object"
+    ? health.paymentStatus as Record<string, unknown>
+    : null;
 
   return (
     <>
@@ -975,6 +978,9 @@ function DeviceDetail({ role }: { role: Role | null }) {
           <div><strong>Online</strong><span>{String(health.online ?? "-")}</span></div>
           <div><strong>Tela</strong><span>{String(health.currentScreen ?? "-")}</span></div>
           <div><strong>Versao reportada</strong><span>{String(health.appVersion ?? "-")}</span></div>
+          <div><strong>Pagamento</strong><span>{paymentStatus ? String(paymentStatus.ready ? "Pronto" : "Indisponivel") : "-"}</span></div>
+          <div><strong>Modo pagamento</strong><span>{paymentStatus ? String(paymentStatus.mode || "-") : "-"}</span></div>
+          <div><strong>Detalhe pagamento</strong><span>{paymentStatus ? String(paymentStatus.message || "-") : "-"}</span></div>
           <div><strong>Ultimo health</strong><span>{dateTime(device.last_health_at)}</span></div>
           <div><strong>Manutencao</strong><span>{device.maintenance_reason || "-"}</span></div>
         </div>

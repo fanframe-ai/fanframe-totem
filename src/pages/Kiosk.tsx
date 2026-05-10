@@ -203,6 +203,27 @@ export default function KioskPage() {
     window.location.reload();
   }, []);
 
+  const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
+    const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+    const paymentStatus = await window.fanframeKiosk?.getPaymentStatus?.().catch(() => null);
+
+    return {
+      appVersion: status?.appVersion || config?.appVersion || "browser",
+      online: status?.online ?? navigator.onLine,
+      currentScreen: step,
+      lastErrorCode: null,
+      lastErrorMessage: error,
+      paymentStatus: paymentStatus || {
+        ready: config?.simulatePayments === true,
+        mode: config?.simulatePayments === true ? "simulated" : "not_configured",
+        message: config?.simulatePayments === true ? "Pagamentos simulados ativos." : "Status de pagamento local indisponivel.",
+        plugpagConfigured: false,
+        simulated: config?.simulatePayments === true,
+      },
+      ...extra,
+    };
+  }, [config?.appVersion, config?.simulatePayments, error, step]);
+
   useEffect(() => {
     const init = async () => {
       const params = new URLSearchParams(window.location.search);
@@ -256,20 +277,14 @@ export default function KioskPage() {
     const interval = window.setInterval(async () => {
       if (!shouldReportHealth(lastReportAt, 60_000)) return;
       lastReportAt = Date.now();
-      const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+      const health = await collectHealthPayload();
       await reportKioskHealth(activeDevice, {
-        health: {
-          appVersion: status?.appVersion || config?.appVersion || "browser",
-          online: status?.online ?? navigator.onLine,
-          currentScreen: step,
-          lastErrorCode: null,
-          lastErrorMessage: error,
-        },
-        event: { eventType: "health_reported", severity: "info", payload: { step } },
+        health,
+        event: { eventType: "health_reported", severity: "info", payload: { step, paymentStatus: health.paymentStatus } },
       }).catch(() => undefined);
     }, 10_000);
     return () => window.clearInterval(interval);
-  }, [activeDevice, config?.appVersion, error, hasDeviceAuth, step]);
+  }, [activeDevice, collectHealthPayload, hasDeviceAuth, step]);
 
   useEffect(() => {
     if (!hasDeviceAuth) return;
@@ -296,9 +311,10 @@ export default function KioskPage() {
           resetFlow();
         }
         if (command.command_type === "send_diagnostics") {
+          const health = await collectHealthPayload();
           await reportKioskHealth(activeDevice, {
-            health: await window.fanframeKiosk?.getTechnicalStatus?.(),
-            event: { eventType: "diagnostics_sent", severity: "info", payload: { step } },
+            health,
+            event: { eventType: "diagnostics_sent", severity: "info", payload: { step, paymentStatus: health.paymentStatus } },
           });
         }
         await pollKioskCommand(activeDevice, {
@@ -315,7 +331,7 @@ export default function KioskPage() {
       }
     }, 15_000);
     return () => window.clearInterval(interval);
-  }, [activeDevice, hasDeviceAuth, resetFlow, step]);
+  }, [activeDevice, collectHealthPayload, hasDeviceAuth, resetFlow, step]);
 
   useEffect(() => {
     if (step !== "boot" || teamLoading) return;
@@ -745,19 +761,16 @@ export default function KioskPage() {
     }
     setTechnicalCheck("diagnostics", { status: "running", message: "Enviando diagnostico..." });
     try {
-      const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+      const health = await collectHealthPayload({
+        manualDiagnostics: true,
+        checks: technicalChecks,
+      });
       await reportKioskHealth(activeDevice, {
-        health: {
-          appVersion: status?.appVersion || config?.appVersion || "browser",
-          online: status?.online ?? navigator.onLine,
-          currentScreen: step,
-          manualDiagnostics: true,
-          checks: technicalChecks,
-        },
+        health,
         event: {
           eventType: "manual_diagnostics_sent",
           severity: "info",
-          payload: { checks: technicalChecks, currentScreen: step },
+          payload: { checks: technicalChecks, currentScreen: step, paymentStatus: health.paymentStatus },
         },
       });
       setTechnicalCheck("diagnostics", { status: "ok", message: "Diagnostico enviado para o painel." });
