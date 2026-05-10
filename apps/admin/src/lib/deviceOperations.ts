@@ -41,4 +41,18 @@ export async function enqueueDeviceCommand(deviceId: string, commandType: Comman
     expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
   });
   if (error) throw error;
+
+  if (commandType === "enter_maintenance") {
+    await supabase
+      .from("kiosk_devices")
+      .update({ status: "maintenance", maintenance_reason: String(payload.reason || "Manutencao remota") })
+      .eq("id", deviceId);
+  }
+
+  if (commandType === "exit_maintenance") {
+    await supabase
+      .from("kiosk_devices")
+      .update({ status: "active", maintenance_reason: null })
+      .eq("id", deviceId);
+  }
 }

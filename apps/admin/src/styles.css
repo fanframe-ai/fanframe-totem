@@ -100,7 +100,10 @@ tbody tr:hover { background: #f9fafb; }
 .notice { margin-top: 14px; display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; border-radius: 8px; background: #eef2ff; color: #312e81; }
 .notice span { color: #4338ca; }
 .actions-cell { min-width: 360px; }
-.actions-cell button { min-height: 32px; margin: 3px; padding: 0 10px; font-size: 12px; }
+.actions-cell button, .actions-cell .link-button { min-height: 32px; margin: 3px; padding: 0 10px; font-size: 12px; }
+.device-actions { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
+.device-actions .notice, .device-actions .hint { grid-column: 1 / -1; margin: 0; }
+.actions-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .filters { display: flex; gap: 12px; }
 .filters select { max-width: 220px; }
 

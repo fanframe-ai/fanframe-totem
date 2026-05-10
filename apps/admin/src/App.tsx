@@ -20,7 +20,17 @@ import {
 } from "lucide-react";
 import { supabase, publicAssetUrl } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, sha256 } from "./lib/deviceOperations";
-import type { CommandType, KioskDevice, KioskPayment, KioskSession, Role, TeamAsset, TeamRow } from "./lib/types";
+import type {
+  CommandType,
+  KioskDevice,
+  KioskDeviceCommand,
+  KioskDeviceEvent,
+  KioskPayment,
+  KioskSession,
+  Role,
+  TeamAsset,
+  TeamRow,
+} from "./lib/types";
 
 type AuthState = {
   loading: boolean;
@@ -656,14 +666,210 @@ function Devices() {
               <td>{d.app_version || "-"}</td>
               <td>{dateTime(d.last_seen_at)}</td>
               <td className="actions-cell">
+                <Link className="secondary link-button" to={`/totens/${d.id}`}>Abrir</Link>
                 <button className="secondary" onClick={() => generateInstall(d)}>Codigo</button>
                 <button className="secondary" onClick={() => sendCommand(d.id, "sync_config")}>Sync</button>
                 <button className="secondary" onClick={() => sendCommand(d.id, "send_diagnostics")}>Diagnostico</button>
+                <button className="secondary" onClick={() => sendCommand(d.id, "restart_app")}>Reiniciar</button>
+                <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Ativar</button>
                 <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Manutencao</button>
               </td>
             </tr>
           ))}
         </DataTable>
+      </section>
+    </>
+  );
+}
+
+function DeviceDetail() {
+  const { id } = useParams();
+  const [device, setDevice] = useState<KioskDevice | null>(null);
+  const [events, setEvents] = useState<KioskDeviceEvent[]>([]);
+  const [commands, setCommands] = useState<KioskDeviceCommand[]>([]);
+  const [sessions, setSessions] = useState<KioskSession[]>([]);
+  const [payments, setPayments] = useState<KioskPayment[]>([]);
+  const [message, setMessage] = useState("");
+  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string } | null>(null);
+
+  const load = async () => {
+    if (!id) return;
+    const [deviceRes, eventsRes, commandsRes, sessionsRes, paymentsRes] = await Promise.all([
+      supabase.from("kiosk_devices").select("*, teams(name, slug)").eq("id", id).maybeSingle(),
+      supabase.from("kiosk_device_events").select("*").eq("device_id", id).order("created_at", { ascending: false }).limit(80),
+      supabase.from("kiosk_device_commands").select("*").eq("device_id", id).order("created_at", { ascending: false }).limit(50),
+      supabase
+        .from("kiosk_sessions")
+        .select("*, teams(name, slug), kiosk_devices(device_code,label,location)")
+        .eq("device_id", id)
+        .order("created_at", { ascending: false })
+        .limit(25),
+      supabase.from("kiosk_payments").select("*, teams(name, slug)").eq("device_id", id).order("created_at", { ascending: false }).limit(25),
+    ]);
+
+    setDevice((deviceRes.data || null) as KioskDevice | null);
+    setEvents((eventsRes.data || []) as KioskDeviceEvent[]);
+    setCommands((commandsRes.data || []) as KioskDeviceCommand[]);
+    setSessions((sessionsRes.data || []) as KioskSession[]);
+    setPayments((paymentsRes.data || []) as KioskPayment[]);
+  };
+
+  useEffect(() => { load(); }, [id]);
+
+  async function generateInstall() {
+    if (!device) return;
+    setMessage("");
+    try {
+      const result = await createInstallCode(device.id, device.label || device.device_code);
+      setInstallCode(result);
+      setMessage("Codigo de instalacao gerado.");
+      load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao gerar codigo.");
+    }
+  }
+
+  async function sendCommand(command: CommandType) {
+    if (!device) return;
+    setMessage("");
+    try {
+      await enqueueDeviceCommand(device.id, command);
+      setMessage(`Comando ${command} enviado.`);
+      load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao enviar comando.");
+    }
+  }
+
+  if (!device) {
+    return (
+      <>
+        <PageHeader title="Totem" subtitle="Carregando dispositivo..." action={<Link className="secondary link-button" to="/totens">Voltar</Link>} />
+        <div className="panel empty-state">Totem nao encontrado ou sem permissao.</div>
+      </>
+    );
+  }
+
+  const health = device.last_health_status || {};
+
+  return (
+    <>
+      <PageHeader
+        title={device.label || device.device_code}
+        subtitle={`${device.teams?.name || "Sem time"} - ${device.location || "Sem localizacao"}`}
+        action={<Link className="secondary link-button" to="/totens">Voltar</Link>}
+      />
+
+      <section className="stats-grid">
+        <StatCard label="Status" value={deviceHealthLabel(device)} tone={deviceHealthLabel(device) === "online" ? "success" : "warning"} />
+        <StatCard label="Pareamento" value={device.install_status || "not_paired"} />
+        <StatCard label="Versao" value={device.app_version || "-"} />
+        <StatCard label="Ultimo contato" value={dateTime(device.last_seen_at)} />
+        <StatCard label="Erro" value={device.last_error_code || "-"} tone={device.last_error_code ? "danger" : "neutral"} />
+        <StatCard label="Comandos pendentes" value={commands.filter((c) => c.status === "pending" || c.status === "running").length} />
+      </section>
+
+      <section className="panel device-actions">
+        <div>
+          <h2>Acoes remotas</h2>
+          <p className="hint">O totem executa comandos quando sincronizar com a nuvem. Nao precisa acesso remoto ao Windows.</p>
+        </div>
+        <div className="actions-row">
+          <button className="secondary" onClick={generateInstall}>Gerar codigo</button>
+          <button className="secondary" onClick={() => sendCommand("sync_config")}>Sincronizar</button>
+          <button className="secondary" onClick={() => sendCommand("send_diagnostics")}>Pedir diagnostico</button>
+          <button className="secondary" onClick={() => sendCommand("restart_app")}>Reiniciar app</button>
+          <button className="secondary" onClick={() => sendCommand("exit_maintenance")}>Ativar</button>
+          <button className="danger" onClick={() => sendCommand("enter_maintenance")}>Manutencao</button>
+        </div>
+        {message && <p className="hint">{message}</p>}
+        {installCode && (
+          <div className="notice">
+            <strong>Codigo de instalacao: {installCode.code}</strong>
+            <span>Expira em {dateTime(installCode.expiresAt)}</span>
+          </div>
+        )}
+      </section>
+
+      <section className="two-col">
+        <div className="panel settings-list">
+          <h2>Responsavel e dispositivo</h2>
+          <div><strong>Codigo</strong><span>{device.device_code}</span></div>
+          <div><strong>Responsavel</strong><span>{device.owner_name || "-"}</span></div>
+          <div><strong>Email</strong><span>{device.owner_email || "-"}</span></div>
+          <div><strong>Telefone</strong><span>{device.owner_phone || "-"}</span></div>
+          <div><strong>Canal</strong><span>{device.update_channel || "stable"}</span></div>
+        </div>
+        <div className="panel settings-list">
+          <h2>Ultimo health</h2>
+          <div><strong>Online</strong><span>{String(health.online ?? "-")}</span></div>
+          <div><strong>Tela</strong><span>{String(health.currentScreen ?? "-")}</span></div>
+          <div><strong>Versao reportada</strong><span>{String(health.appVersion ?? "-")}</span></div>
+          <div><strong>Ultimo health</strong><span>{dateTime(device.last_health_at)}</span></div>
+          <div><strong>Manutencao</strong><span>{device.maintenance_reason || "-"}</span></div>
+        </div>
+      </section>
+
+      <section className="two-col">
+        <div className="panel">
+          <h2>Eventos recentes</h2>
+          <DataTable columns={["Tipo", "Severidade", "Codigo", "Mensagem", "Criado"]}>
+            {events.map((event) => (
+              <tr key={event.id}>
+                <td>{event.event_type}</td>
+                <td><Badge value={event.severity} /></td>
+                <td>{event.error_code || "-"}</td>
+                <td>{event.message || "-"}</td>
+                <td>{dateTime(event.created_at)}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </div>
+        <div className="panel">
+          <h2>Comandos</h2>
+          <DataTable columns={["Comando", "Status", "Erro", "Criado", "Finalizado"]}>
+            {commands.map((command) => (
+              <tr key={command.id}>
+                <td>{command.command_type}</td>
+                <td><Badge value={command.status} /></td>
+                <td>{command.error_message || "-"}</td>
+                <td>{dateTime(command.created_at)}</td>
+                <td>{dateTime(command.completed_at)}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </div>
+      </section>
+
+      <section className="two-col">
+        <div className="panel">
+          <h2>Ultimas sessoes</h2>
+          <DataTable columns={["Status", "Selecao", "Valor", "Erro", "Criada"]}>
+            {sessions.map((session) => (
+              <tr key={session.id}>
+                <td><Badge value={session.status} /></td>
+                <td>{session.selected_shirt_id || "-"} / {session.selected_background_id || "-"}</td>
+                <td>{money(session.amount_cents, session.currency)}</td>
+                <td>{session.error_message || "-"}</td>
+                <td>{dateTime(session.created_at)}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </div>
+        <div className="panel">
+          <h2>Ultimos pagamentos</h2>
+          <DataTable columns={["Metodo", "Provider", "Status", "Valor", "Pago em"]}>
+            {payments.map((payment) => (
+              <tr key={payment.id}>
+                <td>{payment.method}</td>
+                <td>{payment.provider}</td>
+                <td><Badge value={payment.status} /></td>
+                <td>{money(payment.amount_cents, payment.currency)}</td>
+                <td>{dateTime(payment.paid_at)}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </div>
       </section>
     </>
   );
@@ -945,6 +1151,7 @@ function App() {
               <Route path="/times" element={<Teams />} />
               <Route path="/times/:slug" element={<TeamForm />} />
               <Route path="/totens" element={<Devices />} />
+              <Route path="/totens/:id" element={<DeviceDetail />} />
               <Route path="/sessoes" element={<Sessions />} />
               <Route path="/pagamentos" element={<Payments />} />
               <Route path="/geracoes" element={<Generations />} />

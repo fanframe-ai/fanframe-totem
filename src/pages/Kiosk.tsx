@@ -253,7 +253,15 @@ export default function KioskPage() {
       if (!command) return;
       try {
         if (command.command_type === "sync_config") window.location.reload();
-        if (command.command_type === "restart_app") await window.fanframeKiosk?.relaunch?.();
+        if (command.command_type === "restart_app") {
+          await pollKioskCommand(activeDevice, {
+            completeCommandId: command.id,
+            success: true,
+            result: { handledAt: new Date().toISOString(), relaunching: true },
+          });
+          await window.fanframeKiosk?.relaunch?.();
+          return;
+        }
         if (command.command_type === "enter_maintenance") {
           setError("Totem em manutencao remota.");
           setStep("maintenance");
