@@ -22,6 +22,12 @@ import {
 import { supabase, publicAssetUrl } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage } from "./lib/installInstructions";
+import {
+  buildDeviceLocationLabel,
+  getDeviceVersionStatus,
+  getOperationalIssues,
+  isDeviceOffline,
+} from "./lib/operationalHealth";
 import type {
   CommandType,
   KioskDevice,
@@ -99,8 +105,7 @@ function slugify(value: string) {
 }
 
 function isOffline(lastSeen: string | null | undefined) {
-  if (!lastSeen) return true;
-  return Date.now() - new Date(lastSeen).getTime() > 5 * 60 * 1000;
+  return isDeviceOffline(lastSeen);
 }
 
 function deviceHealthLabel(device: KioskDevice) {
@@ -108,6 +113,7 @@ function deviceHealthLabel(device: KioskDevice) {
   if (device.status === "maintenance") return "maintenance";
   if (isOffline(device.last_seen_at)) return "offline";
   if (device.last_error_code) return "attention";
+  if (getDeviceVersionStatus(device) === "desatualizado") return "update";
   return "online";
 }
 
@@ -335,6 +341,7 @@ function Dashboard() {
   today.setHours(0, 0, 0, 0);
   const paidToday = payments.filter((p) => p.status === "paid" && new Date(p.paid_at || p.created_at) >= today);
   const revenue = paidToday.reduce((sum, p) => sum + p.amount_cents, 0);
+  const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
 
   return (
     <>
@@ -343,9 +350,10 @@ function Dashboard() {
         <StatCard label="Times ativos" value={teams.filter((t) => t.is_active).length} />
         <StatCard label="Totens ativos" value={devices.filter((d) => d.status === "active").length} />
         <StatCard label="Totens offline" value={devices.filter((d) => isOffline(d.last_seen_at)).length} tone="danger" />
+        <StatCard label="Com alerta" value={operationalIssues.length} tone={operationalIssues.some((issue) => issue.severity === "critical") ? "danger" : "warning"} />
         <StatCard label="Vendas hoje" value={paidToday.length} tone="success" />
         <StatCard label="Receita hoje" value={money(revenue)} tone="success" />
-        <StatCard label="Pagamentos pendentes" value={payments.filter((p) => p.status === "pending").length} tone="warning" />
+        <StatCard label="Versoes atrasadas" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
       </section>
       <section className="two-col">
         <div className="panel">
@@ -364,12 +372,13 @@ function Dashboard() {
         </div>
         <div className="panel">
           <h2>Totens por status</h2>
-          <DataTable columns={["Totem", "Time", "Status", "Ultimo contato"]}>
+          <DataTable columns={["Totem", "Time", "Status", "Versao", "Ultimo contato"]}>
             {devices.slice(0, 12).map((d) => (
               <tr key={d.id}>
                 <td>{d.label || d.device_code}</td>
                 <td>{d.teams?.name || "-"}</td>
-                <td><Badge value={isOffline(d.last_seen_at) ? "offline" : d.status} /></td>
+                <td><Badge value={deviceHealthLabel(d)} /></td>
+                <td>{d.app_version || "-"} / {d.expected_app_version || "-"}</td>
                 <td>{dateTime(d.last_seen_at)}</td>
               </tr>
             ))}
@@ -600,9 +609,14 @@ function Devices({ role }: { role: Role | null }) {
     device_code: "",
     label: "",
     location: "",
+    city: "",
+    venue: "",
     owner_name: "",
     owner_email: "",
     owner_phone: "",
+    expected_app_version: "0.1.0",
+    update_channel: "stable",
+    installation_notes: "",
     status: "active",
     device_secret: "",
     support_pin: "",
@@ -627,9 +641,14 @@ function Devices({ role }: { role: Role | null }) {
       device_code: form.device_code,
       label: form.label,
       location: form.location,
+      city: form.city,
+      venue: form.venue,
       owner_name: form.owner_name,
       owner_email: form.owner_email,
       owner_phone: form.owner_phone,
+      expected_app_version: form.expected_app_version,
+      update_channel: form.update_channel,
+      installation_notes: form.installation_notes,
       status: form.status,
       install_status: "not_paired",
     };
@@ -657,7 +676,7 @@ function Devices({ role }: { role: Role | null }) {
         ownerMessage: buildOwnerInstallMessage({
           deviceLabel,
           teamName: device.teams?.name,
-          location: device.location,
+          location: buildDeviceLocationLabel(device),
           installCode: result.code,
           supportPin,
           expiresAt: result.expiresAt,
@@ -699,10 +718,18 @@ function Devices({ role }: { role: Role | null }) {
             </select>
             <input placeholder="device_code" value={form.device_code} onChange={(e) => setForm({ ...form, device_code: e.target.value })} required />
             <input placeholder="Nome/label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+            <input placeholder="Cidade" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+            <input placeholder="Ponto/venue" value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} />
             <input placeholder="Localizacao" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
             <input placeholder="Responsavel" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} />
             <input placeholder="Email do responsavel" value={form.owner_email} onChange={(e) => setForm({ ...form, owner_email: e.target.value })} />
             <input placeholder="Telefone do responsavel" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
+            <input placeholder="Versao esperada" value={form.expected_app_version} onChange={(e) => setForm({ ...form, expected_app_version: e.target.value })} />
+            <select value={form.update_channel} onChange={(e) => setForm({ ...form, update_channel: e.target.value })}>
+              <option value="stable">Stable</option>
+              <option value="beta">Beta</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
             <input placeholder="Segredo do dispositivo" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
             <input
               placeholder="PIN tecnico (4 a 8 digitos)"
@@ -719,6 +746,7 @@ function Devices({ role }: { role: Role | null }) {
               <option value="disabled">Desabilitado</option>
             </select>
             <button className="primary">Salvar</button>
+            <textarea placeholder="Observacoes de instalacao" value={form.installation_notes} onChange={(e) => setForm({ ...form, installation_notes: e.target.value })} rows={2} />
           </form>
           <p className="hint">O PIN tecnico manual nao e exibido depois de salvo. Ao gerar um codigo de instalacao, o painel cria um PIN novo automaticamente para enviar ao dono do totem.</p>
           {message && <p className="hint">{message}</p>}
@@ -736,16 +764,16 @@ function Devices({ role }: { role: Role | null }) {
       )}
       {!canEditDevices && message && <div className="panel"><p className="hint">{message}</p></div>}
       <section className="panel">
-        <DataTable columns={["Totem", "Time", "Responsavel", "Status", "Pareamento", "PIN", "Versao", "Ultimo contato", "Acoes"]}>
+        <DataTable columns={["Totem", "Time", "Responsavel", "Status", "Pareamento", "PIN", "Atualizacao", "Ultimo contato", "Acoes"]}>
           {devices.map((d) => (
             <tr key={d.id}>
-              <td><strong>{d.label || d.device_code}</strong><br /><span>{d.device_code}</span><br /><span>{d.location || "-"}</span></td>
+              <td><strong>{d.label || d.device_code}</strong><br /><span>{d.device_code}</span><br /><span>{buildDeviceLocationLabel(d)}</span></td>
               <td>{d.teams?.name || "-"}</td>
               <td>{d.owner_name || "-"}<br /><span>{d.owner_phone || d.owner_email || ""}</span></td>
               <td><Badge value={deviceHealthLabel(d)} /></td>
               <td><Badge value={d.install_status || "not_paired"} /></td>
               <td><Badge value={d.support_pin_hash ? "configurado" : "nao definido"} /></td>
-              <td>{d.app_version || "-"}</td>
+              <td>{d.app_version || "-"} / {d.expected_app_version || "-"}<br /><Badge value={getDeviceVersionStatus(d)} /></td>
               <td>{dateTime(d.last_seen_at)}</td>
               <td className="actions-cell">
                 <Link className="secondary link-button" to={`/totens/${d.id}`}>Abrir</Link>
@@ -812,7 +840,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
         ownerMessage: buildOwnerInstallMessage({
           deviceLabel: device.label || device.device_code,
           teamName: device.teams?.name,
-          location: device.location,
+          location: buildDeviceLocationLabel(device),
           installCode: result.code,
           supportPin,
           expiresAt: result.expiresAt,
@@ -865,7 +893,8 @@ function DeviceDetail({ role }: { role: Role | null }) {
       <section className="stats-grid">
         <StatCard label="Status" value={deviceHealthLabel(device)} tone={deviceHealthLabel(device) === "online" ? "success" : "warning"} />
         <StatCard label="Pareamento" value={device.install_status || "not_paired"} />
-        <StatCard label="Versao" value={device.app_version || "-"} />
+        <StatCard label="Versao" value={`${device.app_version || "-"} / ${device.expected_app_version || "-"}`} />
+        <StatCard label="Atualizacao" value={getDeviceVersionStatus(device)} tone={getDeviceVersionStatus(device) === "desatualizado" ? "warning" : "neutral"} />
         <StatCard label="Ultimo contato" value={dateTime(device.last_seen_at)} />
         <StatCard label="Erro" value={device.last_error_code || "-"} tone={device.last_error_code ? "danger" : "neutral"} />
         <StatCard label="Comandos pendentes" value={commands.filter((c) => c.status === "pending" || c.status === "running").length} />
@@ -902,11 +931,16 @@ function DeviceDetail({ role }: { role: Role | null }) {
         <div className="panel settings-list">
           <h2>Responsavel e dispositivo</h2>
           <div><strong>Codigo</strong><span>{device.device_code}</span></div>
+          <div><strong>Cidade</strong><span>{device.city || "-"}</span></div>
+          <div><strong>Ponto</strong><span>{device.venue || "-"}</span></div>
+          <div><strong>Local</strong><span>{device.location || "-"}</span></div>
           <div><strong>Responsavel</strong><span>{device.owner_name || "-"}</span></div>
           <div><strong>Email</strong><span>{device.owner_email || "-"}</span></div>
           <div><strong>Telefone</strong><span>{device.owner_phone || "-"}</span></div>
           <div><strong>PIN tecnico</strong><span>{device.support_pin_hash ? "Configurado" : "Nao definido"}</span></div>
           <div><strong>Canal</strong><span>{device.update_channel || "stable"}</span></div>
+          <div><strong>Versao esperada</strong><span>{device.expected_app_version || "-"}</span></div>
+          <div><strong>Observacoes</strong><span>{device.installation_notes || "-"}</span></div>
         </div>
         <div className="panel settings-list">
           <h2>Ultimo health</h2>
@@ -1127,6 +1161,7 @@ function StatusPage() {
     supabase.from("kiosk_devices").select("*, teams(name, slug)").order("last_seen_at", { ascending: false }).then(({ data }) => setDevices((data || []) as KioskDevice[]));
     supabase.from("kiosk_admin_audit_events").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAuditEvents((data || []) as AdminAuditEvent[]));
   }, []);
+  const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
   return (
     <>
       <PageHeader title="Status operacional" subtitle="Alertas, saude dos servicos e totens offline." />
@@ -1134,7 +1169,22 @@ function StatusPage() {
         <StatCard label="Alertas abertos" value={alerts.filter((a) => !a.resolved).length} tone="warning" />
         <StatCard label="Totens offline" value={devices.filter((d) => isOffline(d.last_seen_at)).length} tone="danger" />
         <StatCard label="Em manutencao" value={devices.filter((d) => d.status === "maintenance").length} />
+        <StatCard label="Desatualizados" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
       </section>
+      <div className="panel">
+        <h2>Problemas detectados nos totens</h2>
+        <DataTable columns={["Severidade", "Tipo", "Totem", "Mensagem"]}>
+          {operationalIssues.map((issue) => (
+            <tr key={`${issue.deviceId}-${issue.type}`}>
+              <td><Badge value={issue.severity} /></td>
+              <td>{issue.type}</td>
+              <td>{issue.deviceLabel}</td>
+              <td>{issue.message}</td>
+            </tr>
+          ))}
+        </DataTable>
+        {operationalIssues.length === 0 && <p className="hint">Nenhum problema operacional detectado nos totens cadastrados.</p>}
+      </div>
       <div className="panel">
         <h2>Alertas recentes</h2>
         <DataTable columns={["Tipo", "Severidade", "Mensagem", "Resolvido", "Criado"]}>

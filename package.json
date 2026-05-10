@@ -1,7 +1,9 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "FanFrame Kiosk desktop app for Windows totens.",
+  "author": "FanFrame AI",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -16,7 +18,9 @@
     "admin:dev": "npm --prefix apps/admin run dev",
     "admin:build": "npm --prefix apps/admin run build",
     "admin:preview": "npm --prefix apps/admin run preview",
-    "dist:win": "npm run build && electron-builder --win"
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:win:dir": "npm run build && electron-builder --win --dir",
+    "dist:win:portable": "npm run build && electron-builder --win portable"
   },
   "build": {
     "appId": "ai.fanframe.kiosk",
@@ -31,7 +35,20 @@
       "package.json"
     ],
     "win": {
-      "target": "nsis"
+      "icon": "public/favicon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "FanFrame Kiosk",
+      "runAfterFinish": true
     }
   },
   "dependencies": {

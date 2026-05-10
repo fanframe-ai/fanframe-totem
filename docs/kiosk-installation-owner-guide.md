@@ -16,6 +16,16 @@
 4. Confira se a tela inicial aparece com o time correto.
 5. Aguarde a tela inicial do totem.
 
+## Checklist De Instalacao
+
+- O app abriu em tela cheia vertical.
+- O time exibido esta correto.
+- A internet aparece como online no modo tecnico.
+- A camera foi detectada no modo tecnico.
+- O diagnostico foi enviado para o painel.
+- A maquininha PagBank esta conectada quando houver pagamento por cartao.
+- O administrador confirmou que o totem aparece online no painel.
+
 ## Testes Locais
 
 Abra o modo tecnico com `Ctrl + Shift + F12` e digite o PIN tecnico informado pelo administrador.

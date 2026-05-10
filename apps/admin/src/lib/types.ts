@@ -43,6 +43,9 @@ export interface KioskDevice {
   device_code: string;
   label: string | null;
   location: string | null;
+  city?: string | null;
+  venue?: string | null;
+  installation_notes?: string | null;
   owner_name?: string | null;
   owner_email?: string | null;
   owner_phone?: string | null;
