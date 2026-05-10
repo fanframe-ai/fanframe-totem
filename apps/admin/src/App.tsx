@@ -4,6 +4,7 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  Copy,
   Cpu,
   CreditCard,
   ImageIcon,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { supabase, publicAssetUrl } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
+import { buildOwnerInstallMessage } from "./lib/installInstructions";
 import type {
   CommandType,
   KioskDevice,
@@ -607,7 +609,7 @@ function Devices({ role }: { role: Role | null }) {
   };
   const [form, setForm] = useState(emptyDeviceForm);
   const [message, setMessage] = useState("");
-  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; deviceLabel: string; supportPin: string } | null>(null);
+  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; deviceLabel: string; supportPin: string; ownerMessage: string } | null>(null);
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
 
@@ -647,12 +649,31 @@ function Devices({ role }: { role: Role | null }) {
     try {
       const supportPin = await rotateDeviceSupportPin(device.id);
       const result = await createInstallCode(device.id, device.label || device.device_code);
-      setInstallCode({ ...result, deviceLabel: device.label || device.device_code, supportPin });
+      const deviceLabel = device.label || device.device_code;
+      setInstallCode({
+        ...result,
+        deviceLabel,
+        supportPin,
+        ownerMessage: buildOwnerInstallMessage({
+          deviceLabel,
+          teamName: device.teams?.name,
+          location: device.location,
+          installCode: result.code,
+          supportPin,
+          expiresAt: result.expiresAt,
+        }),
+      });
       setMessage(`Codigo gerado para ${device.label || device.device_code}.`);
       load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Erro ao gerar codigo.");
     }
+  }
+
+  async function copyInstallMessage() {
+    if (!installCode) return;
+    await navigator.clipboard.writeText(installCode.ownerMessage);
+    setMessage("Mensagem de instalacao copiada.");
   }
 
   async function sendCommand(deviceId: string, command: CommandType) {
@@ -702,9 +723,13 @@ function Devices({ role }: { role: Role | null }) {
           <p className="hint">O PIN tecnico manual nao e exibido depois de salvo. Ao gerar um codigo de instalacao, o painel cria um PIN novo automaticamente para enviar ao dono do totem.</p>
           {message && <p className="hint">{message}</p>}
           {installCode && (
-            <div className="notice">
-              <strong>Codigo de instalacao: {installCode.code}</strong>
-              <span>{installCode.deviceLabel} - PIN tecnico: {installCode.supportPin} - expira em {dateTime(installCode.expiresAt)}</span>
+            <div className="install-card">
+              <div>
+                <strong>Codigo de instalacao: {installCode.code}</strong>
+                <span>{installCode.deviceLabel} - PIN tecnico: {installCode.supportPin} - expira em {dateTime(installCode.expiresAt)}</span>
+              </div>
+              <button className="secondary" type="button" onClick={copyInstallMessage}><Copy size={16} /> Copiar para o dono</button>
+              <textarea readOnly value={installCode.ownerMessage} rows={8} />
             </div>
           )}
         </section>
@@ -747,7 +772,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
   const [sessions, setSessions] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [message, setMessage] = useState("");
-  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; supportPin: string } | null>(null);
+  const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; supportPin: string; ownerMessage: string } | null>(null);
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
 
@@ -781,12 +806,29 @@ function DeviceDetail({ role }: { role: Role | null }) {
     try {
       const supportPin = await rotateDeviceSupportPin(device.id);
       const result = await createInstallCode(device.id, device.label || device.device_code);
-      setInstallCode({ ...result, supportPin });
+      setInstallCode({
+        ...result,
+        supportPin,
+        ownerMessage: buildOwnerInstallMessage({
+          deviceLabel: device.label || device.device_code,
+          teamName: device.teams?.name,
+          location: device.location,
+          installCode: result.code,
+          supportPin,
+          expiresAt: result.expiresAt,
+        }),
+      });
       setMessage("Codigo de instalacao gerado.");
       load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Erro ao gerar codigo.");
     }
+  }
+
+  async function copyInstallMessage() {
+    if (!installCode) return;
+    await navigator.clipboard.writeText(installCode.ownerMessage);
+    setMessage("Mensagem de instalacao copiada.");
   }
 
   async function sendCommand(command: CommandType) {
@@ -845,9 +887,13 @@ function DeviceDetail({ role }: { role: Role | null }) {
         </div>
         {message && <p className="hint">{message}</p>}
         {installCode && (
-          <div className="notice">
-            <strong>Codigo de instalacao: {installCode.code}</strong>
-            <span>PIN tecnico: {installCode.supportPin} - expira em {dateTime(installCode.expiresAt)}</span>
+          <div className="install-card">
+            <div>
+              <strong>Codigo de instalacao: {installCode.code}</strong>
+              <span>PIN tecnico: {installCode.supportPin} - expira em {dateTime(installCode.expiresAt)}</span>
+            </div>
+            <button className="secondary" type="button" onClick={copyInstallMessage}><Copy size={16} /> Copiar para o dono</button>
+            <textarea readOnly value={installCode.ownerMessage} rows={8} />
           </div>
         )}
       </section>

@@ -6,14 +6,14 @@
 - Internet estavel.
 - Webcam conectada.
 - Maquininha PagBank/PlugPag configurada quando houver pagamento por cartao.
-- Codigo de instalacao e PIN tecnico enviados pelo administrador FanFrame.
+- Mensagem de instalacao enviada pelo administrador FanFrame, com codigo de instalacao, PIN tecnico, time e local.
 
 ## Primeiro Acesso
 
 1. Instale o FanFrame Kiosk.
 2. Abra o aplicativo.
-3. Digite o codigo de instalacao.
-4. Confirme o time e local exibidos.
+3. Digite o codigo de instalacao da mensagem recebida.
+4. Confira se a tela inicial aparece com o time correto.
 5. Aguarde a tela inicial do totem.
 
 ## Testes Locais
