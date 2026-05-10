@@ -58,6 +58,7 @@ type TechnicalChecks = {
   internet: TechnicalCheck;
   supabase: TechnicalCheck;
   camera: TechnicalCheck;
+  payments: TechnicalCheck;
   diagnostics: TechnicalCheck;
 };
 
@@ -72,6 +73,7 @@ const initialTechnicalChecks: TechnicalChecks = {
   internet: { status: "idle", message: "Nao testado" },
   supabase: { status: "idle", message: "Nao testado" },
   camera: { status: "idle", message: "Nao testado" },
+  payments: { status: "idle", message: "Nao testado" },
   diagnostics: { status: "idle", message: "Nao enviado" },
 };
 
@@ -725,6 +727,17 @@ export default function KioskPage() {
     }
   };
 
+  const testPayments = async () => {
+    setTechnicalCheck("payments", { status: "running", message: "Verificando configuracao local..." });
+    const paymentStatus = await window.fanframeKiosk?.getPaymentStatus?.().catch(() => null);
+    const simulatedFallback = config?.simulatePayments === true;
+    const ready = paymentStatus?.ready === true || simulatedFallback;
+    setTechnicalCheck("payments", {
+      status: ready ? "ok" : "fail",
+      message: paymentStatus?.message || (simulatedFallback ? "Pagamentos simulados ativos." : "Pagamento local indisponivel."),
+    });
+  };
+
   const sendManualDiagnostics = async () => {
     if (!hasDeviceAuth) {
       setTechnicalCheck("diagnostics", { status: "fail", message: "Pareie o totem antes de enviar diagnostico." });
@@ -760,6 +773,7 @@ export default function KioskPage() {
     await testInternet();
     await testSupabase();
     await testCamera();
+    await testPayments();
   };
 
   const checkText = (check: TechnicalCheck) => {
@@ -815,12 +829,14 @@ export default function KioskPage() {
                 <div><dt>Internet</dt><dd className={`technical-${technicalChecks.internet.status}`}>{checkText(technicalChecks.internet)}</dd></div>
                 <div><dt>Supabase</dt><dd className={`technical-${technicalChecks.supabase.status}`}>{checkText(technicalChecks.supabase)}</dd></div>
                 <div><dt>Camera</dt><dd className={`technical-${technicalChecks.camera.status}`}>{checkText(technicalChecks.camera)}</dd></div>
+                <div><dt>Pagamentos</dt><dd className={`technical-${technicalChecks.payments.status}`}>{checkText(technicalChecks.payments)}</dd></div>
                 <div><dt>Diagnostico</dt><dd className={`technical-${technicalChecks.diagnostics.status}`}>{checkText(technicalChecks.diagnostics)}</dd></div>
               </dl>
               <button onClick={runAllTechnicalTests}>Testar tudo</button>
               <button onClick={testInternet}>Testar internet</button>
               <button onClick={testSupabase}>Testar Supabase</button>
               <button onClick={testCamera}>Testar camera</button>
+              <button onClick={testPayments}>Testar pagamentos</button>
               <button onClick={sendManualDiagnostics}>Enviar diagnostico</button>
               <button onClick={() => window.location.reload()}>Sincronizar agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>

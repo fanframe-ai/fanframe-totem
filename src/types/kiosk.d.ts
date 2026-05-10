@@ -26,6 +26,14 @@ export interface KioskTechnicalStatus {
   lastSyncAt: string | null;
 }
 
+export interface KioskPaymentStatus {
+  ready: boolean;
+  mode: "simulated" | "plugpag" | "not_configured";
+  message: string;
+  plugpagConfigured: boolean;
+  simulated: boolean;
+}
+
 export interface KioskCardPaymentRequest {
   sessionId: string;
   paymentId: string;
@@ -54,6 +62,7 @@ declare global {
       saveDeviceIdentity: (identity: StoredDeviceIdentity) => Promise<void>;
       clearDeviceIdentity: () => Promise<void>;
       getTechnicalStatus: () => Promise<KioskTechnicalStatus>;
+      getPaymentStatus: () => Promise<KioskPaymentStatus>;
       relaunch: () => Promise<void>;
       onOpenTechnicalMode: (callback: () => void) => () => void;
     };

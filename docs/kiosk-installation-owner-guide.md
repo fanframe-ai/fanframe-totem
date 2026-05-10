@@ -36,7 +36,7 @@ Use:
 
 - Testar internet.
 - Testar camera.
-- Testar pagamento.
+- Testar pagamentos.
 - Sincronizar agora.
 - Reiniciar app.
 

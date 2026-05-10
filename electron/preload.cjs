@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld("fanframeKiosk", {
   saveDeviceIdentity: (identity) => ipcRenderer.invoke("kiosk:save-device-identity", identity),
   clearDeviceIdentity: () => ipcRenderer.invoke("kiosk:clear-device-identity"),
   getTechnicalStatus: () => ipcRenderer.invoke("kiosk:get-technical-status"),
+  getPaymentStatus: () => ipcRenderer.invoke("kiosk:get-payment-status"),
   relaunch: () => ipcRenderer.invoke("kiosk:relaunch"),
   onOpenTechnicalMode: (callback) => {
     const listener = () => callback();

@@ -9,6 +9,7 @@ const {
   isTechnicalShortcut,
   shouldEnableAutoLaunch,
 } = require("./kiosk-hardening.cjs");
+const { getPaymentReadiness } = require("./kiosk-payments.cjs");
 
 let staticServer;
 
@@ -266,6 +267,7 @@ app.whenReady().then(() => {
     deviceCode: (await readIdentity())?.deviceCode || null,
     lastSyncAt: null,
   }));
+  ipcMain.handle("kiosk:get-payment-status", () => getPaymentReadiness(loadKioskConfig()));
   ipcMain.handle("kiosk:relaunch", async () => {
     app.relaunch();
     app.exit(0);
