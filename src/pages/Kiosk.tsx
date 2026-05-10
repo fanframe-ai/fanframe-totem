@@ -48,11 +48,30 @@ interface KioskPaymentResponse {
   error?: string;
 }
 
+type TechnicalCheck = {
+  status: "idle" | "running" | "ok" | "fail";
+  message: string;
+};
+
+type TechnicalChecks = {
+  internet: TechnicalCheck;
+  supabase: TechnicalCheck;
+  camera: TechnicalCheck;
+  diagnostics: TechnicalCheck;
+};
+
 const browserPreviewConfig: KioskRuntimeConfig = {
   teamSlug: "",
   deviceCode: "browser-preview",
   deviceSecret: "browser-preview-secret",
   simulatePayments: true,
+};
+
+const initialTechnicalChecks: TechnicalChecks = {
+  internet: { status: "idle", message: "Nao testado" },
+  supabase: { status: "idle", message: "Nao testado" },
+  camera: { status: "idle", message: "Nao testado" },
+  diagnostics: { status: "idle", message: "Nao enviado" },
 };
 
 function KioskButton({
@@ -121,6 +140,7 @@ export default function KioskPage() {
   const [technicalUnlocked, setTechnicalUnlocked] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [technicalStatus, setTechnicalStatus] = useState<KioskTechnicalStatus | null>(null);
+  const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
   const [selectedBackground, setSelectedBackground] = useState<TeamBackground | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -634,6 +654,95 @@ export default function KioskPage() {
     });
   };
 
+  const setTechnicalCheck = (key: keyof TechnicalChecks, patch: Partial<TechnicalCheck>) => {
+    setTechnicalChecks((current) => ({
+      ...current,
+      [key]: { ...current[key], ...patch },
+    }));
+  };
+
+  const testInternet = async () => {
+    setTechnicalCheck("internet", { status: "running", message: "Testando conexao..." });
+    const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+    const online = status?.online ?? navigator.onLine;
+    setTechnicalStatus(status || technicalStatus);
+    setTechnicalCheck("internet", {
+      status: online ? "ok" : "fail",
+      message: online ? "Internet disponivel" : "Sem internet no PC",
+    });
+  };
+
+  const testSupabase = async () => {
+    setTechnicalCheck("supabase", { status: "running", message: "Consultando Supabase..." });
+    const startedAt = performance.now();
+    const { error: pingError } = await supabase.from("teams").select("id").limit(1);
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    setTechnicalCheck("supabase", {
+      status: pingError ? "fail" : "ok",
+      message: pingError ? `Falha: ${pingError.message}` : `Supabase respondeu em ${elapsedMs}ms`,
+    });
+  };
+
+  const testCamera = async () => {
+    setTechnicalCheck("camera", { status: "running", message: "Abrindo camera..." });
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const [track] = stream.getVideoTracks();
+      const label = track?.label || "Camera detectada";
+      stream.getTracks().forEach((item) => item.stop());
+      setTechnicalCheck("camera", { status: "ok", message: label });
+    } catch (err) {
+      setTechnicalCheck("camera", {
+        status: "fail",
+        message: err instanceof Error ? err.message : "Camera nao encontrada",
+      });
+    }
+  };
+
+  const sendManualDiagnostics = async () => {
+    if (!hasDeviceAuth) {
+      setTechnicalCheck("diagnostics", { status: "fail", message: "Pareie o totem antes de enviar diagnostico." });
+      return;
+    }
+    setTechnicalCheck("diagnostics", { status: "running", message: "Enviando diagnostico..." });
+    try {
+      const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+      await reportKioskHealth(activeDevice, {
+        health: {
+          appVersion: status?.appVersion || config?.appVersion || "browser",
+          online: status?.online ?? navigator.onLine,
+          currentScreen: step,
+          manualDiagnostics: true,
+          checks: technicalChecks,
+        },
+        event: {
+          eventType: "manual_diagnostics_sent",
+          severity: "info",
+          payload: { checks: technicalChecks, currentScreen: step },
+        },
+      });
+      setTechnicalCheck("diagnostics", { status: "ok", message: "Diagnostico enviado para o painel." });
+    } catch (err) {
+      setTechnicalCheck("diagnostics", {
+        status: "fail",
+        message: err instanceof Error ? err.message : "Erro ao enviar diagnostico.",
+      });
+    }
+  };
+
+  const runAllTechnicalTests = async () => {
+    await testInternet();
+    await testSupabase();
+    await testCamera();
+  };
+
+  const checkText = (check: TechnicalCheck) => {
+    if (check.status === "running") return `Testando - ${check.message}`;
+    if (check.status === "ok") return `OK - ${check.message}`;
+    if (check.status === "fail") return `Falha - ${check.message}`;
+    return check.message;
+  };
+
   const renderTechnicalOverlay = () => {
     if (!technicalOpen) return null;
     // MVP fallback. In production this should come from a hashed device-level PIN.
@@ -662,6 +771,17 @@ export default function KioskPage() {
                 <div><dt>Dispositivo</dt><dd>{String(technicalStatus?.deviceCode || activeDevice.deviceCode || "nao pareado")}</dd></div>
                 <div><dt>Time</dt><dd>{team?.name || identity?.teamSlug || config?.teamSlug || "-"}</dd></div>
               </dl>
+              <dl className="technical-status">
+                <div><dt>Internet</dt><dd className={`technical-${technicalChecks.internet.status}`}>{checkText(technicalChecks.internet)}</dd></div>
+                <div><dt>Supabase</dt><dd className={`technical-${technicalChecks.supabase.status}`}>{checkText(technicalChecks.supabase)}</dd></div>
+                <div><dt>Camera</dt><dd className={`technical-${technicalChecks.camera.status}`}>{checkText(technicalChecks.camera)}</dd></div>
+                <div><dt>Diagnostico</dt><dd className={`technical-${technicalChecks.diagnostics.status}`}>{checkText(technicalChecks.diagnostics)}</dd></div>
+              </dl>
+              <button onClick={runAllTechnicalTests}>Testar tudo</button>
+              <button onClick={testInternet}>Testar internet</button>
+              <button onClick={testSupabase}>Testar Supabase</button>
+              <button onClick={testCamera}>Testar camera</button>
+              <button onClick={sendManualDiagnostics}>Enviar diagnostico</button>
               <button onClick={() => window.location.reload()}>Sincronizar agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>

@@ -240,6 +240,18 @@
     font-weight: 800;
     text-align: right;
   }
+
+  .technical-ok {
+    color: #86efac;
+  }
+
+  .technical-fail {
+    color: #fca5a5;
+  }
+
+  .technical-running {
+    color: #fde68a;
+  }
 }
 
 @layer utilities {
