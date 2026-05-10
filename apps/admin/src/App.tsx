@@ -45,6 +45,16 @@ type Filters = {
   days: number;
 };
 
+type AdminAuditEvent = {
+  id: string;
+  actor_user_id: string | null;
+  target_table: string;
+  target_id: string | null;
+  action: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+};
+
 const emptyTeam: Partial<TeamRow> = {
   name: "",
   slug: "",
@@ -1048,9 +1058,11 @@ function Generations() {
 function StatusPage() {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [devices, setDevices] = useState<KioskDevice[]>([]);
+  const [auditEvents, setAuditEvents] = useState<AdminAuditEvent[]>([]);
   useEffect(() => {
     supabase.from("system_alerts").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAlerts(data || []));
     supabase.from("kiosk_devices").select("*, teams(name, slug)").order("last_seen_at", { ascending: false }).then(({ data }) => setDevices((data || []) as KioskDevice[]));
+    supabase.from("kiosk_admin_audit_events").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAuditEvents((data || []) as AdminAuditEvent[]));
   }, []);
   return (
     <>
@@ -1070,6 +1082,21 @@ function StatusPage() {
               <td>{alert.message}</td>
               <td>{alert.resolved ? "Sim" : "Nao"}</td>
               <td>{dateTime(alert.created_at)}</td>
+            </tr>
+          ))}
+        </DataTable>
+      </div>
+      <div className="panel">
+        <h2>Auditoria operacional</h2>
+        <DataTable columns={["Acao", "Tabela", "Alvo", "Usuario", "Detalhe", "Criado"]}>
+          {auditEvents.map((event) => (
+            <tr key={event.id}>
+              <td>{event.action}</td>
+              <td>{event.target_table}</td>
+              <td>{event.target_id || "-"}</td>
+              <td>{event.actor_user_id || "-"}</td>
+              <td>{JSON.stringify(event.payload || {})}</td>
+              <td>{dateTime(event.created_at)}</td>
             </tr>
           ))}
         </DataTable>

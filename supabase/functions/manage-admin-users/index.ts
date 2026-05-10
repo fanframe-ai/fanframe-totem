@@ -24,6 +24,17 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
+async function audit(adminClient: ReturnType<typeof createClient>, actorUserId: string, targetId: string | null, action: string, payload: Record<string, unknown>) {
+  const { error } = await adminClient.from("kiosk_admin_audit_events").insert({
+    actor_user_id: actorUserId,
+    target_table: "user_roles",
+    target_id: targetId,
+    action,
+    payload,
+  });
+  if (error) console.error("[manage-admin-users] audit failed", error);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -95,6 +106,8 @@ serve(async (req) => {
         .upsert({ user_id: created.user.id, role }, { onConflict: "user_id,role" });
       if (roleInsertError) throw roleInsertError;
 
+      await audit(adminClient, userData.user.id, created.user.id, "admin_user_created", { email: body.email, role });
+
       return json({ success: true, userId: created.user.id });
     }
 
@@ -104,6 +117,8 @@ serve(async (req) => {
 
       const { error: deleteError } = await adminClient.auth.admin.deleteUser(body.user_id);
       if (deleteError) throw deleteError;
+
+      await audit(adminClient, userData.user.id, body.user_id, "admin_user_deleted", {});
 
       return json({ success: true });
     }

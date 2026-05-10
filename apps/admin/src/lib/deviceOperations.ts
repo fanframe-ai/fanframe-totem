@@ -30,6 +30,7 @@ export async function createInstallCode(deviceId: string, label: string, hoursVa
     expires_at: expiresAt,
   });
   if (error) throw error;
+  await logAdminAudit("kiosk_devices", deviceId, "install_code_created", { label, expiresAt });
   return { code, expiresAt };
 }
 
@@ -41,12 +42,14 @@ export async function enqueueDeviceCommand(deviceId: string, commandType: Comman
     expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
   });
   if (error) throw error;
+  await logAdminAudit("kiosk_devices", deviceId, "remote_command_enqueued", { commandType, payload });
 
   if (commandType === "enter_maintenance") {
     await supabase
       .from("kiosk_devices")
       .update({ status: "maintenance", maintenance_reason: String(payload.reason || "Manutencao remota") })
       .eq("id", deviceId);
+    await logAdminAudit("kiosk_devices", deviceId, "maintenance_enabled", { reason: payload.reason || "Manutencao remota" });
   }
 
   if (commandType === "exit_maintenance") {
@@ -54,5 +57,21 @@ export async function enqueueDeviceCommand(deviceId: string, commandType: Comman
       .from("kiosk_devices")
       .update({ status: "active", maintenance_reason: null })
       .eq("id", deviceId);
+    await logAdminAudit("kiosk_devices", deviceId, "maintenance_disabled", {});
   }
+}
+
+export async function logAdminAudit(targetTable: string, targetId: string | null, action: string, payload: Record<string, unknown>) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const actorUserId = sessionData.session?.user.id;
+  if (!actorUserId) return;
+
+  const { error } = await supabase.from("kiosk_admin_audit_events").insert({
+    actor_user_id: actorUserId,
+    target_table: targetTable,
+    target_id: targetId,
+    action,
+    payload,
+  });
+  if (error) console.warn("[audit]", error.message);
 }
