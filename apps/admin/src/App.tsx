@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { supabase, publicAssetUrl } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
-import { buildOwnerInstallMessage } from "./lib/installInstructions";
+import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
 import {
   buildDeviceLocationLabel,
   getDeviceVersionStatus,
@@ -887,6 +887,18 @@ function DeviceDetail({ role }: { role: Role | null }) {
     setMessage("Mensagem de instalacao copiada.");
   }
 
+  async function copyUpdateMessage() {
+    if (!device) return;
+    await navigator.clipboard.writeText(buildOwnerUpdateMessage({
+      deviceLabel: device.label || device.device_code,
+      teamName: device.teams?.name,
+      location: buildDeviceLocationLabel(device),
+      currentVersion: device.app_version,
+      expectedVersion: device.expected_app_version,
+    }));
+    setMessage("Mensagem de atualizacao copiada.");
+  }
+
   async function sendCommand(command: CommandType) {
     if (!device) return;
     setMessage("");
@@ -938,6 +950,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
         </div>
         <div className="actions-row">
           {canEditDevices && <button className="secondary" onClick={generateInstall}>Gerar codigo</button>}
+          {getDeviceVersionStatus(device) === "desatualizado" && <button className="secondary" onClick={copyUpdateMessage}><Copy size={16} /> Copiar atualizacao</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("sync_config")}>Sincronizar</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("send_diagnostics")}>Pedir diagnostico</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("restart_app")}>Reiniciar app</button>}
