@@ -7,8 +7,6 @@ import {
   BarChart3,
   Copy,
   Cpu,
-  CreditCard,
-  ImageIcon,
   LayoutDashboard,
   LogOut,
   Monitor,
@@ -347,9 +345,7 @@ function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode
     { href: "/times", Icon: Shirt, label: "Times", roles: ["super_admin", "admin"] as Role[] },
     { href: "/totens", Icon: Monitor, label: "Totens", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/sessoes", Icon: Activity, label: "Vendas", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
-    { href: "/pagamentos", Icon: CreditCard, label: "Pagamentos", roles: ["super_admin", "admin", "finance"] as Role[] },
-    { href: "/geracoes", Icon: ImageIcon, label: "Fotos geradas", roles: ["super_admin", "admin", "support"] as Role[] },
-    { href: "/status", Icon: AlertTriangle, label: "Alertas", roles: ["super_admin", "admin", "support"] as Role[] },
+    { href: "/problemas", Icon: AlertTriangle, label: "Problemas", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/usuarios", Icon: Users, label: "Usuarios", roles: ["super_admin"] as Role[] },
     { href: "/configuracoes", Icon: Settings, label: "Ajustes", roles: ["super_admin", "admin"] as Role[] },
   ].filter((item) => hasRole(auth.role, item.roles));
@@ -464,7 +460,7 @@ function Dashboard() {
             {operationalIssues.slice(0, 8).map((issue) => (
               <tr key={`${issue.deviceId}-${issue.type}`}>
                 <td><Badge value={issue.severity} /></td>
-                <td>{issue.deviceLabel}</td>
+                <td><Link to={`/totens/${issue.deviceId}`}>{issue.deviceLabel}</Link></td>
                 <td>{issue.message}</td>
               </tr>
             ))}
@@ -530,7 +526,7 @@ function Teams() {
     <>
       <PageHeader
         title="Times"
-        subtitle="Crie times, preco, camisas, cenarios e a instrucao da IA."
+        subtitle="Crie times, preco, camisas, cenarios e estilo da foto."
         action={<Link className="primary link-button" to="/times/novo"><Plus size={16} /> Novo time</Link>}
       />
       <div className="panel">
@@ -665,13 +661,16 @@ function TeamForm() {
         <section className="panel form-section">
           <h2>Dados do time</h2>
           <label>Nome<input value={team.name || ""} onChange={(e) => { set("name", e.target.value); if (isNew) set("slug", slugify(e.target.value)); }} required /></label>
-          <label>Link do time<input value={team.slug || ""} onChange={(e) => set("slug", slugify(e.target.value))} disabled={!isNew} required /></label>
-          <p className="hint">Esse link identifica o time no sistema e na instalacao do totem.</p>
           <div className="two-fields">
             <label>Cor principal<input type="color" value={team.primary_color || "#111827"} onChange={(e) => set("primary_color", e.target.value)} /></label>
             <label>Cor de apoio<input type="color" value={team.secondary_color || "#ffffff"} onChange={(e) => set("secondary_color", e.target.value)} /></label>
           </div>
           <label className="inline-check"><input type="checkbox" checked={team.is_active !== false} onChange={(e) => set("is_active", e.target.checked)} /> Time ativo</label>
+          <details className="advanced-box">
+            <summary>Avancado</summary>
+            <label>Codigo interno do time<input value={team.slug || ""} onChange={(e) => set("slug", slugify(e.target.value))} disabled={!isNew} required /></label>
+            <p className="hint">Use apenas se precisar controlar o codigo interno. Depois de criar, ele fica travado para evitar erro nos totens.</p>
+          </details>
         </section>
 
         <section className="panel form-section">
@@ -685,9 +684,9 @@ function TeamForm() {
         </section>
 
         <section className="panel form-section full">
-          <h2>Aparencia e IA</h2>
-          <label>Instrucao para a IA<textarea rows={4} value={team.generation_prompt || ""} onChange={(e) => set("generation_prompt", e.target.value)} placeholder="Ex: gerar uma foto realista do torcedor vestindo a camisa do time, mantendo rosto e postura naturais." /></label>
-          <p className="hint">Aqui voce escreve o estilo da imagem final. Chaves tecnicas de IA e pagamento ficam protegidas fora do painel.</p>
+          <h2>Aparencia e foto</h2>
+          <label>Estilo da foto<textarea rows={4} value={team.generation_prompt || ""} onChange={(e) => set("generation_prompt", e.target.value)} placeholder="Ex: foto realista de torcedor no estadio, mantendo rosto e postura naturais." /></label>
+          <p className="hint">Escreva em linguagem simples como a foto final deve parecer.</p>
           <div className="two-fields">
             <label>
               Logo
@@ -1204,8 +1203,8 @@ function DeviceDetail({ role }: { role: Role | null }) {
           <div><strong>Versao desejada</strong><span>{device.expected_app_version || "-"}</span></div>
           <div><strong>Observacoes</strong><span>{device.installation_notes || "-"}</span></div>
         </div>
-        <div className="panel settings-list">
-          <h2>Ultima comunicacao do app</h2>
+        <details className="panel settings-list advanced-box">
+          <summary>Ultima comunicacao do app</summary>
           <div><strong>Online</strong><span>{String(health.online ?? "-")}</span></div>
           <div><strong>Tela</strong><span>{String(health.currentScreen ?? "-")}</span></div>
           <div><strong>Versao informada</strong><span>{String(health.appVersion ?? "-")}</span></div>
@@ -1214,10 +1213,12 @@ function DeviceDetail({ role }: { role: Role | null }) {
           <div><strong>Detalhe</strong><span>{paymentStatus ? String(paymentStatus.message || "-") : "-"}</span></div>
           <div><strong>Ultimo check-in</strong><span>{dateTime(device.last_health_at)}</span></div>
           <div><strong>Manutencao</strong><span>{device.maintenance_reason || "-"}</span></div>
-        </div>
+        </details>
       </section>
 
-      <section className="two-col">
+      <details className="panel advanced-box">
+        <summary>Historico tecnico e acoes enviadas</summary>
+        <section className="two-col advanced-content">
         <div className="panel">
           <h2>Historico tecnico</h2>
           <DataTable columns={["Tipo", "Urgencia", "Codigo", "Mensagem", "Criado"]}>
@@ -1247,6 +1248,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
           </DataTable>
         </div>
       </section>
+      </details>
 
       <section className="two-col">
         <div className="panel">
@@ -1311,28 +1313,72 @@ function Sessions() {
   const { teams } = useTeams();
   const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 7 });
   const [rows, setRows] = useState<KioskSession[]>([]);
+  const [payments, setPayments] = useState<KioskPayment[]>([]);
+  const [generations, setGenerations] = useState<GenerationQueueRow[]>([]);
 
   const load = useCallback(async () => {
     const since = new Date(Date.now() - filters.days * 86400000).toISOString();
-    let query = supabase
+    let sessionQuery = supabase
       .from("kiosk_sessions")
       .select("*, teams(name, slug), kiosk_devices(device_code,label,location)")
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(300);
-    if (filters.teamId) query = query.eq("team_id", filters.teamId);
-    if (filters.status) query = query.eq("status", filters.status);
-    const { data } = await query;
-    setRows((data || []) as KioskSession[]);
+    let paymentQuery = supabase
+      .from("kiosk_payments")
+      .select("*, teams(name, slug)")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(300);
+    let generationQuery = supabase
+      .from("generation_queue")
+      .select("*, teams(name, slug)")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(300);
+
+    if (filters.teamId) {
+      sessionQuery = sessionQuery.eq("team_id", filters.teamId);
+      paymentQuery = paymentQuery.eq("team_id", filters.teamId);
+      generationQuery = generationQuery.eq("team_id", filters.teamId);
+    }
+    if (filters.status) {
+      sessionQuery = sessionQuery.eq("status", filters.status);
+      paymentQuery = paymentQuery.eq("status", filters.status);
+      generationQuery = generationQuery.eq("status", filters.status);
+    }
+
+    const [sessionRes, paymentRes, generationRes] = await Promise.all([sessionQuery, paymentQuery, generationQuery]);
+    setRows((sessionRes.data || []) as KioskSession[]);
+    setPayments((paymentRes.data || []) as KioskPayment[]);
+    setGenerations((generationRes.data || []) as GenerationQueueRow[]);
   }, [filters.days, filters.status, filters.teamId]);
   useEffect(() => { load(); }, [load]);
 
+  const paid = payments.filter((payment) => payment.status === "paid");
+  const revenue = paid.reduce((sum, payment) => sum + payment.amount_cents, 0);
+  const pendingPayments = payments.filter((payment) => payment.status === "pending").length;
+  const failedGenerations = generations.filter((row) => row.status === "failed").length;
+
   return (
     <>
-      <PageHeader title="Vendas" subtitle="Veja cada atendimento do totem, do pagamento ate o QR Code." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
+      <PageHeader title="Vendas" subtitle="Atendimentos, pagamentos e fotos em uma tela so." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
+      <section className="stats-grid compact-stats">
+        <StatCard label="Atendimentos" value={rows.length} />
+        <StatCard label="Pagas" value={paid.length} tone="success" />
+        <StatCard label="Pendente" value={pendingPayments} tone={pendingPayments ? "warning" : "neutral"} />
+        <StatCard label="Receita" value={money(revenue)} tone="success" />
+        <StatCard label="Falhas IA" value={failedGenerations} tone={failedGenerations ? "danger" : "neutral"} />
+      </section>
       <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
       <div className="panel">
-        <DataTable columns={["Time", "Totem", "Situacao", "Escolha", "Valor", "Erro", "Criada"]}>
+        <div className="section-heading table-heading">
+          <div>
+            <h2>Atendimentos</h2>
+            <p>O caminho completo do cliente: escolha, pagamento, foto e entrega.</p>
+          </div>
+        </div>
+        <DataTable columns={["Time", "Totem", "Venda", "Escolha", "Valor", "Erro", "Criada"]}>
           {rows.map((row) => (
             <tr key={row.id}>
               <td>{row.teams?.name || "-"}</td>
@@ -1346,78 +1392,41 @@ function Sessions() {
           ))}
         </DataTable>
       </div>
+      <section className="two-col">
+        <div className="panel">
+          <h2>Pagamentos</h2>
+          <DataTable columns={["Time", "Forma", "Situacao", "Valor", "Pago em"]}>
+            {payments.slice(0, 120).map((row) => (
+              <tr key={row.id}>
+                <td>{row.teams?.name || "-"}</td>
+                <td>{friendly(row.method)}</td>
+                <td><Badge value={row.status} /></td>
+                <td>{money(row.amount_cents, row.currency)}</td>
+                <td>{dateTime(row.paid_at)}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </div>
+        <div className="panel">
+          <h2>Fotos da IA</h2>
+          <DataTable columns={["Time", "Situacao", "Camisa", "Erro", "Foto"]}>
+            {generations.slice(0, 120).map((row) => (
+              <tr key={row.id}>
+                <td>{row.teams?.name || "-"}</td>
+                <td><Badge value={row.status} /></td>
+                <td>{row.shirt_id || "-"}</td>
+                <td>{row.error_message || "-"}</td>
+                <td>{row.result_image_url ? <a href={row.result_image_url} target="_blank">Abrir</a> : "-"}</td>
+              </tr>
+            ))}
+          </DataTable>
+        </div>
+      </section>
     </>
   );
 }
 
-function Payments() {
-  const { teams } = useTeams();
-  const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 7 });
-  const [rows, setRows] = useState<KioskPayment[]>([]);
-
-  const load = useCallback(async () => {
-    const since = new Date(Date.now() - filters.days * 86400000).toISOString();
-    let query = supabase.from("kiosk_payments").select("*, teams(name, slug)").gte("created_at", since).order("created_at", { ascending: false }).limit(300);
-    if (filters.teamId) query = query.eq("team_id", filters.teamId);
-    if (filters.status) query = query.eq("status", filters.status);
-    const { data } = await query;
-    setRows((data || []) as KioskPayment[]);
-  }, [filters.days, filters.status, filters.teamId]);
-  useEffect(() => { load(); }, [load]);
-
-  return (
-    <>
-      <PageHeader title="Pagamentos" subtitle="Confira cobrancas pagas, pendentes ou com erro." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
-      <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
-      <div className="panel">
-        <DataTable columns={["Time", "Forma", "Operadora", "Situacao", "Valor", "Codigo", "Pago em"]}>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td>{row.teams?.name || "-"}</td>
-              <td>{friendly(row.method)}</td>
-              <td>{friendly(row.provider)}</td>
-              <td><Badge value={row.status} /></td>
-              <td>{money(row.amount_cents, row.currency)}</td>
-              <td>{row.reference_id}</td>
-              <td>{dateTime(row.paid_at)}</td>
-            </tr>
-          ))}
-        </DataTable>
-      </div>
-    </>
-  );
-}
-
-function Generations() {
-  const [rows, setRows] = useState<GenerationQueueRow[]>([]);
-  const load = async () => {
-    const { data } = await supabase.from("generation_queue").select("*, teams(name, slug)").order("created_at", { ascending: false }).limit(300);
-    setRows((data || []) as GenerationQueueRow[]);
-  };
-  useEffect(() => { load(); }, []);
-  return (
-    <>
-      <PageHeader title="Fotos geradas" subtitle="Acompanhe as fotos criadas pela IA e possiveis erros." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
-      <div className="panel">
-        <DataTable columns={["Time", "De onde veio", "Situacao", "Camisa", "Erro", "Criada", "Foto"]}>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td>{row.teams?.name || "-"}</td>
-              <td>{friendly(row.source || "web")}</td>
-              <td><Badge value={row.status} /></td>
-              <td>{row.shirt_id}</td>
-              <td>{row.error_message || "-"}</td>
-              <td>{dateTime(row.created_at)}</td>
-              <td>{row.result_image_url ? <a href={row.result_image_url} target="_blank">Abrir</a> : "-"}</td>
-            </tr>
-          ))}
-        </DataTable>
-      </div>
-    </>
-  );
-}
-
-function StatusPage() {
+function ProblemsPage() {
   const [alerts, setAlerts] = useState<SystemAlertRow[]>([]);
   const [devices, setDevices] = useState<KioskDevice[]>([]);
   const [auditEvents, setAuditEvents] = useState<AdminAuditEvent[]>([]);
@@ -1429,21 +1438,21 @@ function StatusPage() {
   const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
   return (
     <>
-      <PageHeader title="Alertas" subtitle="Veja o que precisa de atencao nos totens." />
+      <PageHeader title="Problemas" subtitle="Tudo que precisa de atencao, em linguagem simples." />
       <section className="stats-grid">
-        <StatCard label="Alertas abertos" value={alerts.filter((a) => !a.resolved).length} tone="warning" />
+        <StatCard label="Problemas abertos" value={alerts.filter((a) => !a.resolved).length} tone="warning" />
         <StatCard label="Totens sem contato" value={devices.filter((d) => isOffline(d.last_seen_at)).length} tone="danger" />
         <StatCard label="Em manutencao" value={devices.filter((d) => d.status === "maintenance").length} />
         <StatCard label="Precisam atualizar" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
       </section>
       <div className="panel">
-        <h2>O que precisa de atencao</h2>
-        <DataTable columns={["Urgencia", "Problema", "Totem", "Mensagem"]}>
+        <h2>Resolver primeiro</h2>
+        <DataTable columns={["Urgencia", "Problema", "Totem", "O que aconteceu"]}>
           {operationalIssues.map((issue) => (
             <tr key={`${issue.deviceId}-${issue.type}`}>
               <td><Badge value={issue.severity} /></td>
               <td>{friendly(issue.type)}</td>
-              <td>{issue.deviceLabel}</td>
+              <td><Link to={`/totens/${issue.deviceId}`}>{issue.deviceLabel}</Link></td>
               <td>{issue.message}</td>
             </tr>
           ))}
@@ -1451,7 +1460,7 @@ function StatusPage() {
         {operationalIssues.length === 0 && <p className="hint">Nenhum problema operacional detectado nos totens cadastrados.</p>}
       </div>
       <div className="panel">
-        <h2>Alertas recentes</h2>
+        <h2>Alertas do sistema</h2>
         <DataTable columns={["Tipo", "Urgencia", "Mensagem", "Resolvido", "Criado"]}>
           {alerts.map((alert) => (
             <tr key={alert.id}>
@@ -1464,8 +1473,8 @@ function StatusPage() {
           ))}
         </DataTable>
       </div>
-      <div className="panel">
-        <h2>Historico de acoes</h2>
+      <details className="panel advanced-box">
+        <summary>Historico tecnico de acoes</summary>
         <DataTable columns={["Acao", "Area", "Alvo", "Usuario", "Detalhe", "Criado"]}>
           {auditEvents.map((event) => (
             <tr key={event.id}>
@@ -1478,7 +1487,7 @@ function StatusPage() {
             </tr>
           ))}
         </DataTable>
-      </div>
+      </details>
     </>
   );
 }
@@ -1595,9 +1604,10 @@ function App() {
               <Route path="/totens" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><Devices role={auth.role} /></RoleGate>} />
               <Route path="/totens/:id" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><DeviceDetail role={auth.role} /></RoleGate>} />
               <Route path="/sessoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support", "finance"]}><Sessions /></RoleGate>} />
-              <Route path="/pagamentos" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "finance"]}><Payments /></RoleGate>} />
-              <Route path="/geracoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><Generations /></RoleGate>} />
-              <Route path="/status" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><StatusPage /></RoleGate>} />
+              <Route path="/pagamentos" element={<Navigate to="/sessoes" replace />} />
+              <Route path="/geracoes" element={<Navigate to="/sessoes" replace />} />
+              <Route path="/status" element={<Navigate to="/problemas" replace />} />
+              <Route path="/problemas" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><ProblemsPage /></RoleGate>} />
               <Route path="/usuarios" element={<RoleGate role={auth.role} allowed={["super_admin"]}><UsersPage role={auth.role} /></RoleGate>} />
               <Route path="/configuracoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin"]}><SettingsPage /></RoleGate>} />
             </Routes>
