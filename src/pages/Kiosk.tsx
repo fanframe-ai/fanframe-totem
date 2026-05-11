@@ -11,6 +11,7 @@ import {
   buildDeliveryUrl,
   classifyKioskError,
   pollKioskCommand,
+  pollKioskState,
   redeemInstallCode,
   reportKioskHealth,
   filterVisibleAssets,
@@ -151,7 +152,6 @@ export default function KioskPage() {
   const [technicalPinError, setTechnicalPinError] = useState("");
   const [technicalStatus, setTechnicalStatus] = useState<KioskTechnicalStatus | null>(null);
   const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
-  const [repairConfirm, setRepairConfirm] = useState(false);
   const [shirtRailScroll, setShirtRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
   const [backgroundRailScroll, setBackgroundRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
@@ -327,7 +327,20 @@ export default function KioskPage() {
   useEffect(() => {
     if (!hasDeviceAuth) return;
     const interval = window.setInterval(async () => {
-      const command = await pollKioskCommand(activeDevice).catch(() => null);
+      const state = await pollKioskState(activeDevice).catch(() => null);
+      const remoteTeamSlug = state?.device?.teamSlug;
+      if (remoteTeamSlug && remoteTeamSlug !== (identity?.teamSlug || config?.teamSlug)) {
+        const updatedIdentity = identity ? { ...identity, teamSlug: remoteTeamSlug } : null;
+        if (updatedIdentity) {
+          await window.fanframeKiosk?.saveDeviceIdentity?.(updatedIdentity);
+          setIdentity(updatedIdentity);
+        }
+        localStorage.setItem("fanframe:kiosk-team", remoteTeamSlug);
+        setSlug(remoteTeamSlug);
+        setConfig((current) => current ? { ...current, teamSlug: remoteTeamSlug } : current);
+      }
+
+      const command = state?.command || null;
       if (!command) return;
       try {
         if (command.command_type === "sync_config") window.location.reload();
@@ -369,7 +382,7 @@ export default function KioskPage() {
       }
     }, 15_000);
     return () => window.clearInterval(interval);
-  }, [activeDevice, collectHealthPayload, hasDeviceAuth, resetFlow, step]);
+  }, [activeDevice, collectHealthPayload, config?.teamSlug, hasDeviceAuth, identity, resetFlow, setSlug, step]);
 
   useEffect(() => {
     if (step !== "boot" || teamLoading) return;
@@ -714,28 +727,6 @@ export default function KioskPage() {
     });
   };
 
-  const resetPairing = async () => {
-    stopCamera();
-    await window.fanframeKiosk?.clearDeviceIdentity?.();
-    localStorage.removeItem("fanframe:kiosk-team");
-    setIdentity(null);
-    setConfig((current) => ({
-      ...(current || browserPreviewConfig),
-      teamSlug: "",
-      deviceCode: "",
-      deviceSecret: "",
-    }));
-    setSlug("");
-    setPairingCode("");
-    setPairingError("");
-    setRepairConfirm(false);
-    setTechnicalOpen(false);
-    setTechnicalUnlocked(false);
-    setTechnicalPinError("");
-    setPinInput("");
-    setStep("pairing");
-  };
-
   const setTechnicalCheck = (key: keyof TechnicalChecks, patch: Partial<TechnicalCheck>) => {
     setTechnicalChecks((current) => ({
       ...current,
@@ -864,7 +855,6 @@ export default function KioskPage() {
                 setTechnicalOpen(false);
                 setTechnicalPinError("");
                 setPinInput("");
-                setRepairConfirm(false);
               }}>Cancelar</button>
             </form>
           ) : (
@@ -892,22 +882,11 @@ export default function KioskPage() {
               <button onClick={() => window.location.reload()}>Sincronizar agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
-              {!repairConfirm ? (
-                <button className="technical-danger-button" onClick={() => setRepairConfirm(true)}>Sair deste time</button>
-              ) : (
-                <div className="technical-reset-confirm">
-                  <strong>Trocar o time deste totem?</strong>
-                  <p>Isso apaga a instalacao local e volta para a tela de codigo. Use somente quando o administrador enviar um novo codigo de instalacao para outro time.</p>
-                  <button className="technical-danger-button" onClick={resetPairing}>Sim, trocar time</button>
-                  <button onClick={() => setRepairConfirm(false)}>Cancelar</button>
-                </div>
-              )}
               <button onClick={() => {
                 setTechnicalOpen(false);
                 setTechnicalUnlocked(false);
                 setPinInput("");
                 setTechnicalPinError("");
-                setRepairConfirm(false);
               }}>Voltar ao totem</button>
             </div>
           )}

@@ -122,8 +122,11 @@ tbody tr:hover { background: #f9fafb; }
 .actions-cell { min-width: 220px; }
 .actions-cell button, .actions-cell .link-button { min-height: 32px; margin: 3px; padding: 0 10px; font-size: 12px; }
 .device-actions { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
-.device-actions .notice, .device-actions .install-card, .device-actions .hint { grid-column: 1 / -1; margin: 0; }
+.device-actions .notice, .device-actions .install-card, .device-actions .hint, .remote-team-switch { grid-column: 1 / -1; margin: 0; }
 .actions-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.remote-team-switch { display: grid; grid-template-columns: 1fr minmax(220px, 320px) auto; gap: 12px; align-items: end; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: #f9fafb; }
+.remote-team-switch strong, .remote-team-switch span { display: block; }
+.remote-team-switch span { margin-top: 4px; color: var(--muted); font-size: 13px; }
 .filters { display: flex; gap: 12px; }
 .filters select { max-width: 220px; }
 

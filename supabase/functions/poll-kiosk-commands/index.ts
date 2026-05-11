@@ -35,7 +35,7 @@ serve(async (req) => {
 
     const { data: device, error: deviceError } = await supabase
       .from("kiosk_devices")
-      .select("id, team_id, device_secret_hash, status")
+      .select("id, team_id, device_secret_hash, status, config_version, teams(slug, name)")
       .eq("device_code", deviceCode)
       .maybeSingle();
     if (deviceError) throw deviceError;
@@ -82,7 +82,17 @@ serve(async (req) => {
       .maybeSingle();
     if (commandError) throw commandError;
 
-    if (!command) return json({ command: null });
+    const rawTeam = Array.isArray(device.teams) ? device.teams[0] : device.teams;
+    const deviceState = {
+      id: device.id,
+      teamId: device.team_id,
+      teamSlug: rawTeam?.slug || null,
+      teamName: rawTeam?.name || null,
+      status: device.status,
+      configVersion: device.config_version || 0,
+    };
+
+    if (!command) return json({ command: null, device: deviceState });
 
     const { error: claimError } = await supabase
       .from("kiosk_device_commands")
@@ -100,7 +110,7 @@ serve(async (req) => {
       payload: { commandId: command.id, commandType: command.command_type },
     });
 
-    return json({ command });
+    return json({ command, device: deviceState });
   } catch (error) {
     console.error("[poll-kiosk-commands]", error);
     return json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);

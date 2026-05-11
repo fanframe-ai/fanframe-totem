@@ -126,11 +126,16 @@ export async function reportKioskHealth(identity: DeviceIdentity, body: Record<s
 }
 
 export async function pollKioskCommand(identity: DeviceIdentity, complete?: Record<string, unknown>) {
+  const data = await pollKioskState(identity, complete);
+  return data.command || null;
+}
+
+export async function pollKioskState(identity: DeviceIdentity, complete?: Record<string, unknown>) {
   const { supabase } = await import("@/integrations/supabase/client");
   const { data, error } = await supabase.functions.invoke("poll-kiosk-commands", {
     headers: buildDeviceAuthHeaders(identity),
     body: complete || {},
   });
   if (error || data?.error) throw new Error(data?.error || error?.message || "Command poll failed");
-  return data?.command || null;
+  return data || { command: null, device: null };
 }

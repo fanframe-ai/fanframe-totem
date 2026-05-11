@@ -21,7 +21,7 @@ import {
   Users,
 } from "lucide-react";
 import { supabase, publicAssetUrl } from "./lib/supabase";
-import { createInstallCode, enqueueDeviceCommand, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
+import { createInstallCode, enqueueDeviceCommand, logAdminAudit, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
 import {
   buildDeviceLocationLabel,
@@ -982,12 +982,15 @@ function Devices({ role }: { role: Role | null }) {
 
 function DeviceDetail({ role }: { role: Role | null }) {
   const { id } = useParams();
+  const { teams } = useTeams();
   const [device, setDevice] = useState<KioskDevice | null>(null);
   const [events, setEvents] = useState<KioskDeviceEvent[]>([]);
   const [commands, setCommands] = useState<KioskDeviceCommand[]>([]);
   const [sessions, setSessions] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [message, setMessage] = useState("");
+  const [newTeamId, setNewTeamId] = useState("");
+  const [changingTeam, setChangingTeam] = useState(false);
   const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; supportPin: string; ownerMessage: string } | null>(null);
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
@@ -1015,6 +1018,10 @@ function DeviceDetail({ role }: { role: Role | null }) {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (device?.team_id) setNewTeamId(device.team_id);
+  }, [device?.team_id]);
 
   async function generateInstall() {
     if (!device) return;
@@ -1071,6 +1078,43 @@ function DeviceDetail({ role }: { role: Role | null }) {
     }
   }
 
+  async function changeDeviceTeam() {
+    if (!device || !newTeamId || newTeamId === device.team_id) return;
+    const nextTeam = teams.find((team) => team.id === newTeamId);
+    setChangingTeam(true);
+    setMessage("");
+    try {
+      const { error } = await supabase
+        .from("kiosk_devices")
+        .update({
+          team_id: newTeamId,
+          config_version: (device.config_version || 0) + 1,
+          status: "active",
+          maintenance_reason: null,
+        })
+        .eq("id", device.id);
+      if (error) throw error;
+
+      await logAdminAudit("kiosk_devices", device.id, "team_changed", {
+        previousTeamId: device.team_id,
+        nextTeamId: newTeamId,
+        nextTeamName: nextTeam?.name || null,
+      });
+      await enqueueDeviceCommand(device.id, "sync_config", {
+        reason: "team_changed",
+        teamId: newTeamId,
+        teamName: nextTeam?.name || null,
+        teamSlug: nextTeam?.slug || null,
+      });
+      setMessage(`Time trocado para ${nextTeam?.name || "novo time"}. O totem vai atualizar quando estiver online.`);
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao trocar time do totem.");
+    } finally {
+      setChangingTeam(false);
+    }
+  }
+
   if (!device) {
     return (
       <>
@@ -1118,6 +1162,20 @@ function DeviceDetail({ role }: { role: Role | null }) {
           {canOperate && <button className="danger" onClick={() => sendCommand("enter_maintenance")}>Pausar vendas</button>}
           {!canOperate && !canEditDevices && <span className="hint">Seu perfil permite somente visualizacao.</span>}
         </div>
+        {canEditDevices && (
+          <div className="remote-team-switch">
+            <div>
+              <strong>Trocar time deste totem</strong>
+              <span>Escolha outro time e o app instalado vai sincronizar automaticamente quando estiver online.</span>
+            </div>
+            <select value={newTeamId} onChange={(event) => setNewTeamId(event.target.value)}>
+              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+            <button className="primary" disabled={!newTeamId || newTeamId === device.team_id || changingTeam} onClick={changeDeviceTeam}>
+              {changingTeam ? "Trocando..." : "Trocar time"}
+            </button>
+          </div>
+        )}
         {message && <p className="hint">{message}</p>}
         {installCode && (
           <div className="install-card">

@@ -39,7 +39,7 @@ export function buildOwnerInstallMessage(input: OwnerInstallMessageInput) {
     "1. Abra o FanFrame Kiosk.",
     "2. Digite o codigo de instalacao.",
     "3. Aguarde aparecer a tela inicial do time.",
-    "4. Para testar internet/camera ou trocar o time instalado, pressione Ctrl + Shift + F12 e digite o PIN tecnico.",
+    "4. Para testar internet/camera, pressione Ctrl + Shift + F12 e digite o PIN tecnico.",
     "",
     "Nao altere arquivos internos do aplicativo. Configuracoes de time, preco e IA sao atualizadas remotamente pelo administrador FanFrame.",
   ].join("\n");
@@ -62,7 +62,7 @@ export function buildOwnerUpdateMessage(input: OwnerUpdateMessageInput) {
     "2. Execute o novo instalador enviado pelo administrador.",
     "3. Avance a instalacao mantendo a mesma pasta sugerida.",
     "4. Abra o FanFrame Kiosk e confira se a tela inicial do time aparece.",
-    "5. Para testar internet/camera/pagamentos ou trocar o time instalado, pressione Ctrl + Shift + F12 e digite o PIN tecnico.",
+    "5. Para testar internet/camera/pagamentos, pressione Ctrl + Shift + F12 e digite o PIN tecnico.",
     "",
     "Importante: nao desinstale o app antes de atualizar. Assim o pareamento local do totem continua salvo.",
     "Nao altere arquivos internos do aplicativo. Configuracoes de time, preco e IA sao atualizadas remotamente pelo administrador FanFrame.",
