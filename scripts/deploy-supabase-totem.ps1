@@ -1,5 +1,6 @@
 param(
   [string]$ProjectRef = "dzfbjscrpxhpyeimggut",
+  [string]$DbPassword = $env:SUPABASE_DB_PASSWORD,
   [switch]$IncludePagBank
 )
 
@@ -27,7 +28,14 @@ if ($IncludePagBank) {
 }
 
 Write-Host "Aplicando migrations no projeto $ProjectRef..."
-npx supabase db push --project-ref $ProjectRef
+if ($DbPassword) {
+  npx supabase link --project-ref $ProjectRef --password $DbPassword
+  npx supabase db push --password $DbPassword --linked
+} else {
+  Write-Host "SUPABASE_DB_PASSWORD nao definido. Usando projeto ja linkado e solicitacao interativa do CLI se necessario."
+  npx supabase link --project-ref $ProjectRef
+  npx supabase db push --linked
+}
 
 foreach ($fn in $functions) {
   Write-Host "Publicando function $fn..."
