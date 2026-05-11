@@ -762,10 +762,14 @@ function Devices({ role }: { role: Role | null }) {
   async function save(event: FormEvent) {
     event.preventDefault();
     setMessage("");
+    const generatedCode =
+      form.device_code ||
+      slugify([form.city, form.venue, form.label].filter(Boolean).join("-")) ||
+      `totem-${Date.now()}`;
     const payload: Record<string, unknown> = {
       team_id: form.team_id,
-      device_code: form.device_code,
-      label: form.label,
+      device_code: generatedCode,
+      label: form.label || form.venue || generatedCode,
       location: form.location,
       city: form.city,
       venue: form.venue,
@@ -835,46 +839,99 @@ function Devices({ role }: { role: Role | null }) {
     <>
       <PageHeader title="Totens" subtitle="Cadastre cada computador do totem e acompanhe se esta funcionando." />
       {canEditDevices && (
-        <section className="panel">
-          <h2>Adicionar computador do totem</h2>
-          <form className="inline-form" onSubmit={save}>
-            <select value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })} required>
-              <option value="">Time</option>
-              {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-            <input placeholder="Codigo do totem (ex: SHOP-SP-01)" value={form.device_code} onChange={(e) => setForm({ ...form, device_code: e.target.value })} required />
-            <input placeholder="Nome para identificar" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
-            <input placeholder="Cidade" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-            <input placeholder="Ponto de instalacao" value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} />
-            <input placeholder="Local exato" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-            <input placeholder="Responsavel no local" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} />
-            <input placeholder="Email do responsavel" value={form.owner_email} onChange={(e) => setForm({ ...form, owner_email: e.target.value })} />
-            <input placeholder="WhatsApp do responsavel" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
-            <input placeholder="Versao que deve estar instalada" value={form.expected_app_version} onChange={(e) => setForm({ ...form, expected_app_version: e.target.value })} />
-            <select value={form.update_channel} onChange={(e) => setForm({ ...form, update_channel: e.target.value })}>
-              <option value="stable">Producao</option>
-              <option value="beta">Teste</option>
-              <option value="maintenance">Manutencao</option>
-            </select>
-            <input placeholder="Chave local do totem" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
-            <input
-              placeholder="PIN tecnico do dono (4 a 8 digitos)"
-              inputMode="numeric"
-              minLength={4}
-              maxLength={8}
-              pattern="[0-9]{4,8}"
-              value={form.support_pin}
-              onChange={(e) => setForm({ ...form, support_pin: e.target.value.replace(/\D/g, "").slice(0, 8) })}
-            />
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              <option value="active">Funcionando</option>
-              <option value="maintenance">Em manutencao</option>
-              <option value="disabled">Desabilitado</option>
-            </select>
-            <button className="primary">Salvar totem</button>
-            <textarea placeholder="Observacoes para instalacao e suporte" value={form.installation_notes} onChange={(e) => setForm({ ...form, installation_notes: e.target.value })} rows={2} />
+        <section className="panel device-create-panel">
+          <div className="section-heading">
+            <div>
+              <h2>Novo totem</h2>
+              <p>Preencha o basico. Codigo, versao e PIN podem ficar automaticos.</p>
+            </div>
+            <button className="primary" form="device-form">Salvar totem</button>
+          </div>
+          <form id="device-form" className="simple-device-form" onSubmit={save}>
+            <div className="form-block">
+              <div className="form-block-title">1. Onde vai ficar</div>
+              <div className="compact-grid">
+                <label>Time
+                  <select value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })} required>
+                    <option value="">Escolha o time</option>
+                    {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </label>
+                <label>Nome do totem
+                  <input placeholder="Ex: Shopping Tatuape - Entrada A" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+                </label>
+                <label>Cidade
+                  <input placeholder="Ex: Sao Paulo" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                </label>
+                <label>Ponto
+                  <input placeholder="Ex: Shopping, loja ou estadio" value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} />
+                </label>
+                <label>Local dentro do ponto
+                  <input placeholder="Ex: perto da praça de alimentacao" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+                </label>
+              </div>
+            </div>
+
+            <div className="form-block">
+              <div className="form-block-title">2. Quem cuida no local</div>
+              <div className="compact-grid owner-grid">
+                <label>Nome do responsavel
+                  <input placeholder="Nome do dono ou gerente" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} />
+                </label>
+                <label>WhatsApp
+                  <input placeholder="Telefone para suporte" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
+                </label>
+                <label>Email
+                  <input placeholder="Opcional" value={form.owner_email} onChange={(e) => setForm({ ...form, owner_email: e.target.value })} />
+                </label>
+              </div>
+            </div>
+
+            <details className="advanced-box">
+              <summary>Configuracao avancada</summary>
+              <div className="compact-grid">
+                <label>Codigo interno
+                  <input placeholder="Deixe vazio para criar automatico" value={form.device_code} onChange={(e) => setForm({ ...form, device_code: e.target.value })} />
+                </label>
+                <label>Versao esperada
+                  <input value={form.expected_app_version} onChange={(e) => setForm({ ...form, expected_app_version: e.target.value })} />
+                </label>
+                <label>Canal
+                  <select value={form.update_channel} onChange={(e) => setForm({ ...form, update_channel: e.target.value })}>
+                    <option value="stable">Producao</option>
+                    <option value="beta">Teste</option>
+                    <option value="maintenance">Manutencao</option>
+                  </select>
+                </label>
+                <label>Status inicial
+                  <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                    <option value="active">Funcionando</option>
+                    <option value="maintenance">Em manutencao</option>
+                    <option value="disabled">Desabilitado</option>
+                  </select>
+                </label>
+                <label>Chave local do totem
+                  <input placeholder="Opcional" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
+                </label>
+                <label>PIN tecnico do dono
+                  <input
+                    placeholder="Opcional, 4 a 8 digitos"
+                    inputMode="numeric"
+                    minLength={4}
+                    maxLength={8}
+                    pattern="[0-9]{4,8}"
+                    value={form.support_pin}
+                    onChange={(e) => setForm({ ...form, support_pin: e.target.value.replace(/\D/g, "").slice(0, 8) })}
+                  />
+                </label>
+              </div>
+            </details>
+
+            <label>Observacoes
+              <textarea placeholder="Algo importante para instalacao ou suporte" value={form.installation_notes} onChange={(e) => setForm({ ...form, installation_notes: e.target.value })} rows={2} />
+            </label>
           </form>
-          <p className="hint">O PIN tecnico e para o dono testar internet, camera e reiniciar o app. Ao gerar o codigo de instalacao, o painel cria um PIN novo automaticamente para enviar ao dono do totem.</p>
+          <p className="hint">Depois de salvar, clique em "Instalar" na lista para copiar a mensagem que voce envia ao dono do totem.</p>
           {message && <p className="hint">{message}</p>}
           {installCode && (
             <div className="install-card">
@@ -890,25 +947,33 @@ function Devices({ role }: { role: Role | null }) {
       )}
       {!canEditDevices && message && <div className="panel"><p className="hint">{message}</p></div>}
       <section className="panel">
-        <DataTable columns={["Totem", "Time", "Dono/local", "Situacao", "Instalacao", "PIN", "Atualizacao", "Ultimo contato", "Acoes"]}>
+        <div className="section-heading table-heading">
+          <div>
+            <h2>Totens cadastrados</h2>
+            <p>Resumo rapido para saber se precisa agir.</p>
+          </div>
+        </div>
+        <DataTable columns={["Totem", "Time", "Saude", "Instalacao", "Ultimo contato", "Acoes"]}>
           {devices.map((d) => (
             <tr key={d.id}>
-              <td><strong>{d.label || d.device_code}</strong><br /><span>{d.device_code}</span><br /><span>{buildDeviceLocationLabel(d)}</span></td>
+              <td className="device-name-cell">
+                <strong>{d.label || d.device_code}</strong>
+                <span>{buildDeviceLocationLabel(d)}</span>
+                <span>{d.owner_name || d.owner_phone ? `${d.owner_name || "Responsavel"} ${d.owner_phone ? `- ${d.owner_phone}` : ""}` : d.device_code}</span>
+              </td>
               <td>{d.teams?.name || "-"}</td>
-              <td>{d.owner_name || "-"}<br /><span>{d.owner_phone || d.owner_email || ""}</span></td>
-              <td><Badge value={deviceHealthLabel(d)} /></td>
+              <td>
+                <Badge value={deviceHealthLabel(d)} />
+                <br />
+                <span>{friendly(getDeviceVersionStatus(d))}</span>
+              </td>
               <td><Badge value={d.install_status || "not_paired"} /></td>
-              <td><Badge value={d.support_pin_hash ? "configurado" : "nao definido"} /></td>
-              <td>{d.app_version || "-"} / {d.expected_app_version || "-"}<br /><Badge value={getDeviceVersionStatus(d)} /></td>
               <td>{dateTime(d.last_seen_at)}</td>
               <td className="actions-cell">
                 <Link className="secondary link-button" to={`/totens/${d.id}`}>Abrir</Link>
-                {canEditDevices && <button className="secondary" onClick={() => generateInstall(d)}>Codigo p/ dono</button>}
-                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "sync_config")}>Atualizar dados</button>}
-                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "send_diagnostics")}>Pedir diagnostico</button>}
-                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "restart_app")}>Reiniciar</button>}
-                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Liberar venda</button>}
-                {canOperate && <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Pausar venda</button>}
+                {canEditDevices && <button className="secondary" onClick={() => generateInstall(d)}>Instalar</button>}
+                {canOperate && d.status === "maintenance" && <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Liberar venda</button>}
+                {canOperate && d.status !== "maintenance" && <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Pausar</button>}
               </td>
             </tr>
           ))}

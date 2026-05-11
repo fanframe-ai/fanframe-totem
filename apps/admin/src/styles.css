@@ -75,6 +75,10 @@ label { display: grid; gap: 7px; color: #374151; font-size: 13px; font-weight: 7
 .panel h2, .subpanel h3 { margin: 0 0 14px; font-size: 18px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.section-heading { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; margin-bottom: 16px; }
+.section-heading h2 { margin: 0; }
+.section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.table-heading { margin-bottom: 10px; }
 
 .table-wrap { overflow: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -98,13 +102,24 @@ tbody tr:hover { background: #f9fafb; }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .inline-form { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; align-items: end; }
 .inline-form textarea { grid-column: span 2; }
+.device-create-panel { padding: 20px; }
+.simple-device-form { display: grid; gap: 18px; }
+.form-block { display: grid; gap: 10px; }
+.form-block-title { color: #111827; font-size: 13px; font-weight: 800; }
+.compact-grid { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; }
+.owner-grid { grid-template-columns: 1.1fr .9fr 1fr; }
+.advanced-box { border: 1px solid var(--border); border-radius: 8px; background: #f9fafb; padding: 12px; }
+.advanced-box summary { cursor: pointer; color: #374151; font-size: 13px; font-weight: 800; }
+.advanced-box[open] summary { margin-bottom: 12px; }
+.device-name-cell { display: grid; gap: 4px; min-width: 240px; }
+.device-name-cell strong { line-height: 1.25; }
 .notice { margin-top: 14px; display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 14px; border-radius: 8px; background: #eef2ff; color: #312e81; }
 .notice span { color: #4338ca; }
 .install-card { margin-top: 14px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; padding: 14px; border-radius: 8px; background: #eef2ff; color: #312e81; }
 .install-card strong, .install-card span { display: block; }
 .install-card span { margin-top: 4px; color: #4338ca; }
 .install-card textarea { grid-column: 1 / -1; min-height: 180px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.55; color: #111827; }
-.actions-cell { min-width: 360px; }
+.actions-cell { min-width: 220px; }
 .actions-cell button, .actions-cell .link-button { min-height: 32px; margin: 3px; padding: 0 10px; font-size: 12px; }
 .device-actions { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
 .device-actions .notice, .device-actions .install-card, .device-actions .hint { grid-column: 1 / -1; margin: 0; }
@@ -126,4 +141,5 @@ tbody tr:hover { background: #f9fafb; }
   .stats-grid { grid-template-columns: repeat(3, 1fr); }
   .two-col { grid-template-columns: 1fr; }
   .asset-grid { grid-template-columns: repeat(2, 1fr); }
+  .compact-grid, .owner-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
 }
