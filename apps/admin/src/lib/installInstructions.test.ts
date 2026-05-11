@@ -18,6 +18,7 @@ describe("install instructions", () => {
     expect(message).toContain("Codigo de instalacao: SPORT-ABCD");
     expect(message).toContain("PIN tecnico: 123456");
     expect(message).toContain("Ctrl + Shift + F12");
+    expect(message).toContain("trocar o time instalado");
   });
 
   it("builds a copy-ready owner update message", () => {
@@ -34,5 +35,6 @@ describe("install instructions", () => {
     expect(message).toContain("Nova versao esperada: 0.2.0");
     expect(message).toContain("nao desinstale");
     expect(message).toContain("Ctrl + Shift + F12");
+    expect(message).toContain("trocar o time instalado");
   });
 });

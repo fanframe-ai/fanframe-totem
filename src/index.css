@@ -219,6 +219,11 @@
     color: #111827;
   }
 
+  .technical-panel .technical-danger-button {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
   .technical-reset-confirm {
     display: grid;
     gap: 12px;

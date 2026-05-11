@@ -893,12 +893,13 @@ export default function KioskPage() {
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
               {!repairConfirm ? (
-                <button onClick={() => setRepairConfirm(true)}>Reparear este totem</button>
+                <button className="technical-danger-button" onClick={() => setRepairConfirm(true)}>Sair deste time</button>
               ) : (
                 <div className="technical-reset-confirm">
-                  <p>Isso remove o pareamento local. Use somente quando o administrador enviar um novo codigo de instalacao.</p>
-                  <button onClick={resetPairing}>Confirmar repareamento</button>
-                  <button onClick={() => setRepairConfirm(false)}>Cancelar repareamento</button>
+                  <strong>Trocar o time deste totem?</strong>
+                  <p>Isso apaga a instalacao local e volta para a tela de codigo. Use somente quando o administrador enviar um novo codigo de instalacao para outro time.</p>
+                  <button className="technical-danger-button" onClick={resetPairing}>Sim, trocar time</button>
+                  <button onClick={() => setRepairConfirm(false)}>Cancelar</button>
                 </div>
               )}
               <button onClick={() => {
