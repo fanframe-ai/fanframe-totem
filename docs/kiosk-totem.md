@@ -44,7 +44,7 @@ Campos uteis:
 - `payments.plugpagCommand`: comando local homologado com PlugPag.
 - `payments.plugpagArgs`: argumentos do comando PlugPag.
 
-Enquanto voce nao tiver API PagBank, use `simulatePayments: true` somente para laboratorio, webcam, IA e validacao do fluxo.
+Use `simulatePayments: true` somente para laboratorio sem cobranca real. Com sandbox ou producao PagBank ativo, deixe pagamentos simulados desligados.
 
 ## Admin
 
@@ -79,18 +79,17 @@ Functions usadas pelo totem:
 - `create-delivery-link`
 - `generate-tryon`
 - `replicate-webhook`
-- `pagbank-webhook` (quando PagBank estiver liberado)
+- `pagbank-webhook`
 
-Secrets esperados agora:
+Secrets esperados:
 
 - `REPLICATE_API_TOKEN`
-- `KIOSK_SIMULATE_PAYMENTS=true` apenas para teste sem PagBank
-
-Secrets esperados quando PagBank estiver liberado:
-
 - `PAGBANK_API_TOKEN`
 - `PAGBANK_API_BASE`
 - `PAGBANK_NOTIFICATION_URL`
+- `KIOSK_SIMULATE_PAYMENTS=false` para sandbox/producao PagBank
+
+Para teste sem cobranca real, use `KIOSK_SIMULATE_PAYMENTS=true` somente em laboratorio.
 
 ## Windows
 
@@ -116,6 +115,13 @@ npm run electron:dev
 ## PagBank E PlugPag
 
 PIX usa a API de pedidos/QR Code do PagBank via `create-kiosk-payment`. Sem `PAGBANK_API_TOKEN`, o PIX real fica bloqueado antes de criar cobranca.
+
+Para validar o sandbox PagBank direto pela API:
+
+```powershell
+$env:PAGBANK_API_TOKEN = "token-sandbox"
+.\scripts\test-pagbank-sandbox.ps1
+```
 
 Cartao usa a bridge Electron. Em producao, configure `payments.plugpagCommand` para chamar o adaptador local homologado com PlugPag. O comando recebe JSON por stdin e deve responder JSON por stdout:
 

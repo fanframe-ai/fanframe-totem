@@ -41,4 +41,4 @@ VITE_SUPABASE_URL="https://seu-project-ref.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="sua-chave-publishable"
 ```
 
-Secrets de backend ficam no Supabase. Enquanto a conta PagBank nao estiver liberada, use `KIOSK_SIMULATE_PAYMENTS=true` apenas para testes de laboratorio. Depois configure `PAGBANK_API_TOKEN` e desligue pagamentos simulados.
+Secrets de backend ficam no Supabase. Para PIX PagBank, configure `PAGBANK_API_TOKEN`, `PAGBANK_API_BASE`, `PAGBANK_NOTIFICATION_URL` e deixe `KIOSK_SIMULATE_PAYMENTS=false`. Use pagamentos simulados apenas em laboratorio sem cobranca real.

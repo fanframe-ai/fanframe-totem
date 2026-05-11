@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const PAGBANK_API_BASE = Deno.env.get("PAGBANK_API_BASE") || "https://sandbox.api.pagseguro.com";
+const PAGBANK_API_BASE = (Deno.env.get("PAGBANK_API_BASE") || "https://sandbox.api.pagseguro.com").replace(/\/+$/, "");
 const PAGBANK_TOKEN = Deno.env.get("PAGBANK_API_TOKEN");
 const NOTIFICATION_URL =
   Deno.env.get("PAGBANK_NOTIFICATION_URL") || `${SUPABASE_URL}/functions/v1/pagbank-webhook`;
