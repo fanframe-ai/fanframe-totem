@@ -5,7 +5,7 @@
 - PC Windows ligado ao totem.
 - Internet estavel.
 - Webcam conectada.
-- Maquininha PagBank/PlugPag configurada quando houver pagamento por cartao.
+- Maquininha PlugPag configurada quando houver pagamento por cartao real.
 - Mensagem de instalacao enviada pelo administrador FanFrame, com codigo de instalacao, PIN tecnico, time e local.
 
 ## Primeiro Acesso
@@ -23,7 +23,7 @@
 - A internet aparece como online no modo tecnico.
 - A camera foi detectada no modo tecnico.
 - O diagnostico foi enviado para o painel.
-- A maquininha PagBank esta conectada quando houver pagamento por cartao.
+- A maquininha PlugPag esta conectada quando houver pagamento por cartao real.
 - O administrador confirmou que o totem aparece online no painel.
 
 ## Testes Locais

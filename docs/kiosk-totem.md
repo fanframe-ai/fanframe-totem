@@ -2,91 +2,122 @@
 
 ## Visao Geral
 
-O modo kiosk roda o FanFrame como um software desktop Windows via Electron. Cada PC fica preso a um time por configuracao local e usa o admin web para controlar assets, preco, branding e status.
+O modo kiosk roda o FanFrame como software desktop Windows via Electron. Cada PC fica preso a um totem cadastrado no painel admin e recebe time, preco, camisas, cenarios e prompt pela nuvem.
 
-Fluxo do usuario:
+Fluxo do cliente:
 
-1. Home do time
-2. Escolha de camisa
-3. Escolha de cenario
-4. Pagamento PIX ou cartao
-5. Captura por webcam
-6. Geracao IA
-7. QR Code para download da imagem
-8. Reset automatico
+1. Home do time.
+2. Escolha de camisa.
+3. Escolha de cenario.
+4. Pagamento PIX ou cartao.
+5. Captura por webcam.
+6. Geracao IA.
+7. QR Code para download da imagem.
+8. Reset automatico.
 
-## Configuracao Local
+## Modelo De Instalacao
 
-Copie `kiosk.config.example.json` para `kiosk.config.json` no diretorio do app ou defina `FANFRAME_KIOSK_CONFIG` apontando para o arquivo.
+O dono do totem nao edita arquivos tecnicos.
 
-Campos principais:
+1. Admin cria o time no painel.
+2. Admin cadastra o totem em `Totens`.
+3. Admin clica em `Instalar` e copia a mensagem de instalacao.
+4. Dono instala o app Windows.
+5. App abre em `Conectar este totem`.
+6. Dono digita o codigo de instalacao.
+7. App baixa a configuracao e salva a identidade local.
 
-- `teamSlug`: slug do time criado no admin.
-- `deviceCode`: identificador unico do PC/totem.
-- `deviceSecret`: segredo compartilhado com as Edge Functions para registrar/validar o dispositivo.
-- `simulatePayments`: `true` para homologacao sem maquininha.
-- `payments.plugpagCommand`: comando local que integra com o SDK PlugPag homologado.
+Depois do pareamento, o PC usa `deviceCode + deviceSecret` salvos localmente. Pagamentos e health checks so funcionam se o totem existir, estiver ativo e estiver pareado.
+
+## Configuracao Local Opcional
+
+`kiosk.config.json` e apenas para suporte tecnico do PC. O fluxo normal usa pareamento por codigo.
+
+Campos uteis:
+
+- `fullscreen`: abre em tela cheia.
+- `kiosk`: ativa modo kiosk.
+- `autoLaunch`: inicia junto com o Windows quando instalado.
+- `blockShortcuts`: bloqueia atalhos comuns de fuga.
+- `simulatePayments`: aprova pagamentos em modo teste.
+- `payments.simulate`: alternativa para modo teste.
+- `payments.plugpagCommand`: comando local homologado com PlugPag.
+- `payments.plugpagArgs`: argumentos do comando PlugPag.
+
+Enquanto voce nao tiver API PagBank, use `simulatePayments: true` somente para laboratorio, webcam, IA e validacao do fluxo.
 
 ## Admin
 
-No painel do time, aba `Totem`:
+No painel:
 
-- Ative o modo totem.
-- Configure preco em centavos.
-- Ajuste timeout.
-- Escolha se o totem mostra a etapa de camisa e/ou cenario.
+- crie times;
+- configure preco em reais;
+- envie camisas e cenarios;
+- ajuste a instrucao da IA;
+- cadastre totens e contatos dos donos;
+- gere codigo de instalacao;
+- veja online/offline, erros, versao e instalacao;
+- pause/libere vendas remotamente;
+- solicite diagnostico e reinicio do app.
 
 ## Supabase
 
-Para usar um projeto novo, atualize:
+Para usar um projeto novo:
 
-- `.env` com `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`.
-- `supabase/config.toml` com o `project_id` do novo projeto.
+1. Atualize `.env` e `apps/admin/.env` com `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`.
+2. Confira `supabase/config.toml` com o `project_id`.
+3. Aplique migrations.
+4. Publique as Edge Functions.
+5. Configure secrets.
 
-Aplique a migration:
+Functions usadas pelo totem:
 
-```bash
-supabase db push
-```
-
-Depois publique as Edge Functions novas:
-
+- `redeem-kiosk-install-code`
+- `report-kiosk-health`
+- `poll-kiosk-commands`
 - `create-kiosk-payment`
-- `pagbank-webhook`
 - `create-delivery-link`
 - `generate-tryon`
 - `replicate-webhook`
+- `pagbank-webhook` (quando PagBank estiver liberado)
 
-Secrets esperados:
+Secrets esperados agora:
 
 - `REPLICATE_API_TOKEN`
+- `KIOSK_SIMULATE_PAYMENTS=true` apenas para teste sem PagBank
+
+Secrets esperados quando PagBank estiver liberado:
+
 - `PAGBANK_API_TOKEN`
-- `PAGBANK_API_BASE` opcional, padrao `https://sandbox.api.pagseguro.com`
-- `PAGBANK_NOTIFICATION_URL` opcional
-- `KIOSK_SIMULATE_PAYMENTS=true` apenas para homologacao
+- `PAGBANK_API_BASE`
+- `PAGBANK_NOTIFICATION_URL`
 
 ## Windows
 
 Build do app:
 
-```bash
+```powershell
 npm run dist:win
 ```
 
-O instalador sai em `release/FanFrame Kiosk Setup 0.0.0.exe`.
+Para validar sem gerar instalador completo:
 
-Para testar com Vite em uma janela Electron:
+```powershell
+npm run dist:win:dir
+```
 
-```bash
+Para testar com Vite em janela Electron:
+
+```powershell
 npm run dev
 npm run electron:dev
 ```
 
-## PagBank
+## PagBank E PlugPag
 
-PIX usa a API de pedidos/QR Code do PagBank via `create-kiosk-payment`.
+PIX usa a API de pedidos/QR Code do PagBank via `create-kiosk-payment`. Sem `PAGBANK_API_TOKEN`, o PIX real fica bloqueado antes de criar cobranca.
 
-Cartao usa a bridge Electron. Em producao, configure `payments.plugpagCommand` para chamar o adaptador local homologado com PlugPag. O comando recebe o JSON do pagamento por stdin e deve responder JSON por stdout:
+Cartao usa a bridge Electron. Em producao, configure `payments.plugpagCommand` para chamar o adaptador local homologado com PlugPag. O comando recebe JSON por stdin e deve responder JSON por stdout:
 
 ```json
 {
@@ -96,4 +127,4 @@ Cartao usa a bridge Electron. Em producao, configure `payments.plugpagCommand` p
 }
 ```
 
-Enquanto `simulatePayments` estiver ativo, o totem aprova pagamentos localmente para validar fluxo, webcam e IA.
+Enquanto `simulatePayments` estiver ativo, o totem aprova pagamentos localmente para validar fluxo, webcam, IA e QR Code.

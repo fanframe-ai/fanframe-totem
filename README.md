@@ -28,6 +28,7 @@ npm run dist:win
 
 - Guia tecnico: `docs/kiosk-totem.md`
 - Guia do dono do totem: `docs/kiosk-installation-owner-guide.md`
+- Checklist de entrada em operacao: `docs/go-live-checklist.md`
 - Plano de rede gerenciada: `docs/superpowers/specs/2026-05-10-kiosk-network-operations-design.md`
 
 ## Variaveis
@@ -39,3 +40,5 @@ VITE_SUPABASE_PROJECT_ID="seu-project-ref"
 VITE_SUPABASE_URL="https://seu-project-ref.supabase.co"
 VITE_SUPABASE_PUBLISHABLE_KEY="sua-chave-publishable"
 ```
+
+Secrets de backend ficam no Supabase. Enquanto a conta PagBank nao estiver liberada, use `KIOSK_SIMULATE_PAYMENTS=true` apenas para testes de laboratorio. Depois configure `PAGBANK_API_TOKEN` e desligue pagamentos simulados.

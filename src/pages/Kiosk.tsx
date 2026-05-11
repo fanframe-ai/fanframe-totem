@@ -9,6 +9,7 @@ import { getAssetFullUrl } from "@/config/fanframe";
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import {
   buildDeliveryUrl,
+  classifyKioskError,
   pollKioskCommand,
   redeemInstallCode,
   reportKioskHealth,
@@ -242,12 +243,13 @@ export default function KioskPage() {
   const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
     const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
     const paymentStatus = await window.fanframeKiosk?.getPaymentStatus?.().catch(() => null);
+    const friendlyError = error ? classifyKioskError(error) : null;
 
     return {
       appVersion: status?.appVersion || config?.appVersion || "browser",
       online: status?.online ?? navigator.onLine,
       currentScreen: step,
-      lastErrorCode: null,
+      lastErrorCode: friendlyError?.code || null,
       lastErrorMessage: error,
       paymentStatus: paymentStatus || {
         ready: config?.simulatePayments === true,
@@ -917,6 +919,7 @@ export default function KioskPage() {
     "--team-primary": team.primary_color,
     "--team-secondary": team.secondary_color,
   } as React.CSSProperties) : undefined;
+  const maintenanceError = error ? classifyKioskError(error) : null;
 
   if (step === "pairing") {
     return (
@@ -962,7 +965,12 @@ export default function KioskPage() {
         <section className="text-center max-w-2xl">
           <WifiOff className="w-24 h-24 mx-auto mb-8 text-destructive" />
           <h1 className="text-6xl font-black uppercase leading-none mb-6">Totem indisponivel</h1>
-          <p className="text-2xl leading-relaxed text-muted-foreground mb-10">{error || "Verifique conexao, pagamentos e configuracao."}</p>
+          <p className="text-3xl font-black leading-tight mb-4">
+            {maintenanceError ? `${maintenanceError.code} - ${maintenanceError.title}` : "Verifique conexao, pagamentos e configuracao."}
+          </p>
+          <p className="text-2xl leading-relaxed text-muted-foreground mb-10">
+            {maintenanceError?.action || error || "Chame o suporte se o problema continuar."}
+          </p>
           <KioskButton variant="secondary" onClick={retryBoot} className="w-full">
             Tentar novamente
           </KioskButton>

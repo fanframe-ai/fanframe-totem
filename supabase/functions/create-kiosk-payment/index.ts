@@ -82,9 +82,13 @@ async function resolveTeam(supabase: ReturnType<typeof createClient>, slug?: str
 async function resolveDevice(
   supabase: ReturnType<typeof createClient>,
   teamId: string,
-  deviceCode = "default",
+  deviceCode = "",
   deviceSecret = "",
 ) {
+  if (!deviceCode || !deviceSecret) {
+    throw new Error("Totem nao pareado. Gere um codigo de instalacao no painel admin.");
+  }
+
   const secretHash = deviceSecret ? await sha256Hex(deviceSecret) : null;
 
   const { data: existing, error } = await supabase
@@ -94,42 +98,28 @@ async function resolveDevice(
     .maybeSingle();
 
   if (error) throw error;
-
-  if (existing) {
-    if (existing.team_id !== teamId) {
-      throw new Error("Device is registered for another team");
-    }
-    if (existing.status !== "active") {
-      throw new Error("Device is not active");
-    }
-    if (existing.device_secret_hash && existing.device_secret_hash !== secretHash) {
-      throw new Error("Invalid device secret");
-    }
-    await supabase
-      .from("kiosk_devices")
-      .update({ last_seen_at: new Date().toISOString() })
-      .eq("id", existing.id);
-    return existing;
+  if (!existing) {
+    throw new Error("Totem nao encontrado no painel admin.");
   }
 
-  if (!deviceSecret) {
-    throw new Error("New kiosk devices require a device_secret");
+  if (existing.team_id !== teamId) {
+    throw new Error("Totem cadastrado para outro time.");
+  }
+  if (existing.status !== "active") {
+    throw new Error("Totem pausado ou desativado no painel admin.");
+  }
+  if (existing.install_status && existing.install_status !== "paired") {
+    throw new Error("Totem ainda nao foi instalado pelo codigo de pareamento.");
+  }
+  if (!existing.device_secret_hash || existing.device_secret_hash !== secretHash) {
+    throw new Error("Chave local do totem invalida.");
   }
 
-  const { data: created, error: createError } = await supabase
+  await supabase
     .from("kiosk_devices")
-    .insert({
-      team_id: teamId,
-      device_code: deviceCode,
-      device_secret_hash: secretHash,
-      label: deviceCode,
-      last_seen_at: new Date().toISOString(),
-    })
-    .select("*")
-    .single();
-
-  if (createError) throw createError;
-  return created;
+    .update({ last_seen_at: new Date().toISOString() })
+    .eq("id", existing.id);
+  return existing;
 }
 
 async function createPixOrder(params: {
@@ -200,6 +190,11 @@ async function createPayment(req: KioskPaymentRequest) {
   const amountCents = team.kiosk_price_cents ?? 0;
   const currency = team.kiosk_currency || "BRL";
   const referenceId = `kiosk-${crypto.randomUUID()}`;
+  const shouldSimulate = req.simulate || Deno.env.get("KIOSK_SIMULATE_PAYMENTS") === "true";
+
+  if (method === "pix" && !shouldSimulate && !PAGBANK_TOKEN) {
+    throw new Error("PagBank PIX ainda nao configurado. Use pagamento simulado para testes ou configure PAGBANK_API_TOKEN.");
+  }
 
   const { data: session, error: sessionError } = await supabase
     .from("kiosk_sessions")
@@ -253,7 +248,6 @@ async function createPayment(req: KioskPaymentRequest) {
     });
   }
 
-  const shouldSimulate = req.simulate || Deno.env.get("KIOSK_SIMULATE_PAYMENTS") === "true";
   if (shouldSimulate) {
     const qrCodeText = `fanframe-simulated-pix:${referenceId}:${amountCents}`;
     await supabase

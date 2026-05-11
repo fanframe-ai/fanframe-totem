@@ -27,7 +27,7 @@ npm run dist:win:dir
 
 1. No painel admin, crie ou atualize o time.
 2. Cadastre o totem com cidade, ponto, local, responsavel e versao esperada.
-3. Clique em `Codigo`.
+3. Clique em `Instalar`.
 4. Copie a mensagem de instalacao gerada pelo painel.
 5. Envie a mensagem e o instalador ao dono do totem.
 
@@ -74,5 +74,6 @@ Quando a versao instalada estiver diferente da versao esperada, o painel marca o
 ## Limites Atuais
 
 - Atualizacao automatica silenciosa ainda nao esta implementada.
+- Enquanto a API PagBank nao estiver liberada, use `simulatePayments` apenas em laboratorio.
 - Pagamento por cartao depende do SDK/ambiente PlugPag instalado e homologado no PC Windows.
 - Sem internet, o totem nao vende porque depende de Supabase, PagBank e IA.
