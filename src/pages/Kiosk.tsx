@@ -1,6 +1,6 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type Dispatch, type FormEvent, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Camera, CheckCircle2, ChevronRight, CreditCard, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
+import { Camera, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
@@ -60,6 +60,11 @@ type TechnicalChecks = {
   camera: TechnicalCheck;
   payments: TechnicalCheck;
   diagnostics: TechnicalCheck;
+};
+
+type RailScrollState = {
+  canPrev: boolean;
+  canNext: boolean;
 };
 
 const browserPreviewConfig: KioskRuntimeConfig = {
@@ -146,6 +151,8 @@ export default function KioskPage() {
   const [technicalStatus, setTechnicalStatus] = useState<KioskTechnicalStatus | null>(null);
   const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
   const [repairConfirm, setRepairConfirm] = useState(false);
+  const [shirtRailScroll, setShirtRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
+  const [backgroundRailScroll, setBackgroundRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
   const [selectedBackground, setSelectedBackground] = useState<TeamBackground | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -205,10 +212,32 @@ export default function KioskPage() {
     window.location.reload();
   }, []);
 
-  const scrollRailForward = useCallback((rail: HTMLDivElement | null) => {
-    if (!rail) return;
-    rail.scrollBy({ left: Math.round(rail.clientWidth * 0.82), behavior: "smooth" });
+  const updateRailScrollState = useCallback((rail: HTMLDivElement | null, setState: Dispatch<SetStateAction<RailScrollState>>) => {
+    if (!rail) {
+      setState({ canPrev: false, canNext: false });
+      return;
+    }
+
+    const maxScroll = rail.scrollWidth - rail.clientWidth;
+    setState({
+      canPrev: rail.scrollLeft > 8,
+      canNext: rail.scrollLeft < maxScroll - 8,
+    });
   }, []);
+
+  const scrollRail = useCallback((rail: HTMLDivElement | null, direction: "prev" | "next") => {
+    if (!rail) return;
+    const distance = Math.round(rail.clientWidth * 0.72);
+    rail.scrollBy({ left: direction === "next" ? distance : -distance, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      updateRailScrollState(shirtRailRef.current, setShirtRailScroll);
+      updateRailScrollState(backgroundRailRef.current, setBackgroundRailScroll);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step, updateRailScrollState, visibleBackgrounds.length, visibleShirts.length]);
 
   const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
     const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
@@ -983,33 +1012,48 @@ export default function KioskPage() {
             <div className="relative flex-1 min-h-0">
               <div
                 ref={shirtRailRef}
-                className="h-full flex gap-5 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory pr-28 pb-2"
+                onScroll={() => updateRailScrollState(shirtRailRef.current, setShirtRailScroll)}
+                className="h-full flex items-center gap-6 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory px-24 py-8"
               >
                 {visibleShirts.map((shirt) => (
                   <button
                     key={shirt.id}
                     onClick={() => setSelectedShirt(shirt)}
-                    className={`snap-start shrink-0 w-[46%] h-full rounded-lg border-2 p-5 bg-card text-left transition flex flex-col ${
-                      selectedShirt?.id === shirt.id ? "border-primary bg-accent scale-[1.01]" : "border-border"
+                    className={`snap-center shrink-0 w-[410px] h-[640px] rounded-lg border-2 p-5 bg-card text-left transition flex flex-col shadow-[0_18px_42px_rgb(0_0_0_/_0.28)] ${
+                      selectedShirt?.id === shirt.id ? "border-primary bg-accent scale-[1.015]" : "border-border"
                     }`}
                   >
-                    <div className="aspect-square rounded-md bg-secondary mb-5 overflow-hidden shrink-0">
+                    <div className="aspect-square rounded-md bg-secondary mb-6 overflow-hidden shrink-0">
                       <img src={shirt.imageUrl} alt={shirt.name} className="w-full h-full object-contain" />
                     </div>
                     <h3 className="text-2xl font-black uppercase leading-tight">{shirt.name}</h3>
-                    <p className="text-lg text-muted-foreground leading-snug mt-2 line-clamp-3">{shirt.subtitle}</p>
+                    <p className="text-lg text-muted-foreground leading-snug mt-3 line-clamp-3">{shirt.subtitle}</p>
                   </button>
                 ))}
               </div>
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-background via-background/80 to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-background via-background/80 to-transparent" />
               {visibleShirts.length > 2 && (
-                <button
-                  type="button"
-                  aria-label="Ver mais camisas"
-                  onClick={() => scrollRailForward(shirtRailRef.current)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-l-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center"
-                >
-                  <ChevronRight className="w-12 h-12" strokeWidth={3} />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    aria-label="Ver camisas anteriores"
+                    disabled={!shirtRailScroll.canPrev}
+                    onClick={() => scrollRail(shirtRailRef.current, "prev")}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-r-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center disabled:opacity-25 disabled:grayscale disabled:shadow-none disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-12 h-12" strokeWidth={3} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Ver mais camisas"
+                    disabled={!shirtRailScroll.canNext}
+                    onClick={() => scrollRail(shirtRailRef.current, "next")}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-l-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center disabled:opacity-25 disabled:grayscale disabled:shadow-none disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-12 h-12" strokeWidth={3} />
+                  </button>
+                </>
               )}
             </div>
             <footer className="shrink-0 pt-7 grid grid-cols-[0.8fr_1.2fr] gap-5">
@@ -1028,33 +1072,48 @@ export default function KioskPage() {
             <div className="relative flex-1 min-h-0">
               <div
                 ref={backgroundRailRef}
-                className="h-full flex gap-5 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory pr-28 pb-2"
+                onScroll={() => updateRailScrollState(backgroundRailRef.current, setBackgroundRailScroll)}
+                className="h-full flex items-center gap-6 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory px-24 py-8"
               >
                 {visibleBackgrounds.map((background) => (
                   <button
                     key={background.id}
                     onClick={() => setSelectedBackground(background)}
-                    className={`snap-start shrink-0 w-[78%] h-full rounded-lg border-2 p-5 bg-card text-left transition flex flex-col ${
-                      selectedBackground?.id === background.id ? "border-primary bg-accent scale-[1.01]" : "border-border"
+                    className={`snap-center shrink-0 w-[720px] h-[640px] rounded-lg border-2 p-5 bg-card text-left transition flex flex-col shadow-[0_18px_42px_rgb(0_0_0_/_0.28)] ${
+                      selectedBackground?.id === background.id ? "border-primary bg-accent scale-[1.015]" : "border-border"
                     }`}
                   >
-                    <div className="aspect-[16/9] rounded-md bg-secondary mb-5 overflow-hidden shrink-0">
+                    <div className="aspect-[16/9] rounded-md bg-secondary mb-6 overflow-hidden shrink-0">
                       <img src={background.imageUrl} alt={background.name} className="w-full h-full object-cover" />
                     </div>
                     <h3 className="text-3xl font-black uppercase leading-tight">{background.name}</h3>
-                    <p className="text-xl text-muted-foreground mt-2 line-clamp-3">{background.subtitle}</p>
+                    <p className="text-xl text-muted-foreground mt-3 line-clamp-3">{background.subtitle}</p>
                   </button>
                 ))}
               </div>
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-background via-background/80 to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-background via-background/80 to-transparent" />
               {visibleBackgrounds.length > 1 && (
-                <button
-                  type="button"
-                  aria-label="Ver mais cenarios"
-                  onClick={() => scrollRailForward(backgroundRailRef.current)}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-l-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center"
-                >
-                  <ChevronRight className="w-12 h-12" strokeWidth={3} />
-                </button>
+                <>
+                  <button
+                    type="button"
+                    aria-label="Ver cenarios anteriores"
+                    disabled={!backgroundRailScroll.canPrev}
+                    onClick={() => scrollRail(backgroundRailRef.current, "prev")}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-r-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center disabled:opacity-25 disabled:grayscale disabled:shadow-none disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-12 h-12" strokeWidth={3} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Ver mais cenarios"
+                    disabled={!backgroundRailScroll.canNext}
+                    onClick={() => scrollRail(backgroundRailRef.current, "next")}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-l-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center disabled:opacity-25 disabled:grayscale disabled:shadow-none disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-12 h-12" strokeWidth={3} />
+                  </button>
+                </>
               )}
             </div>
             <footer className="shrink-0 pt-7 grid grid-cols-[0.8fr_1.2fr] gap-5">
