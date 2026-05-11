@@ -145,6 +145,80 @@ function deviceHealthLabel(device: KioskDevice) {
   return "online";
 }
 
+const friendlyLabels: Record<string, string> = {
+  active: "Funcionando",
+  admin: "Admin",
+  attention: "Com alerta",
+  awaiting_payment: "Aguardando pagamento",
+  cancelled: "Cancelado",
+  capturing: "Tirando foto",
+  completed: "Concluido",
+  configured: "Configurado",
+  critical: "Critico",
+  debit: "Debito",
+  disabled: "Desativado",
+  error: "Erro",
+  failed: "Com erro",
+  finance: "Financeiro",
+  generating: "Gerando foto",
+  habilitado: "Ligado",
+  inativo: "Inativo",
+  info: "Informacao",
+  kiosk: "Totem",
+  maintenance: "Em manutencao",
+  not_paired: "Nao instalado",
+  offline: "Sem contato",
+  online: "Online",
+  paid: "Pago",
+  paired: "Instalado",
+  pairing: "Instalacao",
+  pagbank_pix: "PIX PagBank",
+  pending: "Pendente",
+  pix: "PIX",
+  plugpag: "Cartao",
+  processing: "Em andamento",
+  revoked: "Cancelado",
+  running: "Em andamento",
+  simulated: "Teste",
+  simulated_pix: "PIX teste",
+  succeeded: "Concluido",
+  super_admin: "Dono",
+  support: "Suporte",
+  stable: "Producao",
+  update: "Precisa atualizar",
+  beta: "Teste",
+  enter_maintenance: "Pausar vendas",
+  exit_maintenance: "Liberar vendas",
+  restart_app: "Reiniciar app",
+  send_diagnostics: "Pedir diagnostico",
+  sync_config: "Atualizar dados",
+  version: "Atualizacao",
+  warning: "Atencao",
+  web: "Site",
+  ativo: "Ativo",
+  atualizado: "Atualizado",
+  configurado: "Configurado",
+  desabilitado: "Desligado",
+  desatualizado: "Precisa atualizar",
+  "nao definido": "Nao definido",
+  "sem alvo": "Sem versao desejada",
+  "sem versao": "Sem versao informada",
+};
+
+function friendly(value: string | null | undefined) {
+  if (!value) return "-";
+  return friendlyLabels[value] || value.replace(/_/g, " ");
+}
+
+function centsToReais(cents: number | null | undefined) {
+  return ((cents || 0) / 100).toFixed(2);
+}
+
+function reaisToCents(value: string) {
+  const normalized = Number(value.replace(",", "."));
+  return Number.isFinite(normalized) ? Math.max(0, Math.round(normalized * 100)) : 0;
+}
+
 function hasRole(role: Role | null, allowed: Role[]) {
   return Boolean(role && allowed.includes(role));
 }
@@ -231,8 +305,8 @@ function Login() {
       <form className="login-card" onSubmit={submit}>
         <div>
           <p className="eyebrow">FanFrame Totens</p>
-          <h1>Admin operacional</h1>
-          <p>Controle times, totens, vendas e geracao IA remotamente.</p>
+          <h1>Painel dos totens</h1>
+          <p>Controle times, totens, vendas e fotos geradas de qualquer lugar.</p>
         </div>
         <label>
           Email
@@ -269,15 +343,15 @@ function RoleGate({ role, allowed, children }: { role: Role | null; allowed: Rol
 
 function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode }) {
   const nav = [
-    { href: "/", Icon: LayoutDashboard, label: "Dashboard", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
+    { href: "/", Icon: LayoutDashboard, label: "Inicio", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
     { href: "/times", Icon: Shirt, label: "Times", roles: ["super_admin", "admin"] as Role[] },
     { href: "/totens", Icon: Monitor, label: "Totens", roles: ["super_admin", "admin", "support"] as Role[] },
-    { href: "/sessoes", Icon: Activity, label: "Sessoes", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
+    { href: "/sessoes", Icon: Activity, label: "Vendas", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
     { href: "/pagamentos", Icon: CreditCard, label: "Pagamentos", roles: ["super_admin", "admin", "finance"] as Role[] },
-    { href: "/geracoes", Icon: ImageIcon, label: "Geracoes IA", roles: ["super_admin", "admin", "support"] as Role[] },
-    { href: "/status", Icon: AlertTriangle, label: "Status", roles: ["super_admin", "admin", "support"] as Role[] },
+    { href: "/geracoes", Icon: ImageIcon, label: "Fotos geradas", roles: ["super_admin", "admin", "support"] as Role[] },
+    { href: "/status", Icon: AlertTriangle, label: "Alertas", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/usuarios", Icon: Users, label: "Usuarios", roles: ["super_admin"] as Role[] },
-    { href: "/configuracoes", Icon: Settings, label: "Configuracoes", roles: ["super_admin", "admin"] as Role[] },
+    { href: "/configuracoes", Icon: Settings, label: "Ajustes", roles: ["super_admin", "admin"] as Role[] },
   ].filter((item) => hasRole(auth.role, item.roles));
 
   return (
@@ -287,7 +361,7 @@ function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode
           <div className="brand-mark">FF</div>
           <div>
             <strong>FanFrame</strong>
-            <span>Totens Admin</span>
+            <span>Painel remoto</span>
           </div>
         </div>
         <nav>
@@ -300,7 +374,7 @@ function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode
         </nav>
         <div className="sidebar-footer">
           <span>{auth.user?.email}</span>
-          <strong>{auth.role}</strong>
+          <strong>{friendly(auth.role)}</strong>
           <button className="ghost" onClick={() => supabase.auth.signOut()}>
             <LogOut size={16} /> Sair
           </button>
@@ -373,20 +447,36 @@ function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard da rede" subtitle="Visao geral dos totens, vendas e operacao." />
+      <PageHeader title="Inicio" subtitle="O que precisa de atencao hoje nos seus totens." />
       <section className="stats-grid">
         <StatCard label="Times ativos" value={teams.filter((t) => t.is_active).length} />
-        <StatCard label="Totens ativos" value={devices.filter((d) => d.status === "active").length} />
-        <StatCard label="Totens offline" value={devices.filter((d) => isOffline(d.last_seen_at)).length} tone="danger" />
+        <StatCard label="Totens vendendo" value={devices.filter((d) => d.status === "active").length} />
+        <StatCard label="Totens sem contato" value={devices.filter((d) => isOffline(d.last_seen_at)).length} tone="danger" />
         <StatCard label="Com alerta" value={operationalIssues.length} tone={operationalIssues.some((issue) => issue.severity === "critical") ? "danger" : "warning"} />
         <StatCard label="Vendas hoje" value={paidToday.length} tone="success" />
         <StatCard label="Receita hoje" value={money(revenue)} tone="success" />
-        <StatCard label="Versoes atrasadas" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
+        <StatCard label="Precisam atualizar" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
+      </section>
+      <section className="panel">
+        <h2>Precisa de atencao</h2>
+        {operationalIssues.length > 0 ? (
+          <DataTable columns={["Urgencia", "Totem", "Problema"]}>
+            {operationalIssues.slice(0, 8).map((issue) => (
+              <tr key={`${issue.deviceId}-${issue.type}`}>
+                <td><Badge value={issue.severity} /></td>
+                <td>{issue.deviceLabel}</td>
+                <td>{issue.message}</td>
+              </tr>
+            ))}
+          </DataTable>
+        ) : (
+          <p className="hint">Nenhum problema importante detectado agora.</p>
+        )}
       </section>
       <section className="two-col">
         <div className="panel">
-          <h2>Ultimas sessoes</h2>
-          <DataTable columns={["Time", "Totem", "Status", "Valor", "Criada"]}>
+          <h2>Vendas recentes</h2>
+          <DataTable columns={["Time", "Totem", "Situacao", "Valor", "Criada"]}>
             {sessions.map((s) => (
               <tr key={s.id}>
                 <td>{s.teams?.name || "-"}</td>
@@ -399,8 +489,8 @@ function Dashboard() {
           </DataTable>
         </div>
         <div className="panel">
-          <h2>Totens por status</h2>
-          <DataTable columns={["Totem", "Time", "Status", "Versao", "Ultimo contato"]}>
+          <h2>Totens recentes</h2>
+          <DataTable columns={["Totem", "Time", "Situacao", "Versao", "Ultimo contato"]}>
             {devices.slice(0, 12).map((d) => (
               <tr key={d.id}>
                 <td>{d.label || d.device_code}</td>
@@ -418,7 +508,7 @@ function Dashboard() {
 }
 
 function Badge({ value }: { value: string }) {
-  return <span className={`badge ${value}`}>{value}</span>;
+  return <span className={`badge ${value}`}>{friendly(value)}</span>;
 }
 
 function DataTable({ columns, children }: { columns: string[]; children: React.ReactNode }) {
@@ -440,15 +530,15 @@ function Teams() {
     <>
       <PageHeader
         title="Times"
-        subtitle="Branding, assets, preco, prompt e configuracao do totem por time."
+        subtitle="Crie times, preco, camisas, cenarios e a instrucao da IA."
         action={<Link className="primary link-button" to="/times/novo"><Plus size={16} /> Novo time</Link>}
       />
       <div className="panel">
-        <DataTable columns={["Time", "Slug", "Totem", "Preco", "Assets", "Status", ""]}>
+        <DataTable columns={["Time", "Link", "Totem", "Preco", "Imagens", "Situacao", ""]}>
           {!loading && teams.map((team) => (
             <tr key={team.id}>
               <td><strong>{team.name}</strong></td>
-              <td>{team.slug}</td>
+              <td>/{team.slug}</td>
               <td><Badge value={team.kiosk_enabled ? "habilitado" : "desabilitado"} /></td>
               <td>{money(team.kiosk_price_cents, team.kiosk_currency)}</td>
               <td>{team.shirts?.length || 0} camisas / {team.backgrounds?.length || 0} cenarios</td>
@@ -481,22 +571,27 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
   };
 
   return (
-    <div className="subpanel">
+      <div className="subpanel">
       <div className="row-between">
         <h3>{label}</h3>
         <button className="secondary" type="button" onClick={add}><Plus size={16} /> Adicionar</button>
       </div>
+      <p className="hint">
+        {type === "shirts"
+          ? "Cadastre as camisas que o cliente vai escolher no totem. Use imagens limpas, de preferencia com fundo claro."
+          : "Cadastre os cenarios de fundo que aparecem na foto final."}
+      </p>
       <div className="asset-grid">
         {assets.map((asset, index) => (
           <div className="asset-card" key={asset.id}>
             {asset.imageUrl && <img src={publicAssetUrl(asset.imageUrl)} alt={asset.name} />}
-            <input placeholder="Nome" value={asset.name} onChange={(e) => update(index, { name: e.target.value })} />
-            <input placeholder="Subtitulo" value={asset.subtitle || ""} onChange={(e) => update(index, { subtitle: e.target.value })} />
+            <input placeholder="Nome que aparece no totem" value={asset.name} onChange={(e) => update(index, { name: e.target.value })} />
+            <input placeholder="Texto curto abaixo do nome" value={asset.subtitle || ""} onChange={(e) => update(index, { subtitle: e.target.value })} />
             {type === "shirts" && (
-              <textarea placeholder="Descricao para prompt" value={asset.promptDescription || ""} onChange={(e) => update(index, { promptDescription: e.target.value })} />
+              <textarea placeholder="Como essa camisa deve aparecer na foto" value={asset.promptDescription || ""} onChange={(e) => update(index, { promptDescription: e.target.value })} />
             )}
             <label className="file-input">
-              Upload imagem
+              Enviar imagem
               <input
                 type="file"
                 accept="image/*"
@@ -512,7 +607,7 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
             </label>
             <label className="inline-check">
               <input type="checkbox" checked={asset.visible !== false} onChange={(e) => update(index, { visible: e.target.checked })} />
-              Visivel no totem
+              Mostrar no totem
             </label>
             <button className="danger" type="button" onClick={() => onChange(assets.filter((_, i) => i !== index))}>Remover</button>
           </div>
@@ -568,32 +663,34 @@ function TeamForm() {
 
   return (
     <>
-      <PageHeader title={isNew ? "Novo time" : `Editar ${team.name || ""}`} subtitle="Configure o time que sera usado por um ou mais totens." />
+      <PageHeader title={isNew ? "Novo time" : "Editar time"} subtitle="Configure o que aparece no totem desse time." />
       <form className="form-grid" onSubmit={save}>
         <section className="panel form-section">
-          <h2>Geral</h2>
+          <h2>Dados do time</h2>
           <label>Nome<input value={team.name || ""} onChange={(e) => { set("name", e.target.value); if (isNew) set("slug", slugify(e.target.value)); }} required /></label>
-          <label>Slug<input value={team.slug || ""} onChange={(e) => set("slug", slugify(e.target.value))} disabled={!isNew} required /></label>
+          <label>Link do time<input value={team.slug || ""} onChange={(e) => set("slug", slugify(e.target.value))} disabled={!isNew} required /></label>
+          <p className="hint">Esse link identifica o time no sistema e na instalacao do totem.</p>
           <div className="two-fields">
-            <label>Cor primaria<input type="color" value={team.primary_color || "#111827"} onChange={(e) => set("primary_color", e.target.value)} /></label>
-            <label>Cor secundaria<input type="color" value={team.secondary_color || "#ffffff"} onChange={(e) => set("secondary_color", e.target.value)} /></label>
+            <label>Cor principal<input type="color" value={team.primary_color || "#111827"} onChange={(e) => set("primary_color", e.target.value)} /></label>
+            <label>Cor de apoio<input type="color" value={team.secondary_color || "#ffffff"} onChange={(e) => set("secondary_color", e.target.value)} /></label>
           </div>
           <label className="inline-check"><input type="checkbox" checked={team.is_active !== false} onChange={(e) => set("is_active", e.target.checked)} /> Time ativo</label>
         </section>
 
         <section className="panel form-section">
-          <h2>Totem</h2>
-          <label className="inline-check"><input type="checkbox" checked={team.kiosk_enabled !== false} onChange={(e) => set("kiosk_enabled", e.target.checked)} /> Habilitado para totem</label>
-          <label>Preco em centavos<input type="number" min="0" value={team.kiosk_price_cents || 0} onChange={(e) => set("kiosk_price_cents", Number(e.target.value))} /></label>
-          <label>Timeout em segundos<input type="number" min="15" max="180" value={team.kiosk_timeout_seconds || 60} onChange={(e) => set("kiosk_timeout_seconds", Number(e.target.value))} /></label>
+          <h2>Venda no totem</h2>
+          <label className="inline-check"><input type="checkbox" checked={team.kiosk_enabled !== false} onChange={(e) => set("kiosk_enabled", e.target.checked)} /> Este time pode vender no totem</label>
+          <label>Preco da foto (R$)<input type="number" min="0" step="0.01" value={centsToReais(team.kiosk_price_cents)} onChange={(e) => set("kiosk_price_cents", reaisToCents(e.target.value))} /></label>
+          <label>Tempo limite da tela (segundos)<input type="number" min="15" max="180" value={team.kiosk_timeout_seconds || 60} onChange={(e) => set("kiosk_timeout_seconds", Number(e.target.value))} /></label>
+          <p className="hint">Depois desse tempo parado, o totem volta para o comeco automaticamente.</p>
           <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_shirt_step !== false} onChange={(e) => set("kiosk_show_shirt_step", e.target.checked)} /> Mostrar escolha de camisa</label>
           <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_background_step !== false} onChange={(e) => set("kiosk_show_background_step", e.target.checked)} /> Mostrar escolha de cenario</label>
         </section>
 
         <section className="panel form-section full">
-          <h2>IA e branding</h2>
-          <label>Prompt IA<textarea rows={4} value={team.generation_prompt || ""} onChange={(e) => set("generation_prompt", e.target.value)} /></label>
-          <p className="hint">Token Replicate especifico por time nao e exibido para operadores. Use o token global salvo no Supabase ou configure direto com super admin.</p>
+          <h2>Aparencia e IA</h2>
+          <label>Instrucao para a IA<textarea rows={4} value={team.generation_prompt || ""} onChange={(e) => set("generation_prompt", e.target.value)} placeholder="Ex: gerar uma foto realista do torcedor vestindo a camisa do time, mantendo rosto e postura naturais." /></label>
+          <p className="hint">Aqui voce escreve o estilo da imagem final. Chaves tecnicas de IA e pagamento ficam protegidas fora do painel.</p>
           <div className="two-fields">
             <label>
               Logo
@@ -604,7 +701,7 @@ function TeamForm() {
               }} />
             </label>
             <label>
-              Watermark
+              Marca d'agua
               <input type="file" accept="image/*" onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
@@ -615,6 +712,7 @@ function TeamForm() {
         </section>
 
         <section className="panel full">
+          <h2>Camisas e cenarios</h2>
           <AssetEditor label="Camisas" teamSlug={team.slug || ""} type="shirts" assets={(team.shirts || []) as TeamAsset[]} onChange={(assets) => set("shirts", assets)} />
           <AssetEditor label="Cenarios" teamSlug={team.slug || ""} type="backgrounds" assets={(team.backgrounds || []) as TeamAsset[]} onChange={(assets) => set("backgrounds", assets)} />
         </section>
@@ -727,7 +825,7 @@ function Devices({ role }: { role: Role | null }) {
     setMessage("");
     try {
       await enqueueDeviceCommand(deviceId, command);
-      setMessage(`Comando ${command} enviado.`);
+      setMessage(`Acao "${friendly(command)}" enviada.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Erro ao enviar comando.");
     }
@@ -735,32 +833,32 @@ function Devices({ role }: { role: Role | null }) {
 
   return (
     <>
-      <PageHeader title="Totens" subtitle="Dispositivos Windows instalados em pontos fisicos." />
+      <PageHeader title="Totens" subtitle="Cadastre cada computador do totem e acompanhe se esta funcionando." />
       {canEditDevices && (
         <section className="panel">
-          <h2>Cadastrar ou atualizar totem</h2>
+          <h2>Adicionar computador do totem</h2>
           <form className="inline-form" onSubmit={save}>
             <select value={form.team_id} onChange={(e) => setForm({ ...form, team_id: e.target.value })} required>
               <option value="">Time</option>
               {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <input placeholder="device_code" value={form.device_code} onChange={(e) => setForm({ ...form, device_code: e.target.value })} required />
-            <input placeholder="Nome/label" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+            <input placeholder="Codigo do totem (ex: SHOP-SP-01)" value={form.device_code} onChange={(e) => setForm({ ...form, device_code: e.target.value })} required />
+            <input placeholder="Nome para identificar" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
             <input placeholder="Cidade" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-            <input placeholder="Ponto/venue" value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} />
-            <input placeholder="Localizacao" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-            <input placeholder="Responsavel" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} />
+            <input placeholder="Ponto de instalacao" value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} />
+            <input placeholder="Local exato" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+            <input placeholder="Responsavel no local" value={form.owner_name} onChange={(e) => setForm({ ...form, owner_name: e.target.value })} />
             <input placeholder="Email do responsavel" value={form.owner_email} onChange={(e) => setForm({ ...form, owner_email: e.target.value })} />
-            <input placeholder="Telefone do responsavel" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
-            <input placeholder="Versao esperada" value={form.expected_app_version} onChange={(e) => setForm({ ...form, expected_app_version: e.target.value })} />
+            <input placeholder="WhatsApp do responsavel" value={form.owner_phone} onChange={(e) => setForm({ ...form, owner_phone: e.target.value })} />
+            <input placeholder="Versao que deve estar instalada" value={form.expected_app_version} onChange={(e) => setForm({ ...form, expected_app_version: e.target.value })} />
             <select value={form.update_channel} onChange={(e) => setForm({ ...form, update_channel: e.target.value })}>
-              <option value="stable">Stable</option>
-              <option value="beta">Beta</option>
-              <option value="maintenance">Maintenance</option>
+              <option value="stable">Producao</option>
+              <option value="beta">Teste</option>
+              <option value="maintenance">Manutencao</option>
             </select>
-            <input placeholder="Segredo do dispositivo" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
+            <input placeholder="Chave local do totem" value={form.device_secret} onChange={(e) => setForm({ ...form, device_secret: e.target.value })} />
             <input
-              placeholder="PIN tecnico (4 a 8 digitos)"
+              placeholder="PIN tecnico do dono (4 a 8 digitos)"
               inputMode="numeric"
               minLength={4}
               maxLength={8}
@@ -769,14 +867,14 @@ function Devices({ role }: { role: Role | null }) {
               onChange={(e) => setForm({ ...form, support_pin: e.target.value.replace(/\D/g, "").slice(0, 8) })}
             />
             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              <option value="active">Ativo</option>
-              <option value="maintenance">Manutencao</option>
+              <option value="active">Funcionando</option>
+              <option value="maintenance">Em manutencao</option>
               <option value="disabled">Desabilitado</option>
             </select>
-            <button className="primary">Salvar</button>
-            <textarea placeholder="Observacoes de instalacao" value={form.installation_notes} onChange={(e) => setForm({ ...form, installation_notes: e.target.value })} rows={2} />
+            <button className="primary">Salvar totem</button>
+            <textarea placeholder="Observacoes para instalacao e suporte" value={form.installation_notes} onChange={(e) => setForm({ ...form, installation_notes: e.target.value })} rows={2} />
           </form>
-          <p className="hint">O PIN tecnico manual nao e exibido depois de salvo. Ao gerar um codigo de instalacao, o painel cria um PIN novo automaticamente para enviar ao dono do totem.</p>
+          <p className="hint">O PIN tecnico e para o dono testar internet, camera e reiniciar o app. Ao gerar o codigo de instalacao, o painel cria um PIN novo automaticamente para enviar ao dono do totem.</p>
           {message && <p className="hint">{message}</p>}
           {installCode && (
             <div className="install-card">
@@ -792,7 +890,7 @@ function Devices({ role }: { role: Role | null }) {
       )}
       {!canEditDevices && message && <div className="panel"><p className="hint">{message}</p></div>}
       <section className="panel">
-        <DataTable columns={["Totem", "Time", "Responsavel", "Status", "Pareamento", "PIN", "Atualizacao", "Ultimo contato", "Acoes"]}>
+        <DataTable columns={["Totem", "Time", "Dono/local", "Situacao", "Instalacao", "PIN", "Atualizacao", "Ultimo contato", "Acoes"]}>
           {devices.map((d) => (
             <tr key={d.id}>
               <td><strong>{d.label || d.device_code}</strong><br /><span>{d.device_code}</span><br /><span>{buildDeviceLocationLabel(d)}</span></td>
@@ -805,12 +903,12 @@ function Devices({ role }: { role: Role | null }) {
               <td>{dateTime(d.last_seen_at)}</td>
               <td className="actions-cell">
                 <Link className="secondary link-button" to={`/totens/${d.id}`}>Abrir</Link>
-                {canEditDevices && <button className="secondary" onClick={() => generateInstall(d)}>Codigo</button>}
-                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "sync_config")}>Sync</button>}
-                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "send_diagnostics")}>Diagnostico</button>}
+                {canEditDevices && <button className="secondary" onClick={() => generateInstall(d)}>Codigo p/ dono</button>}
+                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "sync_config")}>Atualizar dados</button>}
+                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "send_diagnostics")}>Pedir diagnostico</button>}
                 {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "restart_app")}>Reiniciar</button>}
-                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Ativar</button>}
-                {canOperate && <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Manutencao</button>}
+                {canOperate && <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Liberar venda</button>}
+                {canOperate && <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Pausar venda</button>}
               </td>
             </tr>
           ))}
@@ -904,7 +1002,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
     setMessage("");
     try {
       await enqueueDeviceCommand(device.id, command);
-      setMessage(`Comando ${command} enviado.`);
+      setMessage(`Acao "${friendly(command)}" enviada.`);
       load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Erro ao enviar comando.");
@@ -934,28 +1032,28 @@ function DeviceDetail({ role }: { role: Role | null }) {
       />
 
       <section className="stats-grid">
-        <StatCard label="Status" value={deviceHealthLabel(device)} tone={deviceHealthLabel(device) === "online" ? "success" : "warning"} />
-        <StatCard label="Pareamento" value={device.install_status || "not_paired"} />
-        <StatCard label="Versao" value={`${device.app_version || "-"} / ${device.expected_app_version || "-"}`} />
-        <StatCard label="Atualizacao" value={getDeviceVersionStatus(device)} tone={getDeviceVersionStatus(device) === "desatualizado" ? "warning" : "neutral"} />
+        <StatCard label="Situacao" value={friendly(deviceHealthLabel(device))} tone={deviceHealthLabel(device) === "online" ? "success" : "warning"} />
+        <StatCard label="Instalacao" value={friendly(device.install_status || "not_paired")} />
+        <StatCard label="Versao do app" value={`${device.app_version || "-"} / ${device.expected_app_version || "-"}`} />
+        <StatCard label="Atualizacao" value={friendly(getDeviceVersionStatus(device))} tone={getDeviceVersionStatus(device) === "desatualizado" ? "warning" : "neutral"} />
         <StatCard label="Ultimo contato" value={dateTime(device.last_seen_at)} />
-        <StatCard label="Erro" value={device.last_error_code || "-"} tone={device.last_error_code ? "danger" : "neutral"} />
-        <StatCard label="Comandos pendentes" value={commands.filter((c) => c.status === "pending" || c.status === "running").length} />
+        <StatCard label="Ultimo erro" value={device.last_error_code || "-"} tone={device.last_error_code ? "danger" : "neutral"} />
+        <StatCard label="Acoes em fila" value={commands.filter((c) => c.status === "pending" || c.status === "running").length} />
       </section>
 
       <section className="panel device-actions">
         <div>
-          <h2>Acoes remotas</h2>
-          <p className="hint">O totem executa comandos quando sincronizar com a nuvem. Nao precisa acesso remoto ao Windows.</p>
+          <h2>Controle remoto do totem</h2>
+          <p className="hint">Use essas acoes sem acessar o Windows do local. O totem recebe o comando quando estiver online.</p>
         </div>
         <div className="actions-row">
-          {canEditDevices && <button className="secondary" onClick={generateInstall}>Gerar codigo</button>}
-          {getDeviceVersionStatus(device) === "desatualizado" && <button className="secondary" onClick={copyUpdateMessage}><Copy size={16} /> Copiar atualizacao</button>}
-          {canOperate && <button className="secondary" onClick={() => sendCommand("sync_config")}>Sincronizar</button>}
+          {canEditDevices && <button className="secondary" onClick={generateInstall}>Gerar codigo para instalar</button>}
+          {getDeviceVersionStatus(device) === "desatualizado" && <button className="secondary" onClick={copyUpdateMessage}><Copy size={16} /> Copiar mensagem de atualizacao</button>}
+          {canOperate && <button className="secondary" onClick={() => sendCommand("sync_config")}>Atualizar dados</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("send_diagnostics")}>Pedir diagnostico</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("restart_app")}>Reiniciar app</button>}
-          {canOperate && <button className="secondary" onClick={() => sendCommand("exit_maintenance")}>Ativar</button>}
-          {canOperate && <button className="danger" onClick={() => sendCommand("enter_maintenance")}>Manutencao</button>}
+          {canOperate && <button className="secondary" onClick={() => sendCommand("exit_maintenance")}>Liberar vendas</button>}
+          {canOperate && <button className="danger" onClick={() => sendCommand("enter_maintenance")}>Pausar vendas</button>}
           {!canOperate && !canEditDevices && <span className="hint">Seu perfil permite somente visualizacao.</span>}
         </div>
         {message && <p className="hint">{message}</p>}
@@ -973,36 +1071,36 @@ function DeviceDetail({ role }: { role: Role | null }) {
 
       <section className="two-col">
         <div className="panel settings-list">
-          <h2>Responsavel e dispositivo</h2>
-          <div><strong>Codigo</strong><span>{device.device_code}</span></div>
+          <h2>Dono e local</h2>
+          <div><strong>Codigo interno</strong><span>{device.device_code}</span></div>
           <div><strong>Cidade</strong><span>{device.city || "-"}</span></div>
           <div><strong>Ponto</strong><span>{device.venue || "-"}</span></div>
           <div><strong>Local</strong><span>{device.location || "-"}</span></div>
           <div><strong>Responsavel</strong><span>{device.owner_name || "-"}</span></div>
           <div><strong>Email</strong><span>{device.owner_email || "-"}</span></div>
-          <div><strong>Telefone</strong><span>{device.owner_phone || "-"}</span></div>
-          <div><strong>PIN tecnico</strong><span>{device.support_pin_hash ? "Configurado" : "Nao definido"}</span></div>
-          <div><strong>Canal</strong><span>{device.update_channel || "stable"}</span></div>
-          <div><strong>Versao esperada</strong><span>{device.expected_app_version || "-"}</span></div>
+          <div><strong>WhatsApp</strong><span>{device.owner_phone || "-"}</span></div>
+          <div><strong>PIN do suporte local</strong><span>{device.support_pin_hash ? "Configurado" : "Nao definido"}</span></div>
+          <div><strong>Canal de atualizacao</strong><span>{friendly(device.update_channel || "stable")}</span></div>
+          <div><strong>Versao desejada</strong><span>{device.expected_app_version || "-"}</span></div>
           <div><strong>Observacoes</strong><span>{device.installation_notes || "-"}</span></div>
         </div>
         <div className="panel settings-list">
-          <h2>Ultimo health</h2>
+          <h2>Ultima comunicacao do app</h2>
           <div><strong>Online</strong><span>{String(health.online ?? "-")}</span></div>
           <div><strong>Tela</strong><span>{String(health.currentScreen ?? "-")}</span></div>
-          <div><strong>Versao reportada</strong><span>{String(health.appVersion ?? "-")}</span></div>
+          <div><strong>Versao informada</strong><span>{String(health.appVersion ?? "-")}</span></div>
           <div><strong>Pagamento</strong><span>{paymentStatus ? String(paymentStatus.ready ? "Pronto" : "Indisponivel") : "-"}</span></div>
-          <div><strong>Modo pagamento</strong><span>{paymentStatus ? String(paymentStatus.mode || "-") : "-"}</span></div>
-          <div><strong>Detalhe pagamento</strong><span>{paymentStatus ? String(paymentStatus.message || "-") : "-"}</span></div>
-          <div><strong>Ultimo health</strong><span>{dateTime(device.last_health_at)}</span></div>
+          <div><strong>Tipo de pagamento</strong><span>{paymentStatus ? friendly(String(paymentStatus.mode || "-")) : "-"}</span></div>
+          <div><strong>Detalhe</strong><span>{paymentStatus ? String(paymentStatus.message || "-") : "-"}</span></div>
+          <div><strong>Ultimo check-in</strong><span>{dateTime(device.last_health_at)}</span></div>
           <div><strong>Manutencao</strong><span>{device.maintenance_reason || "-"}</span></div>
         </div>
       </section>
 
       <section className="two-col">
         <div className="panel">
-          <h2>Eventos recentes</h2>
-          <DataTable columns={["Tipo", "Severidade", "Codigo", "Mensagem", "Criado"]}>
+          <h2>Historico tecnico</h2>
+          <DataTable columns={["Tipo", "Urgencia", "Codigo", "Mensagem", "Criado"]}>
             {events.map((event) => (
               <tr key={event.id}>
                 <td>{event.event_type}</td>
@@ -1015,11 +1113,11 @@ function DeviceDetail({ role }: { role: Role | null }) {
           </DataTable>
         </div>
         <div className="panel">
-          <h2>Comandos</h2>
-          <DataTable columns={["Comando", "Status", "Erro", "Criado", "Finalizado"]}>
+          <h2>Acoes enviadas</h2>
+          <DataTable columns={["Acao", "Situacao", "Erro", "Criado", "Finalizado"]}>
             {commands.map((command) => (
               <tr key={command.id}>
-                <td>{command.command_type}</td>
+                <td>{friendly(command.command_type)}</td>
                 <td><Badge value={command.status} /></td>
                 <td>{command.error_message || "-"}</td>
                 <td>{dateTime(command.created_at)}</td>
@@ -1032,8 +1130,8 @@ function DeviceDetail({ role }: { role: Role | null }) {
 
       <section className="two-col">
         <div className="panel">
-          <h2>Ultimas sessoes</h2>
-          <DataTable columns={["Status", "Selecao", "Valor", "Erro", "Criada"]}>
+          <h2>Ultimas vendas</h2>
+          <DataTable columns={["Situacao", "Escolha", "Valor", "Erro", "Criada"]}>
             {sessions.map((session) => (
               <tr key={session.id}>
                 <td><Badge value={session.status} /></td>
@@ -1047,11 +1145,11 @@ function DeviceDetail({ role }: { role: Role | null }) {
         </div>
         <div className="panel">
           <h2>Ultimos pagamentos</h2>
-          <DataTable columns={["Metodo", "Provider", "Status", "Valor", "Pago em"]}>
+          <DataTable columns={["Forma", "Operadora", "Situacao", "Valor", "Pago em"]}>
             {payments.map((payment) => (
               <tr key={payment.id}>
-                <td>{payment.method}</td>
-                <td>{payment.provider}</td>
+                <td>{friendly(payment.method)}</td>
+                <td>{friendly(payment.provider)}</td>
                 <td><Badge value={payment.status} /></td>
                 <td>{money(payment.amount_cents, payment.currency)}</td>
                 <td>{dateTime(payment.paid_at)}</td>
@@ -1072,11 +1170,11 @@ function FilterBar({ filters, setFilters, teams }: { filters: Filters; setFilter
         {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
       </select>
       <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
-        <option value="">Todos os status</option>
+        <option value="">Todas as situacoes</option>
         <option value="pending">Pendente</option>
         <option value="paid">Pago</option>
-        <option value="completed">Completo</option>
-        <option value="failed">Falhou</option>
+        <option value="completed">Concluido</option>
+        <option value="failed">Com erro</option>
         <option value="cancelled">Cancelado</option>
       </select>
       <select value={filters.days} onChange={(e) => setFilters({ ...filters, days: Number(e.target.value) })}>
@@ -1111,10 +1209,10 @@ function Sessions() {
 
   return (
     <>
-      <PageHeader title="Sessoes e vendas" subtitle="Acompanhe cada atendimento do totem do pagamento ao QR Code." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
+      <PageHeader title="Vendas" subtitle="Veja cada atendimento do totem, do pagamento ate o QR Code." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
       <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
       <div className="panel">
-        <DataTable columns={["Time", "Totem", "Status", "Selecao", "Valor", "Erro", "Criada"]}>
+        <DataTable columns={["Time", "Totem", "Situacao", "Escolha", "Valor", "Erro", "Criada"]}>
           {rows.map((row) => (
             <tr key={row.id}>
               <td>{row.teams?.name || "-"}</td>
@@ -1149,15 +1247,15 @@ function Payments() {
 
   return (
     <>
-      <PageHeader title="Pagamentos" subtitle="PIX PagBank, cartao PlugPag e pagamentos simulados." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
+      <PageHeader title="Pagamentos" subtitle="Confira cobrancas pagas, pendentes ou com erro." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
       <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
       <div className="panel">
-        <DataTable columns={["Time", "Metodo", "Provider", "Status", "Valor", "Referencia", "Pago em"]}>
+        <DataTable columns={["Time", "Forma", "Operadora", "Situacao", "Valor", "Codigo", "Pago em"]}>
           {rows.map((row) => (
             <tr key={row.id}>
               <td>{row.teams?.name || "-"}</td>
-              <td>{row.method}</td>
-              <td>{row.provider}</td>
+              <td>{friendly(row.method)}</td>
+              <td>{friendly(row.provider)}</td>
               <td><Badge value={row.status} /></td>
               <td>{money(row.amount_cents, row.currency)}</td>
               <td>{row.reference_id}</td>
@@ -1179,13 +1277,13 @@ function Generations() {
   useEffect(() => { load(); }, []);
   return (
     <>
-      <PageHeader title="Geracoes IA" subtitle="Fila de processamento, resultados e erros Replicate." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
+      <PageHeader title="Fotos geradas" subtitle="Acompanhe as fotos criadas pela IA e possiveis erros." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
       <div className="panel">
-        <DataTable columns={["Time", "Origem", "Status", "Camisa", "Erro", "Criada", "Resultado"]}>
+        <DataTable columns={["Time", "De onde veio", "Situacao", "Camisa", "Erro", "Criada", "Foto"]}>
           {rows.map((row) => (
             <tr key={row.id}>
               <td>{row.teams?.name || "-"}</td>
-              <td>{row.source || "web"}</td>
+              <td>{friendly(row.source || "web")}</td>
               <td><Badge value={row.status} /></td>
               <td>{row.shirt_id}</td>
               <td>{row.error_message || "-"}</td>
@@ -1211,20 +1309,20 @@ function StatusPage() {
   const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
   return (
     <>
-      <PageHeader title="Status operacional" subtitle="Alertas, saude dos servicos e totens offline." />
+      <PageHeader title="Alertas" subtitle="Veja o que precisa de atencao nos totens." />
       <section className="stats-grid">
         <StatCard label="Alertas abertos" value={alerts.filter((a) => !a.resolved).length} tone="warning" />
-        <StatCard label="Totens offline" value={devices.filter((d) => isOffline(d.last_seen_at)).length} tone="danger" />
+        <StatCard label="Totens sem contato" value={devices.filter((d) => isOffline(d.last_seen_at)).length} tone="danger" />
         <StatCard label="Em manutencao" value={devices.filter((d) => d.status === "maintenance").length} />
-        <StatCard label="Desatualizados" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
+        <StatCard label="Precisam atualizar" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
       </section>
       <div className="panel">
-        <h2>Problemas detectados nos totens</h2>
-        <DataTable columns={["Severidade", "Tipo", "Totem", "Mensagem"]}>
+        <h2>O que precisa de atencao</h2>
+        <DataTable columns={["Urgencia", "Problema", "Totem", "Mensagem"]}>
           {operationalIssues.map((issue) => (
             <tr key={`${issue.deviceId}-${issue.type}`}>
               <td><Badge value={issue.severity} /></td>
-              <td>{issue.type}</td>
+              <td>{friendly(issue.type)}</td>
               <td>{issue.deviceLabel}</td>
               <td>{issue.message}</td>
             </tr>
@@ -1234,10 +1332,10 @@ function StatusPage() {
       </div>
       <div className="panel">
         <h2>Alertas recentes</h2>
-        <DataTable columns={["Tipo", "Severidade", "Mensagem", "Resolvido", "Criado"]}>
+        <DataTable columns={["Tipo", "Urgencia", "Mensagem", "Resolvido", "Criado"]}>
           {alerts.map((alert) => (
             <tr key={alert.id}>
-              <td>{alert.type}</td>
+              <td>{friendly(alert.type)}</td>
               <td><Badge value={alert.severity} /></td>
               <td>{alert.message}</td>
               <td>{alert.resolved ? "Sim" : "Nao"}</td>
@@ -1247,12 +1345,12 @@ function StatusPage() {
         </DataTable>
       </div>
       <div className="panel">
-        <h2>Auditoria operacional</h2>
-        <DataTable columns={["Acao", "Tabela", "Alvo", "Usuario", "Detalhe", "Criado"]}>
+        <h2>Historico de acoes</h2>
+        <DataTable columns={["Acao", "Area", "Alvo", "Usuario", "Detalhe", "Criado"]}>
           {auditEvents.map((event) => (
             <tr key={event.id}>
-              <td>{event.action}</td>
-              <td>{event.target_table}</td>
+              <td>{friendly(event.action)}</td>
+              <td>{friendly(event.target_table)}</td>
               <td>{event.target_id || "-"}</td>
               <td>{event.actor_user_id || "-"}</td>
               <td>{JSON.stringify(event.payload || {})}</td>
@@ -1308,23 +1406,23 @@ function UsersPage({ role }: { role: Role | null }) {
     return (
       <>
         <PageHeader title="Usuarios" subtitle="Somente super admins podem gerenciar operadores." />
-        <div className="panel empty-state"><Shield size={28} /> Seu usuario nao pode gerenciar outros admins.</div>
+        <div className="panel empty-state"><Shield size={28} /> Seu usuario nao pode criar ou remover acessos.</div>
       </>
     );
   }
 
   return (
     <>
-      <PageHeader title="Usuarios" subtitle="Crie operadores, suporte, financeiro e super admins." />
+      <PageHeader title="Usuarios" subtitle="Crie acessos para quem vai ajudar na operacao." />
       <section className="panel">
-        <h2>Novo usuario</h2>
+        <h2>Novo acesso</h2>
         <form className="inline-form" onSubmit={create}>
           <input type="email" placeholder="email@dominio.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <input type="password" placeholder="senha inicial" value={password} onChange={(e) => setPassword(e.target.value)} required />
           <select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
-            <option value="admin">Operador admin</option>
-            <option value="super_admin">Super admin</option>
-            <option value="support">Suporte operacional</option>
+            <option value="admin">Operador geral</option>
+            <option value="super_admin">Dono do sistema</option>
+            <option value="support">Suporte dos totens</option>
             <option value="finance">Financeiro</option>
           </select>
           <button className="primary">Criar</button>
@@ -1332,7 +1430,7 @@ function UsersPage({ role }: { role: Role | null }) {
         {message && <p className="hint">{message}</p>}
       </section>
       <section className="panel">
-        <DataTable columns={["Email", "Role", "Criado", ""]}>
+        <DataTable columns={["Email", "Perfil", "Criado", ""]}>
           {users.map((user) => (
             <tr key={user.id}>
               <td>{user.email}</td>
@@ -1350,12 +1448,12 @@ function UsersPage({ role }: { role: Role | null }) {
 function SettingsPage() {
   return (
     <>
-      <PageHeader title="Configuracoes" subtitle="Informacoes de deploy e integracoes do painel." />
+      <PageHeader title="Ajustes" subtitle="Informacoes simples sobre publicacao e integracoes." />
       <div className="panel settings-list">
         <div><strong>App</strong><span>FanFrame Totens Admin</span></div>
-        <div><strong>Deploy</strong><span>Vercel app separado em /apps/admin</span></div>
-        <div><strong>Segredos</strong><span>Replicate e PagBank ficam em Supabase Secrets, nao no frontend.</span></div>
-        <div><strong>PlugPag</strong><span>Executado localmente no PC Windows do totem.</span></div>
+        <div><strong>Publicacao do painel</strong><span>Vercel com app separado para administracao.</span></div>
+        <div><strong>Chaves protegidas</strong><span>Replicate e PagBank ficam salvos no Supabase, fora do navegador.</span></div>
+        <div><strong>Pagamento com cartao</strong><span>Roda no computador Windows do totem com PlugPag.</span></div>
       </div>
     </>
   );
