@@ -28,6 +28,11 @@ export type DeviceIdentity = {
   deviceSecret: string;
 };
 
+export type RemoteKioskDeviceState = {
+  teamSlug?: string | null;
+  configVersion?: number | null;
+};
+
 export type KioskErrorCode = "NET-001" | "CAM-001" | "PAY-001" | "CFG-001" | "IA-001" | "APP-001";
 
 export type KioskFriendlyError = {
@@ -60,6 +65,18 @@ export function buildDeviceAuthHeaders(identity: DeviceIdentity) {
 
 export function shouldReportHealth(lastReportAt: number | null, intervalMs: number, now = Date.now()) {
   return lastReportAt === null || now - lastReportAt >= intervalMs;
+}
+
+export function shouldReloadForRemoteKioskState(
+  localTeamSlug: string | null | undefined,
+  localConfigVersion: number | null | undefined,
+  remote: RemoteKioskDeviceState | null | undefined,
+) {
+  if (!remote) return false;
+  if (remote.teamSlug && remote.teamSlug !== localTeamSlug) return true;
+  const remoteVersion = Number(remote.configVersion || 0);
+  const localVersion = Number(localConfigVersion || 0);
+  return remoteVersion > 0 && remoteVersion !== localVersion;
 }
 
 export function classifyKioskError(message: string): KioskFriendlyError {

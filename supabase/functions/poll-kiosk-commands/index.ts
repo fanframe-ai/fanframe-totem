@@ -71,6 +71,17 @@ serve(async (req) => {
       .eq("status", "pending")
       .lt("expires_at", new Date().toISOString());
 
+    await supabase
+      .from("kiosk_device_commands")
+      .update({
+        status: "expired",
+        completed_at: new Date().toISOString(),
+        error_message: "Command expired before kiosk completed it",
+      })
+      .eq("device_id", device.id)
+      .eq("status", "running")
+      .lt("expires_at", new Date().toISOString());
+
     const { data: command, error: commandError } = await supabase
       .from("kiosk_device_commands")
       .select("*")

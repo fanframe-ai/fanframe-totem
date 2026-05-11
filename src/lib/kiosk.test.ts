@@ -4,6 +4,7 @@ import {
   filterVisibleAssets,
   formatCurrencyFromCents,
   normalizeKioskTimeout,
+  shouldReloadForRemoteKioskState,
 } from "./kiosk";
 
 describe("kiosk helpers", () => {
@@ -31,5 +32,12 @@ describe("kiosk helpers", () => {
     expect(buildDeliveryUrl("https://example.supabase.co", "abc 123")).toBe(
       "https://example.supabase.co/functions/v1/create-delivery-link?token=abc%20123",
     );
+  });
+
+  it("detects remote team and config changes that require kiosk reload", () => {
+    expect(shouldReloadForRemoteKioskState("corinthians", 1, { teamSlug: "redbull", configVersion: 1 })).toBe(true);
+    expect(shouldReloadForRemoteKioskState("redbull", 1, { teamSlug: "redbull", configVersion: 2 })).toBe(true);
+    expect(shouldReloadForRemoteKioskState("redbull", 2, { teamSlug: "redbull", configVersion: 2 })).toBe(false);
+    expect(shouldReloadForRemoteKioskState("redbull", 0, null)).toBe(false);
   });
 });

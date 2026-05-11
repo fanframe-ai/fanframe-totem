@@ -18,6 +18,7 @@ import {
   formatCurrencyFromCents,
   normalizeKioskTimeout,
   shouldReportHealth,
+  shouldReloadForRemoteKioskState,
   verifyTechnicalPin,
 } from "@/lib/kiosk";
 import type { KioskCardPaymentResult, KioskRuntimeConfig, KioskTechnicalStatus, StoredDeviceIdentity } from "@/types/kiosk";
@@ -328,22 +329,39 @@ export default function KioskPage() {
     if (!hasDeviceAuth) return;
     const interval = window.setInterval(async () => {
       const state = await pollKioskState(activeDevice).catch(() => null);
-      const remoteTeamSlug = state?.device?.teamSlug;
-      if (remoteTeamSlug && remoteTeamSlug !== (identity?.teamSlug || config?.teamSlug)) {
-        const updatedIdentity = identity ? { ...identity, teamSlug: remoteTeamSlug } : null;
+      const remoteDevice = state?.device || null;
+      const remoteTeamSlug = remoteDevice?.teamSlug;
+      const remoteConfigVersion = Number(remoteDevice?.configVersion || 0);
+      let shouldReload = shouldReloadForRemoteKioskState(
+        identity?.teamSlug || config?.teamSlug,
+        identity?.configVersion || 0,
+        remoteDevice,
+      );
+
+      if (remoteTeamSlug || remoteConfigVersion) {
+        const updatedIdentity = identity ? {
+          ...identity,
+          teamSlug: remoteTeamSlug || identity.teamSlug,
+          configVersion: remoteConfigVersion || identity.configVersion || 0,
+        } : null;
         if (updatedIdentity) {
           await window.fanframeKiosk?.saveDeviceIdentity?.(updatedIdentity);
           setIdentity(updatedIdentity);
         }
-        localStorage.setItem("fanframe:kiosk-team", remoteTeamSlug);
-        setSlug(remoteTeamSlug);
-        setConfig((current) => current ? { ...current, teamSlug: remoteTeamSlug } : current);
+        if (remoteTeamSlug) {
+          localStorage.setItem("fanframe:kiosk-team", remoteTeamSlug);
+          setSlug(remoteTeamSlug);
+          setConfig((current) => current ? { ...current, teamSlug: remoteTeamSlug } : current);
+        }
       }
 
       const command = state?.command || null;
-      if (!command) return;
+      if (!command) {
+        if (shouldReload) window.location.reload();
+        return;
+      }
       try {
-        if (command.command_type === "sync_config") window.location.reload();
+        if (command.command_type === "sync_config") shouldReload = true;
         if (command.command_type === "restart_app") {
           await pollKioskCommand(activeDevice, {
             completeCommandId: command.id,
@@ -373,6 +391,7 @@ export default function KioskPage() {
           success: true,
           result: { handledAt: new Date().toISOString() },
         });
+        if (shouldReload) window.location.reload();
       } catch (err) {
         await pollKioskCommand(activeDevice, {
           completeCommandId: command.id,
@@ -380,7 +399,7 @@ export default function KioskPage() {
           errorMessage: err instanceof Error ? err.message : "Command failed",
         }).catch(() => undefined);
       }
-    }, 15_000);
+    }, 5_000);
     return () => window.clearInterval(interval);
   }, [activeDevice, collectHealthPayload, config?.teamSlug, hasDeviceAuth, identity, resetFlow, setSlug, step]);
 
@@ -691,6 +710,7 @@ export default function KioskPage() {
         deviceCode: paired.device.deviceCode,
         deviceSecret: paired.deviceSecret,
         teamSlug: paired.team?.slug,
+        configVersion: paired.device.configVersion || 0,
         supportPinHash: paired.device.supportPinHash || null,
         pairedAt: new Date().toISOString(),
       };

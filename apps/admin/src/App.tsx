@@ -650,8 +650,26 @@ function TeamForm() {
       setMessage(result.error.message);
       return;
     }
+    if (!isNew && team.id) {
+      const { data: devices } = await supabase
+        .from("kiosk_devices")
+        .select("id, config_version")
+        .eq("team_id", team.id);
+
+      await Promise.all((devices || []).map(async (device) => {
+        await supabase
+          .from("kiosk_devices")
+          .update({ config_version: Number(device.config_version || 0) + 1 })
+          .eq("id", device.id);
+        await enqueueDeviceCommand(device.id, "sync_config", {
+          reason: "team_updated",
+          teamId: team.id,
+          teamSlug: finalSlug,
+        });
+      }));
+    }
     if (isNew && result.data?.slug) navigate(`/times/${result.data.slug}`, { replace: true });
-    setMessage("Time salvo com sucesso.");
+    setMessage(isNew ? "Time salvo com sucesso." : "Time salvo. Totens online vao atualizar automaticamente.");
   }
 
   return (
