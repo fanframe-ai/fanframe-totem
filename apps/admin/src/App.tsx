@@ -587,9 +587,6 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
             {asset.imageUrl && <img src={publicAssetUrl(asset.imageUrl)} alt={asset.name} />}
             <input placeholder="Nome que aparece no totem" value={asset.name} onChange={(e) => update(index, { name: e.target.value })} />
             <input placeholder="Texto curto abaixo do nome" value={asset.subtitle || ""} onChange={(e) => update(index, { subtitle: e.target.value })} />
-            {type === "shirts" && (
-              <textarea placeholder="Como essa camisa deve aparecer na foto" value={asset.promptDescription || ""} onChange={(e) => update(index, { promptDescription: e.target.value })} />
-            )}
             <label className="file-input">
               Enviar imagem
               <input
