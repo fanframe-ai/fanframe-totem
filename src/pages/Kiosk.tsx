@@ -256,6 +256,28 @@ export default function KioskPage() {
     return state;
   }, [activeDevice, applyRemoteState, hasDeviceAuth]);
 
+  const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
+    const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+    const paymentStatus = await window.fanframeKiosk?.getPaymentStatus?.().catch(() => null);
+    const friendlyError = error ? classifyKioskError(error) : null;
+
+    return {
+      appVersion: status?.appVersion || config?.appVersion || "browser",
+      online: status?.online ?? navigator.onLine,
+      currentScreen: step,
+      lastErrorCode: friendlyError?.code || null,
+      lastErrorMessage: error,
+      paymentStatus: paymentStatus || {
+        ready: config?.simulatePayments === true,
+        mode: config?.simulatePayments === true ? "simulated" : "not_configured",
+        message: config?.simulatePayments === true ? "Pagamentos simulados ativos." : "Status de pagamento local indisponivel.",
+        plugpagConfigured: false,
+        simulated: config?.simulatePayments === true,
+      },
+      ...extra,
+    };
+  }, [config?.appVersion, config?.simulatePayments, error, step]);
+
   const processRemoteKioskCommand = useCallback(async (commandType?: string) => {
     const state = await syncRemoteKioskState(commandType);
     const command = state?.command || null;
@@ -331,28 +353,6 @@ export default function KioskPage() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [step, updateRailScrollState, visibleBackgrounds.length, visibleShirts.length]);
-
-  const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
-    const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
-    const paymentStatus = await window.fanframeKiosk?.getPaymentStatus?.().catch(() => null);
-    const friendlyError = error ? classifyKioskError(error) : null;
-
-    return {
-      appVersion: status?.appVersion || config?.appVersion || "browser",
-      online: status?.online ?? navigator.onLine,
-      currentScreen: step,
-      lastErrorCode: friendlyError?.code || null,
-      lastErrorMessage: error,
-      paymentStatus: paymentStatus || {
-        ready: config?.simulatePayments === true,
-        mode: config?.simulatePayments === true ? "simulated" : "not_configured",
-        message: config?.simulatePayments === true ? "Pagamentos simulados ativos." : "Status de pagamento local indisponivel.",
-        plugpagConfigured: false,
-        simulated: config?.simulatePayments === true,
-      },
-      ...extra,
-    };
-  }, [config?.appVersion, config?.simulatePayments, error, step]);
 
   useEffect(() => {
     const init = async () => {
