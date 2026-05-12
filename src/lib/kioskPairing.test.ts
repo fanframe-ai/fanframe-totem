@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDeviceAuthHeaders,
   classifyKioskError,
+  friendlyInstallCodeError,
   hashKioskSecret,
   normalizeInstallCode,
   shouldReportHealth,
@@ -32,6 +33,13 @@ describe("kiosk pairing helpers", () => {
     expect(classifyKioskError("network offline").code).toBe("NET-001");
     expect(classifyKioskError("pagbank timeout").code).toBe("PAY-001");
     expect(classifyKioskError("config fetch failed").code).toBe("CFG-001");
+  });
+
+  it("maps install code failures to clear owner actions", () => {
+    expect(friendlyInstallCodeError("Install code already used")).toContain("ja foi usado");
+    expect(friendlyInstallCodeError("Install code expired")).toContain("expirou");
+    expect(friendlyInstallCodeError("Invalid install code")).toContain("invalido");
+    expect(friendlyInstallCodeError("Device disabled")).toContain("desativado");
   });
 
   it("validates technical PINs against the paired device hash", async () => {

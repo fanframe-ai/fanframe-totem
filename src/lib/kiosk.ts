@@ -127,12 +127,59 @@ export function classifyKioskError(message: string): KioskFriendlyError {
   };
 }
 
+export async function getSupabaseFunctionErrorMessage(error: unknown) {
+  const fallback = error instanceof Error ? error.message : "Erro na funcao do Supabase.";
+  const context = error && typeof error === "object" && "context" in error
+    ? (error as { context?: unknown }).context
+    : null;
+  const response = context && typeof context === "object" && "response" in context
+    ? (context as { response?: unknown }).response
+    : null;
+
+  if (response instanceof Response) {
+    try {
+      const body = await response.clone().json();
+      if (body && typeof body.error === "string") return body.error;
+      if (body && typeof body.message === "string") return body.message;
+    } catch {
+      try {
+        const text = await response.clone().text();
+        if (text.trim()) return text.trim();
+      } catch {
+        return fallback;
+      }
+    }
+  }
+
+  return fallback;
+}
+
+export function friendlyInstallCodeError(message: string) {
+  const text = message.toLowerCase();
+  if (text.includes("already used")) {
+    return "Este codigo de instalacao ja foi usado. Gere um novo codigo no painel e tente novamente.";
+  }
+  if (text.includes("expired")) {
+    return "Este codigo de instalacao expirou. Gere um novo codigo no painel e tente novamente.";
+  }
+  if (text.includes("invalid") || text.includes("not found")) {
+    return "Codigo de instalacao invalido. Confira o codigo ou gere um novo no painel.";
+  }
+  if (text.includes("disabled")) {
+    return "Este totem esta desativado no painel. Ative o totem antes de instalar.";
+  }
+  return message;
+}
+
 export async function redeemInstallCode(installCode: string, fingerprint: string, appVersion: string) {
   const { supabase } = await import("@/integrations/supabase/client");
   const { data, error } = await supabase.functions.invoke("redeem-kiosk-install-code", {
     body: { installCode: normalizeInstallCode(installCode), fingerprint, appVersion },
   });
-  if (error || data?.error) throw new Error(data?.error || error?.message || "Pairing failed");
+  if (error || data?.error) {
+    const message = data?.error || (error ? await getSupabaseFunctionErrorMessage(error) : "Pairing failed");
+    throw new Error(friendlyInstallCodeError(message));
+  }
   return data;
 }
 
