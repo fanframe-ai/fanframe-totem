@@ -51,11 +51,26 @@ Para manutencao avancada no PC, use `kiosk.config.json`:
   "autoLaunch": false,
   "blockShortcuts": false,
   "fullscreen": false,
-  "kiosk": false
+  "kiosk": false,
+  "updates": {
+    "installerUrl": "https://seu-dominio.com/FanFrame-Kiosk-Setup.exe"
+  }
 }
 ```
 
 Reative essas opcoes antes de devolver o PC para operacao no totem.
+
+## Atualizar Pelo Proprio App
+
+O modo tecnico tem o botao `Atualizar app`. Ele nao atualiza no meio da venda: o dono do totem precisa abrir o modo tecnico com `Ctrl + Shift + F12`, digitar o PIN e apertar o botao.
+
+Configure uma das opcoes abaixo no `kiosk.config.json` do PC ou por variaveis de ambiente:
+
+- `updates.installerUrl` ou `FANFRAME_UPDATE_URL`: baixa o instalador novo e abre no Windows.
+- `updates.installerPath` ou `FANFRAME_UPDATE_PATH`: abre um instalador ja salvo no PC.
+- `updates.updateCommand` ou `FANFRAME_UPDATE_COMMAND`: executa um comando local de atualizacao. Use `updates.updateArgs` quando precisar passar argumentos.
+
+Depois de abrir o instalador, o FanFrame fecha automaticamente para a atualizacao continuar. PCs que ainda nao tem essa versao instalada precisam de uma ultima atualizacao manual para receber o botao.
 
 ## Operacao Remota
 
@@ -69,11 +84,11 @@ O painel mostra:
 - comandos pendentes;
 - alertas operacionais detectados.
 
-Quando a versao instalada estiver diferente da versao esperada, o painel marca o totem como desatualizado. A atualizacao ainda e feita instalando uma nova versao do app no PC Windows; o painel controla o alvo e mostra quais totens precisam dessa manutencao.
+Quando a versao instalada estiver diferente da versao esperada, o painel marca o totem como desatualizado. A atualizacao pode ser iniciada pelo botao `Atualizar app` no modo tecnico, desde que o PC tenha um instalador ou link de instalador configurado.
 
 ## Limites Atuais
 
-- Atualizacao automatica silenciosa ainda nao esta implementada.
+- Atualizacao silenciosa sem interacao do Windows ainda nao esta implementada.
 - Enquanto a API PagBank nao estiver liberada, use `simulatePayments` apenas em laboratorio.
 - Pagamento por cartao depende do SDK/ambiente PlugPag instalado e homologado no PC Windows.
 - Sem internet, o totem nao vende porque depende de Supabase, PagBank e IA.

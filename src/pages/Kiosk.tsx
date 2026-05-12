@@ -22,7 +22,7 @@ import {
   shouldReloadForRemoteKioskState,
   verifyTechnicalPin,
 } from "@/lib/kiosk";
-import type { KioskCardPaymentResult, KioskRuntimeConfig, KioskTechnicalStatus, StoredDeviceIdentity } from "@/types/kiosk";
+import type { KioskCardPaymentResult, KioskRuntimeConfig, KioskTechnicalStatus, KioskUpdateStatus, StoredDeviceIdentity } from "@/types/kiosk";
 
 type KioskStep =
   | "boot"
@@ -153,6 +153,9 @@ export default function KioskPage() {
   const [pinInput, setPinInput] = useState("");
   const [technicalPinError, setTechnicalPinError] = useState("");
   const [technicalStatus, setTechnicalStatus] = useState<KioskTechnicalStatus | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<KioskUpdateStatus | null>(null);
+  const [updateMessage, setUpdateMessage] = useState("");
+  const [updateBusy, setUpdateBusy] = useState(false);
   const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
   const [pendingRemoteReload, setPendingRemoteReload] = useState(false);
   const [shirtRailScroll, setShirtRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
@@ -779,12 +782,14 @@ export default function KioskPage() {
   const openTechnicalMode = async () => {
     setTechnicalOpen(true);
     const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
+    const updater = await window.fanframeKiosk?.getUpdateStatus?.().catch(() => null);
     setTechnicalStatus(status || {
       online: navigator.onLine,
       appVersion: config?.appVersion || "browser",
       deviceCode: activeDevice.deviceCode || null,
       lastSyncAt: null,
     });
+    setUpdateStatus(updater);
   };
 
   const setTechnicalCheck = (key: keyof TechnicalChecks, patch: Partial<TechnicalCheck>) => {
@@ -871,6 +876,30 @@ export default function KioskPage() {
     }
   };
 
+  const startAppUpdate = async () => {
+    if (!window.fanframeKiosk?.startAppUpdate) {
+      setUpdateMessage("Atualizacao local so funciona no app Windows instalado.");
+      return;
+    }
+
+    setUpdateBusy(true);
+    setUpdateMessage("Preparando atualizacao...");
+    try {
+      const updater = await window.fanframeKiosk.getUpdateStatus?.();
+      setUpdateStatus(updater || null);
+      if (updater && !updater.ready) {
+        setUpdateMessage(updater.message);
+        return;
+      }
+      const result = await window.fanframeKiosk.startAppUpdate();
+      setUpdateMessage(result.message);
+    } catch (err) {
+      setUpdateMessage(err instanceof Error ? err.message : "Nao foi possivel iniciar a atualizacao.");
+    } finally {
+      setUpdateBusy(false);
+    }
+  };
+
   const runAllTechnicalTests = async () => {
     await testInternet();
     await testSupabase();
@@ -932,6 +961,7 @@ export default function KioskPage() {
                 <div><dt>Camera</dt><dd className={`technical-${technicalChecks.camera.status}`}>{checkText(technicalChecks.camera)}</dd></div>
                 <div><dt>Pagamentos</dt><dd className={`technical-${technicalChecks.payments.status}`}>{checkText(technicalChecks.payments)}</dd></div>
                 <div><dt>Diagnostico</dt><dd className={`technical-${technicalChecks.diagnostics.status}`}>{checkText(technicalChecks.diagnostics)}</dd></div>
+                <div><dt>Atualizacao</dt><dd>{updateStatus?.ready ? updateStatus.message : updateStatus?.message || "Nao verificada"}</dd></div>
               </dl>
               <button onClick={runAllTechnicalTests}>Testar tudo</button>
               <button onClick={testInternet}>Testar internet</button>
@@ -941,7 +971,9 @@ export default function KioskPage() {
               <button onClick={sendManualDiagnostics}>Enviar diagnostico</button>
               <button onClick={() => window.location.reload()}>Sincronizar agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
+              <button onClick={startAppUpdate} disabled={updateBusy}>{updateBusy ? "Atualizando..." : "Atualizar app"}</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
+              {updateMessage && <p className="technical-note">{updateMessage}</p>}
               <button onClick={() => {
                 setTechnicalOpen(false);
                 setTechnicalUnlocked(false);

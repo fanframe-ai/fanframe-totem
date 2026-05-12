@@ -10,6 +10,7 @@ const {
   shouldEnableAutoLaunch,
 } = require("./kiosk-hardening.cjs");
 const { getPaymentReadiness } = require("./kiosk-payments.cjs");
+const { getUpdateReadiness } = require("./kiosk-updates.cjs");
 
 let staticServer;
 
@@ -86,6 +87,13 @@ function loadKioskConfig() {
       fileConfig.simulatePayments === true ||
       fileConfig.payments?.simulate === true,
     payments: fileConfig.payments || {},
+    updates: {
+      ...(fileConfig.updates || {}),
+      installerUrl: process.env.FANFRAME_UPDATE_URL || fileConfig.updates?.installerUrl || "",
+      installerPath: process.env.FANFRAME_UPDATE_PATH || fileConfig.updates?.installerPath || "",
+      updateCommand: process.env.FANFRAME_UPDATE_COMMAND || fileConfig.updates?.updateCommand || "",
+      updateArgs: Array.isArray(fileConfig.updates?.updateArgs) ? fileConfig.updates.updateArgs : [],
+    },
   };
 }
 
@@ -196,6 +204,101 @@ async function startCardPayment(_event, request) {
   return runPlugPagCommand(config, request);
 }
 
+function downloadUpdateInstaller(url, destinationPath, redirectsLeft = 3) {
+  return new Promise((resolve, reject) => {
+    const request = net.request(url);
+
+    request.on("response", (response) => {
+      const location = response.headers.location;
+      if (response.statusCode >= 300 && response.statusCode < 400 && location && redirectsLeft > 0) {
+        const redirectLocation = Array.isArray(location) ? location[0] : location;
+        const redirectUrl = new URL(redirectLocation, url).toString();
+        downloadUpdateInstaller(redirectUrl, destinationPath, redirectsLeft - 1).then(resolve).catch(reject);
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        reject(new Error(`Download retornou HTTP ${response.statusCode}`));
+        return;
+      }
+
+      fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+      const file = fs.createWriteStream(destinationPath);
+
+      response.on("data", (chunk) => file.write(Buffer.from(chunk)));
+      response.on("end", () => {
+        file.end(() => resolve(destinationPath));
+      });
+      response.on("error", (error) => {
+        file.destroy();
+        reject(error);
+      });
+      file.on("error", reject);
+    });
+
+    request.on("error", reject);
+    request.end();
+  });
+}
+
+async function startAppUpdate() {
+  const config = loadKioskConfig();
+  const readiness = getUpdateReadiness(config);
+
+  if (!readiness.ready) {
+    return {
+      ok: false,
+      status: readiness.mode,
+      message: readiness.message,
+    };
+  }
+
+  let command = readiness.updateCommand || readiness.installerPath;
+  let args = readiness.updateArgs || [];
+
+  if (!command && readiness.installerUrl) {
+    const updateDir = path.join(app.getPath("userData"), "updates");
+    const fileName = `FanFrame-Kiosk-Setup-${Date.now()}.exe`;
+    command = await downloadUpdateInstaller(readiness.installerUrl, path.join(updateDir, fileName));
+    args = [];
+  }
+
+  if (!command) {
+    return {
+      ok: false,
+      status: "not_configured",
+      message: "Nenhum instalador de atualizacao configurado neste PC.",
+    };
+  }
+
+  if (readiness.mode === "local_installer" && !fs.existsSync(command)) {
+    return {
+      ok: false,
+      status: "installer_not_found",
+      message: "Instalador de atualizacao nao encontrado neste PC.",
+    };
+  }
+
+  const child = spawn(command, args, {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: false,
+  });
+  await new Promise((resolve, reject) => {
+    child.once("spawn", resolve);
+    child.once("error", reject);
+  });
+  child.unref();
+
+  setTimeout(() => app.quit(), 1200);
+
+  return {
+    ok: true,
+    status: "started",
+    message: "Atualizacao iniciada. O FanFrame sera fechado para o instalador continuar.",
+  };
+}
+
 function configureAutoLaunch(config) {
   if (process.platform !== "win32" || !app.isPackaged) return;
 
@@ -268,6 +371,11 @@ app.whenReady().then(() => {
     lastSyncAt: null,
   }));
   ipcMain.handle("kiosk:get-payment-status", () => getPaymentReadiness(loadKioskConfig()));
+  ipcMain.handle("kiosk:get-update-status", () => ({
+    ...getUpdateReadiness(loadKioskConfig()),
+    appVersion: app.getVersion(),
+  }));
+  ipcMain.handle("kiosk:start-app-update", startAppUpdate);
   ipcMain.handle("kiosk:relaunch", async () => {
     app.relaunch();
     app.exit(0);

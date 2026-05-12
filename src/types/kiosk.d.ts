@@ -35,6 +35,23 @@ export interface KioskPaymentStatus {
   simulated: boolean;
 }
 
+export interface KioskUpdateStatus {
+  ready: boolean;
+  mode: "command" | "local_installer" | "download" | "not_configured";
+  message: string;
+  appVersion: string;
+  installerUrl?: string;
+  installerPath?: string;
+  updateCommand?: string;
+  updateArgs?: string[];
+}
+
+export interface KioskUpdateResult {
+  ok: boolean;
+  status: string;
+  message: string;
+}
+
 export interface KioskCardPaymentRequest {
   sessionId: string;
   paymentId: string;
@@ -64,6 +81,8 @@ declare global {
       clearDeviceIdentity: () => Promise<void>;
       getTechnicalStatus: () => Promise<KioskTechnicalStatus>;
       getPaymentStatus: () => Promise<KioskPaymentStatus>;
+      getUpdateStatus: () => Promise<KioskUpdateStatus>;
+      startAppUpdate: () => Promise<KioskUpdateResult>;
       relaunch: () => Promise<void>;
       onOpenTechnicalMode: (callback: () => void) => () => void;
     };

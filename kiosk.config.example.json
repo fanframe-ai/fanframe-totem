@@ -11,5 +11,11 @@
     "simulate": true,
     "plugpagCommand": "",
     "plugpagArgs": []
+  },
+  "updates": {
+    "installerUrl": "",
+    "installerPath": "",
+    "updateCommand": "",
+    "updateArgs": []
   }
 }
