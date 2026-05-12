@@ -21,7 +21,10 @@ describe("kiosk hardening", () => {
 
   it("keeps the technical shortcut available while blocking escape shortcuts", () => {
     expect(isTechnicalShortcut({ type: "keyDown", control: true, shift: true, key: "F12" })).toBe(true);
+    expect(isTechnicalShortcut({ type: "keyDown", control: true, shift: true, key: "", code: "F12" })).toBe(true);
+    expect(isTechnicalShortcut({ type: "keyDown", control: true, alt: true, key: "t" })).toBe(true);
     expect(isBlockedKioskShortcut({ type: "keyDown", control: true, shift: true, key: "F12" }, true)).toBe(false);
+    expect(isBlockedKioskShortcut({ type: "keyDown", control: true, alt: true, key: "t" }, true)).toBe(false);
     expect(isBlockedKioskShortcut({ type: "keyDown", alt: true, key: "F4" }, true)).toBe(true);
     expect(isBlockedKioskShortcut({ type: "keyDown", alt: true, key: "Tab" }, true)).toBe(true);
     expect(isBlockedKioskShortcut({ type: "keyDown", control: true, key: "r" }, true)).toBe(true);

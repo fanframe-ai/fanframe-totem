@@ -178,6 +178,7 @@ export default function KioskPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const shirtRailRef = useRef<HTMLDivElement | null>(null);
   const backgroundRailRef = useRef<HTMLDivElement | null>(null);
+  const technicalHoldTimerRef = useRef<number | null>(null);
   const { progress, complete } = useProgress(step === "generating");
 
   const timeoutSeconds = normalizeKioskTimeout(team?.kiosk_timeout_seconds);
@@ -779,7 +780,7 @@ export default function KioskPage() {
     }
   };
 
-  const openTechnicalMode = async () => {
+  const openTechnicalMode = useCallback(async () => {
     setTechnicalOpen(true);
     const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
     const updater = await window.fanframeKiosk?.getUpdateStatus?.().catch(() => null);
@@ -790,7 +791,38 @@ export default function KioskPage() {
       lastSyncAt: null,
     });
     setUpdateStatus(updater);
-  };
+  }, [activeDevice.deviceCode, config?.appVersion]);
+
+  const cancelTechnicalHold = useCallback(() => {
+    if (technicalHoldTimerRef.current) {
+      window.clearTimeout(technicalHoldTimerRef.current);
+      technicalHoldTimerRef.current = null;
+    }
+  }, []);
+
+  const startTechnicalHold = useCallback(() => {
+    cancelTechnicalHold();
+    technicalHoldTimerRef.current = window.setTimeout(() => {
+      technicalHoldTimerRef.current = null;
+      void openTechnicalMode();
+    }, 1800);
+  }, [cancelTechnicalHold, openTechnicalMode]);
+
+  useEffect(() => {
+    const openFromKeyboard = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const code = event.code.toLowerCase();
+      const isF12 = key === "f12" || code === "f12";
+      const isTechnicalShortcut = (event.ctrlKey && event.shiftKey && isF12) || (event.ctrlKey && event.altKey && key === "t");
+      if (!isTechnicalShortcut) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void openTechnicalMode();
+    };
+
+    window.addEventListener("keydown", openFromKeyboard, true);
+    return () => window.removeEventListener("keydown", openFromKeyboard, true);
+  }, [openTechnicalMode]);
 
   const setTechnicalCheck = (key: keyof TechnicalChecks, patch: Partial<TechnicalCheck>) => {
     setTechnicalChecks((current) => ({
@@ -987,6 +1019,18 @@ export default function KioskPage() {
     );
   };
 
+  const renderTechnicalHotspot = () => (
+    <button
+      type="button"
+      aria-label="Abrir modo tecnico"
+      className="technical-hotspot"
+      onPointerDown={startTechnicalHold}
+      onPointerUp={cancelTechnicalHold}
+      onPointerCancel={cancelTechnicalHold}
+      onPointerLeave={cancelTechnicalHold}
+    />
+  );
+
   const shellStyle = team ? ({
     "--team-primary": team.primary_color,
     "--team-secondary": team.secondary_color,
@@ -996,6 +1040,7 @@ export default function KioskPage() {
   if (step === "pairing") {
     return (
       <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-12">
+        {renderTechnicalHotspot()}
         <section className="w-full max-w-2xl rounded-lg border border-border bg-card p-10 text-center">
           <p className="text-base uppercase text-muted-foreground font-black tracking-wide mb-4">FanFrame Totem</p>
           <h1 className="text-6xl font-black uppercase leading-none mb-6">Conectar este totem</h1>
@@ -1025,6 +1070,7 @@ export default function KioskPage() {
   if (step === "boot" || teamLoading) {
     return (
       <main className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        {renderTechnicalHotspot()}
         <Loader2 className="w-16 h-16 animate-spin text-primary" />
         {renderTechnicalOverlay()}
       </main>
@@ -1034,6 +1080,7 @@ export default function KioskPage() {
   if (step === "maintenance") {
     return (
       <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-12" style={shellStyle}>
+        {renderTechnicalHotspot()}
         <section className="text-center max-w-2xl">
           <WifiOff className="w-24 h-24 mx-auto mb-8 text-destructive" />
           <h1 className="text-6xl font-black uppercase leading-none mb-6">Totem indisponivel</h1>
@@ -1055,6 +1102,7 @@ export default function KioskPage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground overflow-hidden" style={shellStyle}>
+      {renderTechnicalHotspot()}
       <div className="min-h-screen h-screen px-12 py-10 flex flex-col gap-8">
         <header className="shrink-0 flex items-center justify-between border-b border-border pb-6">
           <div className="min-w-0 flex items-center gap-5">

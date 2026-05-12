@@ -180,6 +180,18 @@
     padding: 24px;
   }
 
+  .technical-hotspot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 900;
+    width: 96px;
+    height: 96px;
+    border: 0;
+    background: transparent;
+    opacity: 0;
+  }
+
   .technical-panel {
     width: min(720px, calc(100vw - 48px));
     background: #111827;

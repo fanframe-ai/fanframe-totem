@@ -8,11 +8,14 @@ function shouldEnableAutoLaunch(config) {
 }
 
 function isTechnicalShortcut(input) {
+  const key = normalizeKey(input?.key);
+  const code = normalizeKey(input?.code);
   return (
     input?.type === "keyDown" &&
-    input.control === true &&
-    input.shift === true &&
-    normalizeKey(input.key) === "f12"
+    (
+      (input.control === true && input.shift === true && (key === "f12" || code === "f12")) ||
+      (input.control === true && input.alt === true && key === "t")
+    )
   );
 }
 
