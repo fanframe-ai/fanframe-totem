@@ -16,6 +16,7 @@ import {
   reportKioskHealth,
   filterVisibleAssets,
   formatCurrencyFromCents,
+  isSafeKioskReloadStep,
   normalizeKioskTimeout,
   shouldReportHealth,
   shouldReloadForRemoteKioskState,
@@ -153,6 +154,7 @@ export default function KioskPage() {
   const [technicalPinError, setTechnicalPinError] = useState("");
   const [technicalStatus, setTechnicalStatus] = useState<KioskTechnicalStatus | null>(null);
   const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
+  const [pendingRemoteReload, setPendingRemoteReload] = useState(false);
   const [shirtRailScroll, setShirtRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
   const [backgroundRailScroll, setBackgroundRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
@@ -209,6 +211,92 @@ export default function KioskPage() {
     setDeliveryUrl(null);
     setDeliveryQrImage(null);
   }, [stopCamera, team?.kiosk_enabled]);
+
+  const applyRemoteState = useCallback(async (state: {
+    device?: { teamSlug?: string | null; configVersion?: number | null } | null;
+  } | null, commandType?: string) => {
+    const remoteDevice = state?.device || null;
+    const remoteTeamSlug = remoteDevice?.teamSlug || undefined;
+    const remoteConfigVersion = Number(remoteDevice?.configVersion || 0);
+    const shouldReload = commandType === "sync_config" || shouldReloadForRemoteKioskState(
+      identity?.teamSlug || config?.teamSlug,
+      identity?.configVersion || 0,
+      remoteDevice,
+    );
+
+    if (remoteTeamSlug || remoteConfigVersion) {
+      const updatedIdentity = identity ? {
+        ...identity,
+        teamSlug: remoteTeamSlug || identity.teamSlug,
+        configVersion: remoteConfigVersion || identity.configVersion || 0,
+      } : null;
+      if (updatedIdentity) {
+        await window.fanframeKiosk?.saveDeviceIdentity?.(updatedIdentity);
+        setIdentity(updatedIdentity);
+      }
+      if (remoteTeamSlug) {
+        localStorage.setItem("fanframe:kiosk-team", remoteTeamSlug);
+        setSlug(remoteTeamSlug);
+        setConfig((current) => current ? { ...current, teamSlug: remoteTeamSlug } : current);
+      }
+    }
+
+    if (shouldReload) {
+      setPendingRemoteReload(true);
+    }
+  }, [config?.teamSlug, identity, setSlug]);
+
+  const syncRemoteKioskState = useCallback(async (commandType?: string) => {
+    if (!hasDeviceAuth) return null;
+    const state = await pollKioskState(activeDevice).catch(() => null);
+    await applyRemoteState(state, commandType);
+    return state;
+  }, [activeDevice, applyRemoteState, hasDeviceAuth]);
+
+  const processRemoteKioskCommand = useCallback(async (commandType?: string) => {
+    const state = await syncRemoteKioskState(commandType);
+    const command = state?.command || null;
+    if (!command) return;
+
+    try {
+      if (command.command_type === "restart_app") {
+        await pollKioskCommand(activeDevice, {
+          completeCommandId: command.id,
+          success: true,
+          result: { handledAt: new Date().toISOString(), relaunching: true },
+        });
+        await window.fanframeKiosk?.relaunch?.();
+        return;
+      }
+      if (command.command_type === "enter_maintenance") {
+        setError("Totem em manutencao remota.");
+        setStep("maintenance");
+      }
+      if (command.command_type === "exit_maintenance") {
+        setError(null);
+        resetFlow();
+      }
+      if (command.command_type === "send_diagnostics") {
+        const health = await collectHealthPayload();
+        await reportKioskHealth(activeDevice, {
+          health,
+          event: { eventType: "diagnostics_sent", severity: "info", payload: { step, paymentStatus: health.paymentStatus } },
+        });
+      }
+      if (command.command_type === "sync_config") await applyRemoteState(state, "sync_config");
+      await pollKioskCommand(activeDevice, {
+        completeCommandId: command.id,
+        success: true,
+        result: { handledAt: new Date().toISOString() },
+      });
+    } catch (err) {
+      await pollKioskCommand(activeDevice, {
+        completeCommandId: command.id,
+        success: false,
+        errorMessage: err instanceof Error ? err.message : "Command failed",
+      }).catch(() => undefined);
+    }
+  }, [activeDevice, applyRemoteState, collectHealthPayload, resetFlow, step, syncRemoteKioskState]);
 
   const retryBoot = useCallback(() => {
     window.location.reload();
@@ -327,81 +415,33 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (!hasDeviceAuth) return;
+    const channel = supabase.channel(`kiosk-device-${identity?.deviceId || activeDevice.deviceCode}`);
+    channel
+      .on("broadcast", { event: "admin_config_changed" }, async () => {
+        await processRemoteKioskCommand("sync_config");
+      })
+      .on("broadcast", { event: "admin_restart_requested" }, async () => {
+        await window.fanframeKiosk?.relaunch?.();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeDevice.deviceCode, hasDeviceAuth, identity?.deviceId, processRemoteKioskCommand]);
+
+  useEffect(() => {
+    if (!pendingRemoteReload || !isSafeKioskReloadStep(step)) return;
+    window.location.reload();
+  }, [pendingRemoteReload, step]);
+
+  useEffect(() => {
+    if (!hasDeviceAuth) return;
     const interval = window.setInterval(async () => {
-      const state = await pollKioskState(activeDevice).catch(() => null);
-      const remoteDevice = state?.device || null;
-      const remoteTeamSlug = remoteDevice?.teamSlug;
-      const remoteConfigVersion = Number(remoteDevice?.configVersion || 0);
-      let shouldReload = shouldReloadForRemoteKioskState(
-        identity?.teamSlug || config?.teamSlug,
-        identity?.configVersion || 0,
-        remoteDevice,
-      );
-
-      if (remoteTeamSlug || remoteConfigVersion) {
-        const updatedIdentity = identity ? {
-          ...identity,
-          teamSlug: remoteTeamSlug || identity.teamSlug,
-          configVersion: remoteConfigVersion || identity.configVersion || 0,
-        } : null;
-        if (updatedIdentity) {
-          await window.fanframeKiosk?.saveDeviceIdentity?.(updatedIdentity);
-          setIdentity(updatedIdentity);
-        }
-        if (remoteTeamSlug) {
-          localStorage.setItem("fanframe:kiosk-team", remoteTeamSlug);
-          setSlug(remoteTeamSlug);
-          setConfig((current) => current ? { ...current, teamSlug: remoteTeamSlug } : current);
-        }
-      }
-
-      const command = state?.command || null;
-      if (!command) {
-        if (shouldReload) window.location.reload();
-        return;
-      }
-      try {
-        if (command.command_type === "sync_config") shouldReload = true;
-        if (command.command_type === "restart_app") {
-          await pollKioskCommand(activeDevice, {
-            completeCommandId: command.id,
-            success: true,
-            result: { handledAt: new Date().toISOString(), relaunching: true },
-          });
-          await window.fanframeKiosk?.relaunch?.();
-          return;
-        }
-        if (command.command_type === "enter_maintenance") {
-          setError("Totem em manutencao remota.");
-          setStep("maintenance");
-        }
-        if (command.command_type === "exit_maintenance") {
-          setError(null);
-          resetFlow();
-        }
-        if (command.command_type === "send_diagnostics") {
-          const health = await collectHealthPayload();
-          await reportKioskHealth(activeDevice, {
-            health,
-            event: { eventType: "diagnostics_sent", severity: "info", payload: { step, paymentStatus: health.paymentStatus } },
-          });
-        }
-        await pollKioskCommand(activeDevice, {
-          completeCommandId: command.id,
-          success: true,
-          result: { handledAt: new Date().toISOString() },
-        });
-        if (shouldReload) window.location.reload();
-      } catch (err) {
-        await pollKioskCommand(activeDevice, {
-          completeCommandId: command.id,
-          success: false,
-          errorMessage: err instanceof Error ? err.message : "Command failed",
-        }).catch(() => undefined);
-      }
-    }, 5_000);
+      await processRemoteKioskCommand();
+    }, 60_000);
     return () => window.clearInterval(interval);
-  }, [activeDevice, collectHealthPayload, config?.teamSlug, hasDeviceAuth, identity, resetFlow, setSlug, step]);
+  }, [hasDeviceAuth, processRemoteKioskCommand]);
 
   useEffect(() => {
     if (step !== "boot" || teamLoading) return;

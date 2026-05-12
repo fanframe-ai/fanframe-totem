@@ -3,6 +3,7 @@ import {
   buildDeliveryUrl,
   filterVisibleAssets,
   formatCurrencyFromCents,
+  isSafeKioskReloadStep,
   normalizeKioskTimeout,
   shouldReloadForRemoteKioskState,
 } from "./kiosk";
@@ -39,5 +40,13 @@ describe("kiosk helpers", () => {
     expect(shouldReloadForRemoteKioskState("redbull", 1, { teamSlug: "redbull", configVersion: 2 })).toBe(true);
     expect(shouldReloadForRemoteKioskState("redbull", 2, { teamSlug: "redbull", configVersion: 2 })).toBe(false);
     expect(shouldReloadForRemoteKioskState("redbull", 0, null)).toBe(false);
+  });
+
+  it("only reloads kiosk automatically on safe screens", () => {
+    expect(isSafeKioskReloadStep("home")).toBe(true);
+    expect(isSafeKioskReloadStep("maintenance")).toBe(true);
+    expect(isSafeKioskReloadStep("shirt")).toBe(false);
+    expect(isSafeKioskReloadStep("payment")).toBe(false);
+    expect(isSafeKioskReloadStep("camera")).toBe(false);
   });
 });

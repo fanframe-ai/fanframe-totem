@@ -61,6 +61,7 @@ export async function enqueueDeviceCommand(deviceId: string, commandType: Comman
   });
   if (error) throw error;
   await logAdminAudit("kiosk_devices", deviceId, "remote_command_enqueued", { commandType, payload });
+  await broadcastDeviceChange(deviceId, commandType);
 
   if (commandType === "enter_maintenance") {
     await supabase
@@ -77,6 +78,21 @@ export async function enqueueDeviceCommand(deviceId: string, commandType: Comman
       .eq("id", deviceId);
     await logAdminAudit("kiosk_devices", deviceId, "maintenance_disabled", {});
   }
+}
+
+export async function broadcastDeviceChange(deviceId: string, commandType: CommandType | "config_changed" = "config_changed") {
+  const event = commandType === "restart_app" ? "admin_restart_requested" : "admin_config_changed";
+  const channel = supabase.channel(`kiosk-device-${deviceId}`);
+  await new Promise<void>((resolve) => {
+    channel.subscribe(() => resolve());
+    window.setTimeout(resolve, 1200);
+  });
+  await channel.send({
+    type: "broadcast",
+    event,
+    payload: { commandType, deviceId, sentAt: new Date().toISOString() },
+  });
+  await supabase.removeChannel(channel);
 }
 
 export async function logAdminAudit(targetTable: string, targetId: string | null, action: string, payload: Record<string, unknown>) {

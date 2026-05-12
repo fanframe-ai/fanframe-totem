@@ -79,6 +79,10 @@ export function shouldReloadForRemoteKioskState(
   return remoteVersion > 0 && remoteVersion !== localVersion;
 }
 
+export function isSafeKioskReloadStep(step: string) {
+  return ["boot", "home", "maintenance", "pairing"].includes(step);
+}
+
 export function classifyKioskError(message: string): KioskFriendlyError {
   const text = message.toLowerCase();
   if (text.includes("camera") || text.includes("webcam")) {
