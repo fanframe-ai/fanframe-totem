@@ -932,6 +932,26 @@ export default function KioskPage() {
     }
   };
 
+  const resetKioskInstallation = async () => {
+    const confirmed = window.confirm("Resetar este totem? Ele vai perder o pareamento atual e voltar para a tela do codigo de instalacao.");
+    if (!confirmed) return;
+
+    stopCamera();
+    await window.fanframeKiosk?.clearDeviceIdentity?.().catch(() => undefined);
+    localStorage.removeItem("fanframe:kiosk-team");
+    setIdentity(null);
+    setConfig((current) => current ? { ...current, teamSlug: "", deviceSecret: "" } : current);
+    setSlug("");
+    setError(null);
+    setPairingCode("");
+    setPairingError("");
+    setTechnicalOpen(false);
+    setTechnicalUnlocked(false);
+    setPinInput("");
+    setTechnicalPinError("");
+    setStep("pairing");
+  };
+
   const runAllTechnicalTests = async () => {
     await testInternet();
     await testSupabase();
@@ -1006,6 +1026,7 @@ export default function KioskPage() {
               <button onClick={startAppUpdate} disabled={updateBusy}>{updateBusy ? "Atualizando..." : "Atualizar app"}</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
               {updateMessage && <p className="technical-note">{updateMessage}</p>}
+              <button className="technical-danger" onClick={resetKioskInstallation}>Resetar instalacao</button>
               <button onClick={() => {
                 setTechnicalOpen(false);
                 setTechnicalUnlocked(false);

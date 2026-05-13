@@ -231,6 +231,11 @@
     color: #111827;
   }
 
+  .technical-panel button.technical-danger {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
   .technical-status {
     display: grid;
     gap: 10px;
