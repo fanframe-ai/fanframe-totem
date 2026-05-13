@@ -1009,6 +1009,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
   const [newTeamId, setNewTeamId] = useState("");
   const [changingTeam, setChangingTeam] = useState(false);
   const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; supportPin: string; ownerMessage: string } | null>(null);
+  const [newTechnicalPin, setNewTechnicalPin] = useState("");
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
 
@@ -1069,6 +1070,26 @@ function DeviceDetail({ role }: { role: Role | null }) {
     if (!installCode) return;
     await navigator.clipboard.writeText(installCode.ownerMessage);
     setMessage("Mensagem de instalacao copiada.");
+  }
+
+  async function generateTechnicalPin() {
+    if (!device) return;
+    setMessage("");
+    try {
+      const supportPin = await rotateDeviceSupportPin(device.id);
+      setNewTechnicalPin(supportPin);
+      await enqueueDeviceCommand(device.id, "sync_config", { reason: "support_pin_rotated" });
+      setMessage("Novo PIN tecnico gerado. Use este PIN no app do totem.");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao gerar PIN tecnico.");
+    }
+  }
+
+  async function copyTechnicalPin() {
+    if (!newTechnicalPin) return;
+    await navigator.clipboard.writeText(newTechnicalPin);
+    setMessage("PIN tecnico copiado.");
   }
 
   async function copyUpdateMessage() {
@@ -1171,6 +1192,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
         </div>
         <div className="actions-row">
           {canEditDevices && <button className="secondary" onClick={generateInstall}>Gerar codigo para instalar</button>}
+          {canEditDevices && <button className="secondary" onClick={generateTechnicalPin}>Gerar novo PIN tecnico</button>}
           {getDeviceVersionStatus(device) === "desatualizado" && <button className="secondary" onClick={copyUpdateMessage}><Copy size={16} /> Copiar mensagem de atualizacao</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("sync_config")}>Atualizar dados</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("send_diagnostics")}>Pedir diagnostico</button>}
@@ -1194,6 +1216,15 @@ function DeviceDetail({ role }: { role: Role | null }) {
           </div>
         )}
         {message && <p className="hint">{message}</p>}
+        {newTechnicalPin && (
+          <div className="install-card">
+            <div>
+              <strong>Novo PIN tecnico: {newTechnicalPin}</strong>
+              <span>Este PIN aparece so agora. Copie e envie para quem esta no totem.</span>
+            </div>
+            <button className="secondary" type="button" onClick={copyTechnicalPin}><Copy size={16} /> Copiar PIN</button>
+          </div>
+        )}
         {installCode && (
           <div className="install-card">
             <div>

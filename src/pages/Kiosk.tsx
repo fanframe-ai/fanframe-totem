@@ -222,17 +222,19 @@ export default function KioskPage() {
     const remoteDevice = state?.device || null;
     const remoteTeamSlug = remoteDevice?.teamSlug || undefined;
     const remoteConfigVersion = Number(remoteDevice?.configVersion || 0);
+    const remoteSupportPinHash = remoteDevice?.supportPinHash || undefined;
     const shouldReload = commandType === "sync_config" || shouldReloadForRemoteKioskState(
       identity?.teamSlug || config?.teamSlug,
       identity?.configVersion || 0,
       remoteDevice,
     );
 
-    if (remoteTeamSlug || remoteConfigVersion) {
+    if (remoteTeamSlug || remoteConfigVersion || remoteSupportPinHash) {
       const updatedIdentity = identity ? {
         ...identity,
         teamSlug: remoteTeamSlug || identity.teamSlug,
         configVersion: remoteConfigVersion || identity.configVersion || 0,
+        supportPinHash: remoteSupportPinHash || identity.supportPinHash,
       } : null;
       if (updatedIdentity) {
         await window.fanframeKiosk?.saveDeviceIdentity?.(updatedIdentity);
@@ -256,6 +258,17 @@ export default function KioskPage() {
     await applyRemoteState(state, commandType);
     return state;
   }, [activeDevice, applyRemoteState, hasDeviceAuth]);
+
+  const refreshTechnicalPinHash = useCallback(async () => {
+    if (!hasDeviceAuth || !identity) return identity?.supportPinHash || null;
+    const state = await pollKioskState(activeDevice).catch(() => null);
+    const supportPinHash = state?.device?.supportPinHash || null;
+    if (!supportPinHash) return identity.supportPinHash || null;
+    const updatedIdentity = { ...identity, supportPinHash };
+    await window.fanframeKiosk?.saveDeviceIdentity?.(updatedIdentity).catch(() => undefined);
+    setIdentity(updatedIdentity);
+    return supportPinHash;
+  }, [activeDevice, hasDeviceAuth, identity]);
 
   const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
     const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
@@ -979,13 +992,18 @@ export default function KioskPage() {
                 setTechnicalPinError("PIN tecnico nao configurado neste totem. Peca um novo codigo de instalacao ao administrador.");
                 return;
               }
-              const isValidPin = await verifyTechnicalPin(pinInput, identity?.supportPinHash);
+              let supportPinHash = identity?.supportPinHash;
+              let isValidPin = await verifyTechnicalPin(pinInput, supportPinHash);
+              if (!isValidPin) {
+                supportPinHash = await refreshTechnicalPinHash();
+                isValidPin = await verifyTechnicalPin(pinInput, supportPinHash);
+              }
               if (isValidPin) {
                 setTechnicalUnlocked(true);
                 setTechnicalPinError("");
                 return;
               }
-              setTechnicalPinError("PIN invalido. Confira o PIN tecnico enviado pelo administrador.");
+              setTechnicalPinError("PIN invalido. Gere um novo PIN tecnico no painel e tente novamente.");
             }}>
               <h2>Modo tecnico</h2>
               <p>Area local limitada para o dono do totem testar conexao, camera, sincronizacao e reiniciar o app.</p>

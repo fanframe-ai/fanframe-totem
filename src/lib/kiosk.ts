@@ -31,6 +31,7 @@ export type DeviceIdentity = {
 export type RemoteKioskDeviceState = {
   teamSlug?: string | null;
   configVersion?: number | null;
+  supportPinHash?: string | null;
 };
 
 export type KioskErrorCode = "NET-001" | "CAM-001" | "PAY-001" | "CFG-001" | "IA-001" | "APP-001";
