@@ -21,18 +21,18 @@ describe("kiosk payment readiness", () => {
     });
   });
 
-  it("accepts PlugPag when a local command is configured", () => {
+  it("uses production PIX when simulation is disabled", () => {
     expect(getPaymentReadiness({ payments: { plugpagCommand: "plugpag-adapter.exe" } })).toMatchObject({
       ready: true,
-      mode: "plugpag",
-      plugpagConfigured: true,
+      mode: "pix",
+      plugpagConfigured: false,
     });
   });
 
-  it("blocks local card payments when neither simulation nor PlugPag are configured", () => {
+  it("does not require local card configuration", () => {
     expect(getPaymentReadiness({ payments: {} })).toMatchObject({
-      ready: false,
-      mode: "not_configured",
+      ready: true,
+      mode: "pix",
       plugpagConfigured: false,
       simulated: false,
     });

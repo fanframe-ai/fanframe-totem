@@ -42,16 +42,15 @@ Para publicar tambem o webhook PagBank:
 - Testar internet, Supabase, camera e diagnostico.
 - Validar que o app reinicia e volta pareado.
 
-## 4. PagBank Sandbox
+## 4. PagBank Producao
 
-O sandbox usa pagamentos reais de teste, sem dinheiro real:
+O fluxo oficial do totem usa apenas PIX:
 
-- Configurar `PAGBANK_API_TOKEN` com token sandbox.
-- Configurar `PAGBANK_API_BASE=https://sandbox.api.pagseguro.com`.
+- Configurar `PAGBANK_API_TOKEN` com token de producao.
+- Configurar `PAGBANK_API_BASE=https://api.pagseguro.com`.
 - Configurar `PAGBANK_NOTIFICATION_URL` apontando para `pagbank-webhook`.
 - Manter `KIOSK_SIMULATE_PAYMENTS=false`.
-- Rodar `.\scripts\test-pagbank-sandbox.ps1`.
-- Fazer venda PIX sandbox pelo app.
+- Fazer venda PIX producao pelo app.
 - Capturar foto pela webcam.
 - Enviar para IA.
 - Receber QR Code de download.
@@ -61,17 +60,14 @@ O sandbox usa pagamentos reais de teste, sem dinheiro real:
 
 Use somente quando a internet/API estiver fora do escopo do teste:
 
-- Ativar `simulatePayments` no `kiosk.config.json` ou `KIOSK_SIMULATE_PAYMENTS=true`.
+- Ativar `Pagamento teste` no modo tecnico do app.
 - Fazer venda simulada.
 - Validar webcam, IA, QR Code e reset automatico.
 
 ## 6. Antes De Producao
 
 - Trocar `PAGBANK_API_TOKEN` para token de producao.
-- Trocar `PAGBANK_API_BASE` para a base de producao PagBank.
+- Confirmar `PAGBANK_API_BASE=https://api.pagseguro.com`.
 - Testar PIX producao com valor baixo.
-- Homologar PlugPag no PC Windows.
-- Testar cartao real na maquininha.
-- Testar negacao/cancelamento real pela maquininha.
-- Desligar pagamentos simulados.
+- Desligar `Pagamento teste` no modo tecnico do app.
 - Fazer teste ponta a ponta com pagamento real.

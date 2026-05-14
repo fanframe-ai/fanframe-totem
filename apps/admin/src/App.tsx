@@ -1631,7 +1631,7 @@ function SettingsPage() {
         <div><strong>App</strong><span>FanFrame Totens Admin</span></div>
         <div><strong>Publicacao do painel</strong><span>Vercel com app separado para administracao.</span></div>
         <div><strong>Chaves protegidas</strong><span>Replicate e PagBank ficam salvos no Supabase, fora do navegador.</span></div>
-        <div><strong>Pagamento com cartao</strong><span>Roda no computador Windows do totem com PlugPag.</span></div>
+        <div><strong>Pagamento</strong><span>Totem usa apenas PIX PagBank em producao. O modo teste fica no app local.</span></div>
       </div>
     </>
   );

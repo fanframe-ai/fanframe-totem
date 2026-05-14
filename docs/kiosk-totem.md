@@ -41,10 +41,8 @@ Campos uteis:
 - `blockShortcuts`: bloqueia atalhos comuns de fuga.
 - `simulatePayments`: aprova pagamentos em modo teste.
 - `payments.simulate`: alternativa para modo teste.
-- `payments.plugpagCommand`: comando local homologado com PlugPag.
-- `payments.plugpagArgs`: argumentos do comando PlugPag.
 
-Use `simulatePayments: true` somente para laboratorio sem cobranca real. Com sandbox ou producao PagBank ativo, deixe pagamentos simulados desligados.
+Use `simulatePayments: true` ou `Pagamento teste` no modo tecnico somente para laboratorio sem cobranca real. Em producao PagBank, deixe pagamentos simulados desligados.
 
 ## Admin
 
@@ -87,9 +85,9 @@ Secrets esperados:
 - `PAGBANK_API_TOKEN`
 - `PAGBANK_API_BASE`
 - `PAGBANK_NOTIFICATION_URL`
-- `KIOSK_SIMULATE_PAYMENTS=false` para sandbox/producao PagBank
+- `KIOSK_SIMULATE_PAYMENTS=false` para producao PagBank
 
-Para teste sem cobranca real, use `KIOSK_SIMULATE_PAYMENTS=true` somente em laboratorio.
+Para teste sem cobranca real, use `Pagamento teste` no modo tecnico do app.
 
 ## Windows
 
@@ -112,25 +110,10 @@ npm run dev
 npm run electron:dev
 ```
 
-## PagBank E PlugPag
+## PagBank PIX
 
 PIX usa a API de pedidos/QR Code do PagBank via `create-kiosk-payment`. Sem `PAGBANK_API_TOKEN`, o PIX real fica bloqueado antes de criar cobranca.
 
-Para validar o sandbox PagBank direto pela API:
-
-```powershell
-$env:PAGBANK_API_TOKEN = "token-sandbox"
-.\scripts\test-pagbank-sandbox.ps1
-```
-
-Cartao usa a bridge Electron. Em producao, configure `payments.plugpagCommand` para chamar o adaptador local homologado com PlugPag. O comando recebe JSON por stdin e deve responder JSON por stdout:
-
-```json
-{
-  "approved": true,
-  "status": "approved",
-  "transactionCode": "..."
-}
-```
+Em producao, configure `PAGBANK_API_BASE=https://api.pagseguro.com`.
 
 Enquanto `simulatePayments` estiver ativo, o totem aprova pagamentos localmente para validar fluxo, webcam, IA e QR Code.

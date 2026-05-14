@@ -7,13 +7,13 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const PAGBANK_API_BASE = (Deno.env.get("PAGBANK_API_BASE") || "https://sandbox.api.pagseguro.com").replace(/\/+$/, "");
+const PAGBANK_API_BASE = (Deno.env.get("PAGBANK_API_BASE") || "https://api.pagseguro.com").replace(/\/+$/, "");
 const PAGBANK_TOKEN = Deno.env.get("PAGBANK_API_TOKEN");
 const NOTIFICATION_URL =
   Deno.env.get("PAGBANK_NOTIFICATION_URL") || `${SUPABASE_URL}/functions/v1/pagbank-webhook`;
 
-type PaymentAction = "create" | "confirm_card" | "status" | "cancel";
-type PaymentMethod = "pix" | "credit" | "debit" | "card";
+type PaymentAction = "create" | "status" | "cancel";
+type PaymentMethod = "pix";
 
 interface KioskPaymentRequest {
   action?: PaymentAction;
@@ -25,7 +25,6 @@ interface KioskPaymentRequest {
   method?: PaymentMethod;
   selected_shirt_id?: string;
   selected_background_id?: string;
-  plugpag_result?: Record<string, unknown>;
   simulate?: boolean;
 }
 
@@ -186,7 +185,11 @@ async function createPayment(req: KioskPaymentRequest) {
   const supabase = getSupabaseClient();
   const team = await resolveTeam(supabase, req.team_slug);
   const device = await resolveDevice(supabase, team.id, req.device_code, req.device_secret);
-  const method: PaymentMethod = req.method || "pix";
+  const requestedMethod = req.method || "pix";
+  if (requestedMethod !== "pix") {
+    throw new Error("Este totem aceita apenas pagamento por PIX.");
+  }
+  const method: PaymentMethod = "pix";
   const amountCents = team.kiosk_price_cents ?? 0;
   const currency = team.kiosk_currency || "BRL";
   const referenceId = `kiosk-${crypto.randomUUID()}`;
@@ -213,8 +216,8 @@ async function createPayment(req: KioskPaymentRequest) {
 
   if (sessionError) throw sessionError;
 
-  const provider = method === "pix" ? "pagbank_pix" : "plugpag_card";
-  const expiresAt = addMinutes(new Date(), method === "pix" ? 10 : 5).toISOString();
+  const provider = shouldSimulate ? "simulated" : "pagbank_pix";
+  const expiresAt = addMinutes(new Date(), 10).toISOString();
 
   const { data: payment, error: paymentError } = await supabase
     .from("kiosk_payments")
@@ -237,38 +240,31 @@ async function createPayment(req: KioskPaymentRequest) {
 
   await supabase.from("kiosk_sessions").update({ payment_id: payment.id }).eq("id", session.id);
 
-  if (method !== "pix") {
-    return jsonResponse({
-      sessionId: session.id,
-      paymentId: payment.id,
-      status: "awaiting_local_payment",
-      amountCents,
-      currency,
-      referenceId,
-    });
-  }
-
   if (shouldSimulate) {
     const qrCodeText = `fanframe-simulated-pix:${referenceId}:${amountCents}`;
     await supabase
       .from("kiosk_payments")
       .update({
         provider: "simulated",
+        status: "paid",
         qr_code_text: qrCodeText,
         provider_payload: { simulated: true },
+        paid_at: new Date().toISOString(),
       })
       .eq("id", payment.id);
+    await supabase.from("kiosk_sessions").update({ status: "paid" }).eq("id", session.id);
 
     return jsonResponse({
       sessionId: session.id,
       paymentId: payment.id,
-      status: "pending",
+      status: "paid",
       amountCents,
       currency,
       referenceId,
       qrCodeText,
       expiresAt,
       simulated: true,
+      paid: true,
     });
   }
 
@@ -303,46 +299,6 @@ async function createPayment(req: KioskPaymentRequest) {
     qrCodeUrl,
     expiresAt,
   });
-}
-
-async function confirmCard(req: KioskPaymentRequest) {
-  const supabase = getSupabaseClient();
-  if (!req.payment_id || !req.session_id) throw new Error("Missing payment_id or session_id");
-
-  const { data: payment, error } = await supabase
-    .from("kiosk_payments")
-    .select("*")
-    .eq("id", req.payment_id)
-    .eq("session_id", req.session_id)
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!payment) throw new Error("Payment not found");
-
-  await resolveDevice(supabase, payment.team_id, req.device_code, req.device_secret);
-
-  const result = req.plugpag_result || {};
-  const approved = result.approved === true || result.status === "approved";
-  const status = approved ? "paid" : "failed";
-
-  await supabase
-    .from("kiosk_payments")
-    .update({
-      status,
-      provider_payload: result,
-      paid_at: approved ? new Date().toISOString() : null,
-    })
-    .eq("id", req.payment_id);
-
-  await supabase
-    .from("kiosk_sessions")
-    .update({
-      status: approved ? "paid" : "failed",
-      error_message: approved ? null : "Card payment was not approved",
-    })
-    .eq("id", req.session_id);
-
-  return jsonResponse({ status, paid: approved });
 }
 
 async function checkStatus(req: KioskPaymentRequest) {
@@ -392,7 +348,6 @@ serve(async (req) => {
     const action = body.action || "create";
 
     if (action === "create") return await createPayment(body);
-    if (action === "confirm_card") return await confirmCard(body);
     if (action === "status") return await checkStatus(body);
 
     return jsonResponse({ error: "Unsupported action" }, 400);

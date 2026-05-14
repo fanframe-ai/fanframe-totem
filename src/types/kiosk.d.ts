@@ -29,7 +29,7 @@ export interface KioskTechnicalStatus {
 
 export interface KioskPaymentStatus {
   ready: boolean;
-  mode: "simulated" | "plugpag" | "not_configured";
+  mode: "simulated" | "pix" | "not_configured";
   message: string;
   plugpagConfigured: boolean;
   simulated: boolean;

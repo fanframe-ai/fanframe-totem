@@ -89,6 +89,6 @@ Quando a versao instalada estiver diferente da versao esperada, o painel marca o
 ## Limites Atuais
 
 - Atualizacao silenciosa sem interacao do Windows ainda nao esta implementada.
-- Enquanto a API PagBank nao estiver liberada, use `simulatePayments` apenas em laboratorio.
-- Pagamento por cartao depende do SDK/ambiente PlugPag instalado e homologado no PC Windows.
+- Enquanto a API PagBank producao nao estiver liberada, use `Pagamento teste` apenas em laboratorio.
+- O fluxo oficial do totem usa apenas PIX.
 - Sem internet, o totem nao vende porque depende de Supabase, PagBank e IA.

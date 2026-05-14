@@ -1,6 +1,6 @@
 import { type Dispatch, type FormEvent, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Camera, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
+import { Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
@@ -22,7 +22,7 @@ import {
   shouldReloadForRemoteKioskState,
   verifyTechnicalPin,
 } from "@/lib/kiosk";
-import type { KioskCardPaymentResult, KioskRuntimeConfig, KioskTechnicalStatus, KioskUpdateStatus, StoredDeviceIdentity } from "@/types/kiosk";
+import type { KioskRuntimeConfig, KioskTechnicalStatus, KioskUpdateStatus, StoredDeviceIdentity } from "@/types/kiosk";
 
 type KioskStep =
   | "boot"
@@ -36,7 +36,7 @@ type KioskStep =
   | "generating"
   | "result";
 
-type PaymentMethod = "pix" | "credit" | "debit";
+type PaymentMethod = "pix";
 
 interface KioskPaymentResponse {
   sessionId: string;
@@ -286,7 +286,7 @@ export default function KioskPage() {
       paymentStatus: paymentStatus || {
         ready: config?.simulatePayments === true,
         mode: config?.simulatePayments === true ? "simulated" : "not_configured",
-        message: config?.simulatePayments === true ? "Pagamentos simulados ativos." : "Status de pagamento local indisponivel.",
+        message: config?.simulatePayments === true ? "Pagamentos simulados ativos." : "PIX PagBank em modo producao.",
         plugpagConfigured: false,
         simulated: config?.simulatePayments === true,
       },
@@ -580,21 +580,9 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (paymentMethod !== "pix" || !paymentId || !pixPayment) return;
-    if (pixPayment.simulated && config?.simulatePayments) {
-      const timeout = setTimeout(async () => {
-        const { data } = await supabase.functions.invoke("create-kiosk-payment", {
-          body: {
-            action: "confirm_card",
-            session_id: sessionId,
-            payment_id: paymentId,
-            device_code: activeDevice.deviceCode,
-            device_secret: activeDevice.deviceSecret,
-            plugpag_result: { approved: true, status: "approved", provider: "simulated_pix" },
-          },
-        });
-        if (data?.paid) setStep("camera");
-      }, 2500);
-      return () => clearTimeout(timeout);
+    if (pixPayment.paid) {
+      setStep("camera");
+      return;
     }
 
     const interval = setInterval(async () => {
@@ -663,65 +651,12 @@ export default function KioskPage() {
     setSessionId(payment.sessionId);
     setPaymentId(payment.paymentId);
 
-    if (method === "pix") {
-      setPixPayment(payment);
-      setPaymentBusy(false);
-      return;
-    }
-
-    const localPayment = await runCardPayment(method, payment);
-    if (!localPayment.approved) {
-      setPaymentBusy(false);
-      setPaymentMethod(null);
-      setError(localPayment.message || "Pagamento nao aprovado.");
-      return;
-    }
-
-    const { data: confirmation, error: confirmError } = await supabase.functions.invoke("create-kiosk-payment", {
-      body: {
-        action: "confirm_card",
-        session_id: payment.sessionId,
-        payment_id: payment.paymentId,
-        device_code: activeDevice.deviceCode,
-        device_secret: activeDevice.deviceSecret,
-        plugpag_result: localPayment,
-      },
-    });
-
+    setPixPayment(payment);
     setPaymentBusy(false);
-    if (confirmError || confirmation?.error || !confirmation?.paid) {
-      setPaymentMethod(null);
-      setError(confirmation?.error || confirmError?.message || "Nao foi possivel confirmar o pagamento.");
+    if (payment.paid) {
+      setStep("camera");
       return;
     }
-
-    setStep("camera");
-  };
-
-  const runCardPayment = async (method: PaymentMethod, payment: KioskPaymentResponse): Promise<KioskCardPaymentResult> => {
-    if (config?.simulatePayments) {
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      return {
-        approved: true,
-        status: "approved",
-        provider: "simulated_local_test",
-        transactionCode: `TEST-${Date.now()}`,
-      };
-    }
-
-    if (window.fanframeKiosk) {
-      return window.fanframeKiosk.startCardPayment({
-        sessionId: payment.sessionId,
-        paymentId: payment.paymentId,
-        amountCents: payment.amountCents,
-        currency: payment.currency,
-        method: method === "pix" ? "card" : method,
-        referenceId: payment.referenceId,
-      });
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return { approved: true, status: "approved", provider: "browser-preview" };
   };
 
   const capturePhoto = () => {
@@ -906,7 +841,7 @@ export default function KioskPage() {
     const ready = paymentStatus?.ready === true || simulatedFallback;
     setTechnicalCheck("payments", {
       status: ready ? "ok" : "fail",
-      message: paymentStatus?.message || (simulatedFallback ? "Pagamentos simulados ativos." : "Pagamento local indisponivel."),
+        message: paymentStatus?.message || (simulatedFallback ? "Pagamentos simulados ativos." : "PIX PagBank em modo producao."),
     });
   };
 
@@ -1331,17 +1266,12 @@ export default function KioskPage() {
 
               {!paymentMethod && (
                 <div className="grid grid-cols-1 gap-5">
-                  <button className="min-h-[170px] rounded-lg bg-card border-2 border-border p-8 flex items-center gap-8 text-left active:scale-[0.99] transition" onClick={() => startPayment("pix")}>
-                    <QrCode className="w-16 h-16 shrink-0" />
-                    <span className="text-4xl font-black uppercase">PIX</span>
-                  </button>
-                  <button className="min-h-[170px] rounded-lg bg-card border-2 border-border p-8 flex items-center gap-8 text-left active:scale-[0.99] transition" onClick={() => startPayment("credit")}>
-                    <CreditCard className="w-16 h-16 shrink-0" />
-                    <span className="text-4xl font-black uppercase">Credito</span>
-                  </button>
-                  <button className="min-h-[170px] rounded-lg bg-card border-2 border-border p-8 flex items-center gap-8 text-left active:scale-[0.99] transition" onClick={() => startPayment("debit")}>
-                    <CreditCard className="w-16 h-16 shrink-0" />
-                    <span className="text-4xl font-black uppercase">Debito</span>
+                  <button className="min-h-[190px] rounded-lg bg-card border-2 border-border p-8 flex items-center gap-8 text-left active:scale-[0.99] transition" onClick={() => startPayment("pix")}>
+                    <QrCode className="w-20 h-20 shrink-0" />
+                    <span>
+                      <span className="block text-4xl font-black uppercase">Pagar com PIX</span>
+                      <span className="block text-xl text-muted-foreground mt-3">Aponte a camera do celular para o QR Code.</span>
+                    </span>
                   </button>
                 </div>
               )}

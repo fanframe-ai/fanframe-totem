@@ -54,13 +54,13 @@ describe("operational health", () => {
         paymentStatus: {
           ready: false,
           mode: "not_configured",
-          message: "PlugPag nao configurado neste PC.",
+          message: "PagBank PIX nao configurado.",
         },
       },
     }, new Date("2026-05-10T12:00:00.000Z").getTime());
 
     expect(issues.map((issue) => issue.type)).toEqual(["payment"]);
-    expect(issues[0]?.message).toContain("PlugPag nao configurado");
+    expect(issues[0]?.message).toContain("PagBank PIX nao configurado");
   });
 
   it("builds a human location label from city, venue and location", () => {
