@@ -28,6 +28,7 @@ export interface TeamRow {
   logo_url: string | null;
   watermark_url: string | null;
   is_active: boolean;
+  text_overrides: Record<string, string>;
   kiosk_enabled: boolean;
   kiosk_price_cents: number;
   kiosk_currency: string;

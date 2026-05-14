@@ -102,6 +102,12 @@ tbody tr:hover { background: #f9fafb; }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .inline-form { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 10px; align-items: end; }
 .inline-form textarea { grid-column: span 2; }
+.text-override-sections { display: grid; gap: 14px; }
+.text-override-group { border: 1px solid var(--border); border-radius: 8px; background: #f9fafb; padding: 14px; display: grid; gap: 14px; }
+.text-override-group h3 { margin: 0; font-size: 15px; }
+.text-override-group p { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.text-override-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 12px; }
+.text-override-grid .wide-field { grid-column: 1 / -1; }
 .device-create-panel { padding: 20px; }
 .simple-device-form { display: grid; gap: 18px; }
 .form-block { display: grid; gap: 10px; }
@@ -155,7 +161,7 @@ tbody tr:hover { background: #f9fafb; }
   .sidebar nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sidebar-footer { display: none; }
   .content { padding: 18px; }
-  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .remote-team-switch { grid-template-columns: 1fr; }
+  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .remote-team-switch, .text-override-grid { grid-template-columns: 1fr; }
   .page-header, .section-heading, .device-actions { display: grid; }
   .filters { flex-wrap: wrap; }
   .filters select { max-width: none; }

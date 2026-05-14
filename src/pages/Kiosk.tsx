@@ -4,7 +4,7 @@ import { Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, Refre
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
-import { useTeam, type TeamBackground, type TeamShirt } from "@/contexts/TeamContext";
+import { useTeam, type TeamBackground, type TeamShirt, type TeamTextOverrides } from "@/contexts/TeamContext";
 import { getAssetFullUrl } from "@/config/fanframe";
 import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
 import {
@@ -38,6 +38,7 @@ type KioskStep =
   | "result";
 
 type PaymentMethod = "pix";
+type KioskCopyKey = keyof TeamTextOverrides;
 
 interface KioskPaymentResponse {
   sessionId: string;
@@ -205,6 +206,10 @@ export default function KioskPage() {
   const visibleShirts = useMemo(() => filterVisibleAssets(team?.shirts || []), [team?.shirts]);
   const visibleBackgrounds = useMemo(() => filterVisibleAssets(team?.backgrounds || []), [team?.backgrounds]);
   const priceLabel = formatCurrencyFromCents(team?.kiosk_price_cents || 0, team?.kiosk_currency || "BRL");
+  const copy = useCallback((key: KioskCopyKey, fallback: string, legacyKey?: KioskCopyKey) => {
+    const text = team?.text_overrides || {};
+    return text[key] || (legacyKey ? text[legacyKey] : undefined) || fallback;
+  }, [team?.text_overrides]);
   const activeDevice = useMemo(() => ({
     deviceCode: identity?.deviceCode || config?.deviceCode || "",
     deviceSecret: identity?.deviceSecret || config?.deviceSecret || "",
@@ -1130,12 +1135,12 @@ export default function KioskPage() {
           <div className="min-w-0 flex items-center gap-5">
             {team?.logo_url && <img src={team.logo_url} alt={team.name} className="w-20 h-20 object-contain shrink-0" />}
             <div className="min-w-0">
-              <p className="text-base uppercase text-muted-foreground font-black tracking-wide">FanFrame Totem</p>
+              <p className="text-base uppercase text-muted-foreground font-black tracking-wide">{copy("kiosk_brand_label", "FanFrame Totem")}</p>
               <h1 className="text-4xl font-black uppercase leading-tight truncate">{team?.name}</h1>
             </div>
           </div>
           <div className="text-right shrink-0 pl-6">
-            <p className="text-base text-muted-foreground uppercase font-black">Total</p>
+            <p className="text-base text-muted-foreground uppercase font-black">{copy("kiosk_total_label", "Total")}</p>
             <p className="text-4xl font-black">{priceLabel}</p>
           </div>
         </header>
@@ -1143,12 +1148,12 @@ export default function KioskPage() {
         {step === "home" && (
           <section className="flex-1 min-h-0 flex flex-col justify-center text-center">
             <div className="max-w-3xl mx-auto">
-              <p className="text-xl uppercase text-muted-foreground font-black mb-5">Experiencia interativa</p>
-              <h2 className="text-8xl font-black uppercase leading-[0.92] mb-10">Vista o manto</h2>
+              <p className="text-xl uppercase text-muted-foreground font-black mb-5">{copy("kiosk_home_eyebrow", "Experiencia interativa")}</p>
+              <h2 className="text-8xl font-black uppercase leading-[0.92] mb-10">{copy("kiosk_home_title", "Vista o manto", "welcome_title")}</h2>
               <p className="text-3xl leading-relaxed text-muted-foreground mb-14">
-                Escolha sua camisa, pague no totem e receba sua foto por QR Code.
+                {copy("kiosk_home_subtitle", "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", "welcome_subtitle")}
               </p>
-              <KioskButton onClick={startSelection} className="w-full">Comecar</KioskButton>
+              <KioskButton onClick={startSelection} className="w-full">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>
             </div>
           </section>
         )}
@@ -1156,8 +1161,8 @@ export default function KioskPage() {
         {step === "shirt" && (
           <section className="flex-1 min-h-0 flex flex-col">
             <div className="shrink-0">
-              <p className="text-lg uppercase text-muted-foreground font-black">Passo 1 de 3</p>
-              <h2 className="text-6xl font-black uppercase leading-none mb-8">Escolha a camisa</h2>
+              <p className="text-lg uppercase text-muted-foreground font-black">{copy("kiosk_shirt_step", "Passo 1 de 3")}</p>
+              <h2 className="text-6xl font-black uppercase leading-none mb-8">{copy("kiosk_shirt_title", "Escolha a camisa", "shirt_title")}</h2>
             </div>
             <div className="relative flex-1 min-h-0">
               <div
@@ -1207,8 +1212,8 @@ export default function KioskPage() {
               )}
             </div>
             <footer className="shrink-0 pt-7 grid grid-cols-[0.8fr_1.2fr] gap-5">
-              <KioskButton variant="ghost" onClick={resetFlow} className="w-full">Cancelar</KioskButton>
-              <KioskButton onClick={goAfterShirt} disabled={!selectedShirt} className="w-full">Continuar</KioskButton>
+              <KioskButton variant="ghost" onClick={resetFlow} className="w-full">{copy("kiosk_cancel", "Cancelar")}</KioskButton>
+              <KioskButton onClick={goAfterShirt} disabled={!selectedShirt} className="w-full">{copy("kiosk_continue", "Continuar")}</KioskButton>
             </footer>
           </section>
         )}
@@ -1216,8 +1221,8 @@ export default function KioskPage() {
         {step === "background" && (
           <section className="flex-1 min-h-0 flex flex-col">
             <div className="shrink-0">
-              <p className="text-lg uppercase text-muted-foreground font-black">Passo 2 de 3</p>
-              <h2 className="text-6xl font-black uppercase leading-none mb-8">Escolha o cenario</h2>
+              <p className="text-lg uppercase text-muted-foreground font-black">{copy("kiosk_background_step", "Passo 2 de 3")}</p>
+              <h2 className="text-6xl font-black uppercase leading-none mb-8">{copy("kiosk_background_title", "Escolha o cenario", "background_title")}</h2>
             </div>
             <div className="relative flex-1 min-h-0">
               <div
@@ -1267,8 +1272,8 @@ export default function KioskPage() {
               )}
             </div>
             <footer className="shrink-0 pt-7 grid grid-cols-[0.8fr_1.2fr] gap-5">
-              <KioskButton variant="ghost" onClick={() => setStep("shirt")} className="w-full">Voltar</KioskButton>
-              <KioskButton onClick={() => setStep("payment")} disabled={!selectedBackground} className="w-full">Pagar</KioskButton>
+              <KioskButton variant="ghost" onClick={() => setStep("shirt")} className="w-full">{copy("kiosk_back", "Voltar")}</KioskButton>
+              <KioskButton onClick={() => setStep("payment")} disabled={!selectedBackground} className="w-full">{copy("kiosk_pay", "Pagar")}</KioskButton>
             </footer>
           </section>
         )}
@@ -1276,8 +1281,8 @@ export default function KioskPage() {
         {step === "payment" && (
           <section className="flex-1 min-h-0 flex flex-col justify-center">
             <div className="w-full text-center">
-              <p className="text-lg uppercase text-muted-foreground font-black">Passo 3 de 3</p>
-              <h2 className="text-6xl font-black uppercase mb-5">Pagamento</h2>
+              <p className="text-lg uppercase text-muted-foreground font-black">{copy("kiosk_payment_step", "Passo 3 de 3")}</p>
+              <h2 className="text-6xl font-black uppercase mb-5">{copy("kiosk_payment_title", "Pagamento")}</h2>
               <p className="text-4xl font-black mb-12">{priceLabel}</p>
 
               {!paymentMethod && (
@@ -1285,8 +1290,8 @@ export default function KioskPage() {
                   <button className="min-h-[190px] rounded-lg bg-card border-2 border-border p-8 flex items-center gap-8 text-left active:scale-[0.99] transition" onClick={() => startPayment("pix")}>
                     <QrCode className="w-20 h-20 shrink-0" />
                     <span>
-                      <span className="block text-4xl font-black uppercase">Pagar com PIX</span>
-                      <span className="block text-xl text-muted-foreground mt-3">Aponte a camera do celular para o QR Code.</span>
+                      <span className="block text-4xl font-black uppercase">{copy("kiosk_payment_pix_cta", "Pagar com PIX")}</span>
+                      <span className="block text-xl text-muted-foreground mt-3">{copy("kiosk_payment_pix_hint", "Aponte a camera do celular para o QR Code.")}</span>
                     </span>
                   </button>
                 </div>
@@ -1295,7 +1300,7 @@ export default function KioskPage() {
               {paymentBusy && (
                 <div className="py-20">
                   <Loader2 className="w-24 h-24 animate-spin mx-auto mb-8" />
-                  <p className="text-4xl font-black uppercase">Aguardando pagamento</p>
+                  <p className="text-4xl font-black uppercase">{copy("kiosk_payment_waiting", "Aguardando pagamento")}</p>
                 </div>
               )}
 
@@ -1306,8 +1311,8 @@ export default function KioskPage() {
                   ) : (
                     <Loader2 className="w-24 h-24 animate-spin mb-8" />
                   )}
-                  <p className="text-3xl leading-relaxed text-muted-foreground mb-8">Aponte a camera do celular para pagar com PIX.</p>
-                  <KioskButton variant="ghost" onClick={resetFlow} className="w-full">Cancelar</KioskButton>
+                  <p className="text-3xl leading-relaxed text-muted-foreground mb-8">{copy("kiosk_payment_qr_hint", "Aponte a camera do celular para pagar com PIX.")}</p>
+                  <KioskButton variant="ghost" onClick={resetFlow} className="w-full">{copy("kiosk_cancel", "Cancelar")}</KioskButton>
                 </div>
               )}
 
@@ -1318,7 +1323,7 @@ export default function KioskPage() {
 
         {step === "camera" && (
           <section className="flex-1 min-h-0 flex flex-col items-center">
-            <h2 className="shrink-0 text-6xl font-black uppercase mb-7">Sua foto</h2>
+            <h2 className="shrink-0 text-6xl font-black uppercase mb-7">{copy("kiosk_camera_title", "Sua foto")}</h2>
             <div className="w-full flex-1 min-h-0 rounded-lg overflow-hidden bg-card border-2 border-border mb-7">
               {userImage ? (
                 <img src={userImage} alt="Foto capturada" className="w-full h-full object-cover" />
@@ -1331,14 +1336,14 @@ export default function KioskPage() {
                 <>
                   <KioskButton variant="secondary" onClick={retakePhoto} disabled={retakes >= 1} className="w-full">
                     <RefreshCw className="w-5 h-5 mr-2" />
-                    Refazer
+                    {copy("kiosk_camera_retake", "Refazer")}
                   </KioskButton>
-                  <KioskButton onClick={startGeneration} className="w-full">Usar foto</KioskButton>
+                  <KioskButton onClick={startGeneration} className="w-full">{copy("kiosk_camera_use", "Usar foto")}</KioskButton>
                 </>
               ) : (
                 <KioskButton onClick={capturePhoto} className="w-full col-span-2">
                   <Camera className="w-6 h-6 mr-3" />
-                  Capturar
+                  {copy("kiosk_camera_capture", "Capturar")}
                 </KioskButton>
               )}
             </div>
@@ -1349,8 +1354,8 @@ export default function KioskPage() {
           <section className="flex-1 min-h-0 grid place-items-center text-center">
             <div className="max-w-2xl w-full">
               <Loader2 className="w-28 h-28 animate-spin mx-auto mb-10" />
-              <h2 className="text-6xl font-black uppercase leading-none mb-6">Gerando imagem</h2>
-              <p className="text-2xl text-muted-foreground mb-10">Nao feche nem desligue o totem.</p>
+              <h2 className="text-6xl font-black uppercase leading-none mb-6">{copy("kiosk_generating_title", "Gerando imagem")}</h2>
+              <p className="text-2xl text-muted-foreground mb-10">{copy("kiosk_generating_subtitle", "Nao feche nem desligue o totem.")}</p>
               <Progress value={progress} className="h-6 mb-6" />
               <p className="text-5xl font-black">{progress}%</p>
             </div>
@@ -1361,7 +1366,7 @@ export default function KioskPage() {
           <section className="flex-1 min-h-0 flex flex-col text-center">
             <div className="shrink-0">
               <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-success" />
-              <h2 className="text-6xl font-black uppercase leading-none mb-6">Imagem pronta</h2>
+              <h2 className="text-6xl font-black uppercase leading-none mb-6">{copy("kiosk_result_title", "Imagem pronta")}</h2>
             </div>
             <div className="flex-1 min-h-0 rounded-lg bg-card border-2 border-border overflow-hidden mb-7">
               {generatedImage && <img src={generatedImage} alt="Imagem gerada" className="w-full h-full object-contain" />}
@@ -1369,8 +1374,8 @@ export default function KioskPage() {
             <div className="shrink-0 grid grid-cols-[320px_1fr] gap-7 items-center text-left">
               {deliveryQrImage && <img src={deliveryQrImage} alt="QR Code de download" className="w-80 h-80 bg-white p-3 rounded-lg" />}
               <div>
-                <p className="text-3xl font-black uppercase leading-tight mb-5">Escaneie para baixar no celular</p>
-                <KioskButton variant="secondary" onClick={resetFlow} className="w-full">Finalizar</KioskButton>
+                <p className="text-3xl font-black uppercase leading-tight mb-5">{copy("kiosk_result_hint", "Escaneie para baixar no celular")}</p>
+                <KioskButton variant="secondary" onClick={resetFlow} className="w-full">{copy("kiosk_result_finish", "Finalizar")}</KioskButton>
               </div>
             </div>
           </section>

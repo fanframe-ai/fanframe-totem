@@ -30,6 +30,35 @@ export interface TeamTextOverrides {
   upload_title?: string;
   upload_subtitle?: string;
   upload_cta?: string;
+  kiosk_brand_label?: string;
+  kiosk_total_label?: string;
+  kiosk_home_eyebrow?: string;
+  kiosk_home_title?: string;
+  kiosk_home_subtitle?: string;
+  kiosk_home_cta?: string;
+  kiosk_shirt_step?: string;
+  kiosk_shirt_title?: string;
+  kiosk_background_step?: string;
+  kiosk_background_title?: string;
+  kiosk_payment_step?: string;
+  kiosk_payment_title?: string;
+  kiosk_payment_pix_cta?: string;
+  kiosk_payment_pix_hint?: string;
+  kiosk_payment_waiting?: string;
+  kiosk_payment_qr_hint?: string;
+  kiosk_camera_title?: string;
+  kiosk_camera_capture?: string;
+  kiosk_camera_retake?: string;
+  kiosk_camera_use?: string;
+  kiosk_generating_title?: string;
+  kiosk_generating_subtitle?: string;
+  kiosk_result_title?: string;
+  kiosk_result_hint?: string;
+  kiosk_result_finish?: string;
+  kiosk_cancel?: string;
+  kiosk_back?: string;
+  kiosk_continue?: string;
+  kiosk_pay?: string;
 }
 
 export interface TeamConfig {

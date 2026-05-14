@@ -103,6 +103,7 @@ const emptyTeam: Partial<TeamRow> = {
   logo_url: null,
   watermark_url: null,
   is_active: true,
+  text_overrides: {},
   kiosk_enabled: true,
   kiosk_price_cents: 2500,
   kiosk_currency: "BRL",
@@ -111,6 +112,75 @@ const emptyTeam: Partial<TeamRow> = {
   kiosk_show_shirt_step: true,
   kiosk_show_background_step: true,
 };
+
+type KioskTextField = {
+  key: string;
+  label: string;
+  placeholder: string;
+  long?: boolean;
+};
+
+const kioskTextGroups: Array<{ title: string; description: string; fields: KioskTextField[] }> = [
+  {
+    title: "Topo do app",
+    description: "Textos pequenos que ficam fixos na parte de cima da tela.",
+    fields: [
+      { key: "kiosk_brand_label", label: "Nome pequeno no canto", placeholder: "FanFrame Totem" },
+      { key: "kiosk_total_label", label: "Texto acima do valor", placeholder: "Total" },
+    ],
+  },
+  {
+    title: "Tela inicial",
+    description: "Primeira tela que o cliente ve antes de comecar.",
+    fields: [
+      { key: "kiosk_home_eyebrow", label: "Texto pequeno acima do titulo", placeholder: "Experiencia interativa" },
+      { key: "kiosk_home_title", label: "Titulo principal", placeholder: "Vista o manto" },
+      { key: "kiosk_home_subtitle", label: "Frase explicando o que acontece", placeholder: "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", long: true },
+      { key: "kiosk_home_cta", label: "Botao para iniciar", placeholder: "Comecar" },
+    ],
+  },
+  {
+    title: "Escolha do cliente",
+    description: "Telas de camisa, cenario e botoes de navegacao.",
+    fields: [
+      { key: "kiosk_shirt_step", label: "Passo da camisa", placeholder: "Passo 1 de 3" },
+      { key: "kiosk_shirt_title", label: "Titulo da camisa", placeholder: "Escolha a camisa" },
+      { key: "kiosk_background_step", label: "Passo do cenario", placeholder: "Passo 2 de 3" },
+      { key: "kiosk_background_title", label: "Titulo do cenario", placeholder: "Escolha o cenario" },
+      { key: "kiosk_cancel", label: "Botao cancelar", placeholder: "Cancelar" },
+      { key: "kiosk_back", label: "Botao voltar", placeholder: "Voltar" },
+      { key: "kiosk_continue", label: "Botao continuar", placeholder: "Continuar" },
+      { key: "kiosk_pay", label: "Botao pagar", placeholder: "Pagar" },
+    ],
+  },
+  {
+    title: "Pagamento PIX",
+    description: "Textos exibidos na etapa de pagamento.",
+    fields: [
+      { key: "kiosk_payment_step", label: "Passo do pagamento", placeholder: "Passo 3 de 3" },
+      { key: "kiosk_payment_title", label: "Titulo do pagamento", placeholder: "Pagamento" },
+      { key: "kiosk_payment_pix_cta", label: "Botao PIX", placeholder: "Pagar com PIX" },
+      { key: "kiosk_payment_pix_hint", label: "Ajuda antes do QR Code", placeholder: "Aponte a camera do celular para o QR Code.", long: true },
+      { key: "kiosk_payment_waiting", label: "Texto aguardando", placeholder: "Aguardando pagamento" },
+      { key: "kiosk_payment_qr_hint", label: "Ajuda abaixo do QR Code", placeholder: "Aponte a camera do celular para pagar com PIX.", long: true },
+    ],
+  },
+  {
+    title: "Foto e resultado",
+    description: "Textos da camera, geracao da imagem e entrega final.",
+    fields: [
+      { key: "kiosk_camera_title", label: "Titulo da camera", placeholder: "Sua foto" },
+      { key: "kiosk_camera_capture", label: "Botao capturar", placeholder: "Capturar" },
+      { key: "kiosk_camera_retake", label: "Botao refazer", placeholder: "Refazer" },
+      { key: "kiosk_camera_use", label: "Botao usar foto", placeholder: "Usar foto" },
+      { key: "kiosk_generating_title", label: "Titulo enquanto gera", placeholder: "Gerando imagem" },
+      { key: "kiosk_generating_subtitle", label: "Frase enquanto gera", placeholder: "Nao feche nem desligue o totem.", long: true },
+      { key: "kiosk_result_title", label: "Titulo da entrega", placeholder: "Imagem pronta" },
+      { key: "kiosk_result_hint", label: "Frase do QR Code final", placeholder: "Escaneie para baixar no celular", long: true },
+      { key: "kiosk_result_finish", label: "Botao finalizar", placeholder: "Finalizar" },
+    ],
+  },
+];
 
 function money(cents = 0, currency = "BRL") {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(cents / 100);
@@ -621,11 +691,19 @@ function TeamForm() {
   useEffect(() => {
     if (isNew || !slug) return;
     supabase.from("teams").select("*").eq("slug", slug).maybeSingle().then(({ data }) => {
-      if (data) setTeam(data as TeamRow);
+      if (data) setTeam({ ...emptyTeam, ...(data as TeamRow), text_overrides: ((data as TeamRow).text_overrides || {}) });
     });
   }, [slug, isNew]);
 
   const set = <K extends keyof TeamRow>(key: K, value: TeamRow[K]) => setTeam((current) => ({ ...current, [key]: value }));
+  const textOverrides = (team.text_overrides || {}) as Record<string, string>;
+  const setTextOverride = (key: string, value: string) => {
+    const next = { ...textOverrides };
+    const cleanValue = value.trimStart();
+    if (cleanValue.trim()) next[key] = cleanValue;
+    else delete next[key];
+    set("text_overrides", next);
+  };
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -699,6 +777,46 @@ function TeamForm() {
           <p className="hint">Depois desse tempo parado, o totem volta para o comeco automaticamente.</p>
           <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_shirt_step !== false} onChange={(e) => set("kiosk_show_shirt_step", e.target.checked)} /> Mostrar escolha de camisa</label>
           <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_background_step !== false} onChange={(e) => set("kiosk_show_background_step", e.target.checked)} /> Mostrar escolha de cenario</label>
+        </section>
+
+        <section className="panel form-section full">
+          <div className="section-heading">
+            <div>
+              <h2>Textos do app</h2>
+              <p>Troque as frases que o cliente ve no totem. Campo vazio usa o texto padrao.</p>
+            </div>
+          </div>
+          <div className="text-override-sections">
+            {kioskTextGroups.map((group) => (
+              <div className="text-override-group" key={group.title}>
+                <div>
+                  <h3>{group.title}</h3>
+                  <p>{group.description}</p>
+                </div>
+                <div className="text-override-grid">
+                  {group.fields.map((field) => (
+                    <label className={field.long ? "wide-field" : ""} key={field.key}>
+                      {field.label}
+                      {field.long ? (
+                        <textarea
+                          rows={3}
+                          value={textOverrides[field.key] || ""}
+                          onChange={(event) => setTextOverride(field.key, event.target.value)}
+                          placeholder={field.placeholder}
+                        />
+                      ) : (
+                        <input
+                          value={textOverrides[field.key] || ""}
+                          onChange={(event) => setTextOverride(field.key, event.target.value)}
+                          placeholder={field.placeholder}
+                        />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="panel form-section full">
