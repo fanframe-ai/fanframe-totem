@@ -523,63 +523,82 @@ function Dashboard() {
   const paidToday = payments.filter((p) => p.status === "paid" && new Date(p.paid_at || p.created_at) >= today);
   const revenue = paidToday.reduce((sum, p) => sum + p.amount_cents, 0);
   const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
+  const onlineDevices = devices.filter((d) => deviceHealthLabel(d) === "online").length;
+  const offlineDevices = devices.filter((d) => isOffline(d.last_seen_at)).length;
 
   return (
     <>
       <PageHeader title="Inicio" subtitle="O que precisa de atencao hoje nos seus totens." />
-      <section className="stats-grid">
-        <StatCard label="Times ativos" value={teams.filter((t) => t.is_active).length} />
-        <StatCard label="Totens vendendo" value={devices.filter((d) => d.status === "active").length} />
-        <StatCard label="Totens sem contato" value={devices.filter((d) => isOffline(d.last_seen_at)).length} tone="danger" />
-        <StatCard label="Com alerta" value={operationalIssues.length} tone={operationalIssues.some((issue) => issue.severity === "critical") ? "danger" : "warning"} />
+      <section className="dashboard-hero">
+        <div>
+          <span>Resumo da operacao</span>
+          <h2>{operationalIssues.length ? `${operationalIssues.length} ponto${operationalIssues.length > 1 ? "s" : ""} para revisar` : "Tudo tranquilo agora"}</h2>
+          <p>{offlineDevices ? `${offlineDevices} totem(ns) sem contato. Veja a fila de problemas antes de mexer em configuracoes.` : "Nenhum totem offline detectado neste momento."}</p>
+        </div>
+        <div className="dashboard-hero-actions">
+          <Link className="primary link-button" to="/problemas">Ver problemas</Link>
+          <Link className="secondary link-button" to="/totens">Ver totens</Link>
+        </div>
+      </section>
+      <section className="stats-grid compact-stats">
+        <StatCard label="Totens online" value={onlineDevices} tone="success" />
+        <StatCard label="Sem contato" value={offlineDevices} tone={offlineDevices ? "danger" : "neutral"} />
         <StatCard label="Vendas hoje" value={paidToday.length} tone="success" />
         <StatCard label="Receita hoje" value={money(revenue)} tone="success" />
-        <StatCard label="Precisam atualizar" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
+        <StatCard label="Times ativos" value={teams.filter((t) => t.is_active).length} />
       </section>
       <section className="panel">
         <h2>Precisa de atencao</h2>
         {operationalIssues.length > 0 ? (
-          <DataTable columns={["Urgencia", "Totem", "Problema"]}>
+          <div className="issue-card-list">
             {operationalIssues.slice(0, 8).map((issue) => (
-              <tr key={`${issue.deviceId}-${issue.type}`}>
-                <td><Badge value={issue.severity} /></td>
-                <td><Link to={`/totens/${issue.deviceId}`}>{issue.deviceLabel}</Link></td>
-                <td>{issue.message}</td>
-              </tr>
+              <article className="issue-card" key={`${issue.deviceId}-${issue.type}`}>
+                <div>
+                  <Badge value={issue.severity} />
+                  <h3>{issue.deviceLabel}</h3>
+                  <p>{issue.message}</p>
+                </div>
+                <Link className="primary link-button" to={`/totens/${issue.deviceId}`}>Abrir</Link>
+              </article>
             ))}
-          </DataTable>
+          </div>
         ) : (
-          <p className="hint">Nenhum problema importante detectado agora.</p>
+          <div className="empty-state">Nenhum problema importante detectado agora.</div>
         )}
       </section>
       <section className="two-col">
         <div className="panel">
           <h2>Vendas recentes</h2>
-          <DataTable columns={["Time", "Totem", "Situacao", "Valor", "Criada"]}>
+          <div className="compact-list">
             {sessions.map((s) => (
-              <tr key={s.id}>
-                <td>{s.teams?.name || "-"}</td>
-                <td>{s.kiosk_devices?.label || s.kiosk_devices?.device_code || "-"}</td>
-                <td><Badge value={s.status} /></td>
-                <td>{money(s.amount_cents, s.currency)}</td>
-                <td>{dateTime(s.created_at)}</td>
-              </tr>
+              <div className="compact-row" key={s.id}>
+                <div>
+                  <strong>{s.teams?.name || "-"}</strong>
+                  <span>{s.kiosk_devices?.label || s.kiosk_devices?.device_code || "-"} - {dateTime(s.created_at)}</span>
+                </div>
+                <div>
+                  <strong>{money(s.amount_cents, s.currency)}</strong>
+                  <Badge value={s.status} />
+                </div>
+              </div>
             ))}
-          </DataTable>
+            {sessions.length === 0 && <div className="empty-state">Nenhuma venda recente.</div>}
+          </div>
         </div>
         <div className="panel">
           <h2>Totens recentes</h2>
-          <DataTable columns={["Totem", "Time", "Situacao", "Versao", "Ultimo contato"]}>
+          <div className="compact-list">
             {devices.slice(0, 12).map((d) => (
-              <tr key={d.id}>
-                <td>{d.label || d.device_code}</td>
-                <td>{d.teams?.name || "-"}</td>
-                <td><Badge value={deviceHealthLabel(d)} /></td>
-                <td>{d.app_version || "-"} / {d.expected_app_version || "-"}</td>
-                <td>{dateTime(d.last_seen_at)}</td>
-              </tr>
+              <Link className="compact-row" to={`/totens/${d.id}`} key={d.id}>
+                <div>
+                  <strong>{d.label || d.device_code}</strong>
+                  <span>{d.teams?.name || "-"} - {dateTime(d.last_seen_at)}</span>
+                </div>
+                <Badge value={deviceHealthLabel(d)} />
+              </Link>
             ))}
-          </DataTable>
+            {devices.length === 0 && <div className="empty-state">Nenhum totem cadastrado.</div>}
+          </div>
         </div>
       </section>
     </>
@@ -1876,32 +1895,48 @@ function UsersPage({ role }: { role: Role | null }) {
   return (
     <>
       <PageHeader title="Usuarios" subtitle="Crie acessos para quem vai ajudar na operacao." />
-      <section className="panel">
-        <h2>Novo acesso</h2>
-        <form className="inline-form" onSubmit={create}>
-          <input type="email" placeholder="email@dominio.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <input type="password" placeholder="senha inicial" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          <select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
-            <option value="admin">Operador geral</option>
-            <option value="super_admin">Dono do sistema</option>
-            <option value="support">Suporte dos totens</option>
-            <option value="finance">Financeiro</option>
-          </select>
-          <button className="primary">Criar</button>
-        </form>
-        {message && <p className="hint">{message}</p>}
+      <section className="two-col">
+        <div className="panel">
+          <h2>Novo acesso</h2>
+          <p className="hint">Use perfis simples. Operador geral resolve quase tudo; financeiro so acompanha vendas.</p>
+          <form className="stacked-form" onSubmit={create}>
+            <label>Email<input type="email" placeholder="email@dominio.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
+            <label>Senha inicial<input type="password" placeholder="senha inicial" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
+            <label>Perfil
+              <select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)}>
+                <option value="admin">Operador geral</option>
+                <option value="support">Suporte dos totens</option>
+                <option value="finance">Financeiro</option>
+                <option value="super_admin">Dono do sistema</option>
+              </select>
+            </label>
+            <button className="primary">Criar acesso</button>
+          </form>
+          {message && <p className="hint">{message}</p>}
+        </div>
+        <div className="panel role-help">
+          <h2>Quem pode fazer o que</h2>
+          <div><strong>Dono do sistema</strong><span>Acessa tudo, inclusive usuarios.</span></div>
+          <div><strong>Operador geral</strong><span>Configura times, totens e acompanha vendas.</span></div>
+          <div><strong>Suporte</strong><span>Cuida dos totens e problemas, sem mexer em usuarios.</span></div>
+          <div><strong>Financeiro</strong><span>Ve vendas e pagamentos.</span></div>
+        </div>
       </section>
       <section className="panel">
-        <DataTable columns={["Email", "Perfil", "Criado", ""]}>
+        <h2>Acessos ativos</h2>
+        <div className="user-card-list">
           {users.map((user) => (
-            <tr key={user.id}>
-              <td>{user.email}</td>
-              <td><Badge value={user.role} /></td>
-              <td>{dateTime(user.created_at)}</td>
-              <td><button className="danger" onClick={() => remove(user.id)}>Remover</button></td>
-            </tr>
+            <article className="user-card" key={user.id}>
+              <div>
+                <strong>{user.email}</strong>
+                <span>Criado em {dateTime(user.created_at)}</span>
+              </div>
+              <Badge value={user.role} />
+              <button className="danger" onClick={() => remove(user.id)}>Remover</button>
+            </article>
           ))}
-        </DataTable>
+          {users.length === 0 && <div className="empty-state">Nenhum usuario cadastrado.</div>}
+        </div>
       </section>
     </>
   );
@@ -1911,12 +1946,24 @@ function SettingsPage() {
   return (
     <>
       <PageHeader title="Ajustes" subtitle="Informacoes simples sobre publicacao e integracoes." />
-      <div className="panel settings-list">
-        <div><strong>App</strong><span>FanFrame Totens Admin</span></div>
-        <div><strong>Publicacao do painel</strong><span>Vercel com app separado para administracao.</span></div>
-        <div><strong>Chaves protegidas</strong><span>Replicate e PagBank ficam salvos no Supabase, fora do navegador.</span></div>
-        <div><strong>Pagamento</strong><span>Totem usa apenas PIX PagBank em producao. O modo teste fica no app local.</span></div>
-      </div>
+      <section className="settings-card-grid">
+        <div className="settings-card">
+          <strong>Painel admin</strong>
+          <span>Publicado na Vercel como app separado para operacao remota.</span>
+        </div>
+        <div className="settings-card">
+          <strong>Totem Windows</strong>
+          <span>App dedicado em Electron. O dono do ponto usa apenas instalacao e modo tecnico.</span>
+        </div>
+        <div className="settings-card">
+          <strong>Pagamento</strong>
+          <span>Fluxo normal usa somente PIX PagBank em producao. Teste sem pagamento fica no app local.</span>
+        </div>
+        <div className="settings-card">
+          <strong>Segredos</strong>
+          <span>Replicate, PagBank e chaves sensiveis ficam no Supabase, fora da tela do operador.</span>
+        </div>
+      </section>
     </>
   );
 }

@@ -79,6 +79,13 @@ label { display: grid; gap: 7px; color: #334155; font-size: 13px; font-weight: 8
 
 .panel, .subpanel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 8px 32px rgba(15, 23, 42, .04); }
 .panel h2, .subpanel h3 { margin: 0 0 14px; font-size: 18px; letter-spacing: -.01em; }
+.dashboard-hero { border-radius: 22px; padding: 26px; display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; background: linear-gradient(135deg, #0f172a, #334155); color: white; box-shadow: var(--shadow); }
+.dashboard-hero span { color: #cbd5e1; font-size: 12px; font-weight: 900; text-transform: uppercase; }
+.dashboard-hero h2 { margin: 8px 0; font-size: 38px; letter-spacing: -.04em; }
+.dashboard-hero p { margin: 0; color: #cbd5e1; font-size: 15px; max-width: 680px; }
+.dashboard-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.dashboard-hero .primary { background: white; color: #0f172a; }
+.dashboard-hero .secondary { background: rgba(255,255,255,.08); color: white; border-color: rgba(255,255,255,.2); }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .section-heading { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; margin-bottom: 16px; }
@@ -219,6 +226,23 @@ tbody tr:hover { background: #f9fafb; }
 .sales-card summary { cursor: pointer; color: #475569; font-size: 13px; font-weight: 900; }
 .issue-card { display: flex; justify-content: space-between; gap: 18px; align-items: center; }
 .issue-card span { display: block; margin-top: 8px; color: #334155; font-size: 13px; font-weight: 900; }
+.compact-list, .user-card-list { display: grid; gap: 10px; }
+.compact-row { border: 1px solid var(--border); border-radius: 14px; background: #ffffff; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.compact-row strong, .compact-row span { display: block; }
+.compact-row span { margin-top: 3px; color: var(--muted); font-size: 12px; }
+.compact-row > div:last-child { text-align: right; display: grid; gap: 6px; justify-items: end; }
+.stacked-form { display: grid; gap: 14px; margin-top: 14px; }
+.role-help { display: grid; gap: 12px; align-content: start; }
+.role-help div { border: 1px solid var(--border); background: #f8fafc; border-radius: 12px; padding: 12px; display: grid; gap: 4px; }
+.role-help strong, .role-help span { display: block; }
+.role-help span { color: var(--muted); font-size: 13px; }
+.user-card { border: 1px solid var(--border); border-radius: 14px; background: #ffffff; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; }
+.user-card strong, .user-card span { display: block; }
+.user-card span { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.settings-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.settings-card { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: grid; gap: 8px; box-shadow: var(--shadow); }
+.settings-card strong { font-size: 17px; }
+.settings-card span { color: var(--muted); line-height: 1.5; }
 .filters { display: flex; gap: 12px; }
 .filters select { max-width: 220px; }
 
@@ -235,6 +259,7 @@ tbody tr:hover { background: #f9fafb; }
 @media (max-width: 1280px) {
   .stats-grid { grid-template-columns: repeat(3, 1fr); }
   .two-col { grid-template-columns: 1fr; }
+  .dashboard-hero { display: grid; }
   .device-hero-panel { grid-template-columns: 1fr; }
   .team-editor-shell { grid-template-columns: 1fr; }
   .team-preview-panel { position: static; }
@@ -249,9 +274,10 @@ tbody tr:hover { background: #f9fafb; }
   .sidebar nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sidebar-footer { display: none; }
   .content { padding: 18px; }
-  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid { grid-template-columns: 1fr; }
+  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card { grid-template-columns: 1fr; }
   .device-hero-panel { min-width: 0; }
-  .issue-card, .sales-main { display: grid; }
+  .issue-card, .sales-main, .compact-row { display: grid; }
+  .compact-row > div:last-child { text-align: left; justify-items: start; }
   .team-card-top { grid-template-columns: auto 1fr; }
   .team-card-top .badge { grid-column: 1 / -1; justify-self: start; }
   .page-header, .section-heading, .device-actions { display: grid; }
