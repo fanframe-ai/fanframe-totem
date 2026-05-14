@@ -1010,6 +1010,7 @@ export default function KioskPage() {
                 <div><dt>Versao</dt><dd>{String(technicalStatus?.appVersion || config?.appVersion || "browser")}</dd></div>
                 <div><dt>Dispositivo</dt><dd>{String(technicalStatus?.deviceCode || activeDevice.deviceCode || "nao pareado")}</dd></div>
                 <div><dt>Time</dt><dd>{team?.name || identity?.teamSlug || config?.teamSlug || "-"}</dd></div>
+                <div><dt>Atalhos</dt><dd>{technicalStatus?.shortcuts?.every((shortcut) => shortcut.registered) ? "Registrados" : "Verificar build"}</dd></div>
               </dl>
               <dl className="technical-status">
                 <div><dt>Internet</dt><dd className={`technical-${technicalChecks.internet.status}`}>{checkText(technicalChecks.internet)}</dd></div>

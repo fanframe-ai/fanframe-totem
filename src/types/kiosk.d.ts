@@ -25,6 +25,11 @@ export interface KioskTechnicalStatus {
   appVersion: string;
   deviceCode: string | null;
   lastSyncAt: string | null;
+  shortcuts?: Array<{
+    accelerator: string;
+    action: string;
+    registered: boolean;
+  }>;
 }
 
 export interface KioskPaymentStatus {

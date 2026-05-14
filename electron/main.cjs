@@ -16,6 +16,7 @@ const { getUpdateReadiness } = require("./kiosk-updates.cjs");
 
 let staticServer;
 let mainWindow;
+let shortcutStatus = [];
 
 function identityPath() {
   return path.join(app.getPath("userData"), "device-identity.json");
@@ -338,9 +339,10 @@ function applyKioskWindowControl(action, win = mainWindow) {
 
 function registerKioskControlShortcuts() {
   globalShortcut.unregisterAll();
-  getKioskControlAccelerators().forEach(([accelerator, action]) => {
+  shortcutStatus = getKioskControlAccelerators().map(([accelerator, action]) => {
     const ok = globalShortcut.register(accelerator, () => applyKioskWindowControl(action));
     if (!ok) console.warn(`[kiosk] Failed to register shortcut ${accelerator}`);
+    return { accelerator, action, registered: ok };
   });
 }
 
@@ -414,6 +416,7 @@ app.whenReady().then(() => {
     appVersion: app.getVersion(),
     deviceCode: (await readIdentity())?.deviceCode || null,
     lastSyncAt: null,
+    shortcuts: shortcutStatus,
   }));
   ipcMain.handle("kiosk:get-payment-status", () => getPaymentReadiness(loadKioskConfig()));
   ipcMain.handle("kiosk:get-update-status", () => ({
