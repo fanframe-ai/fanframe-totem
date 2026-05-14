@@ -624,6 +624,17 @@ function DataTable({ columns, children }: { columns: string[]; children: React.R
 
 function Teams() {
   const { teams, loading } = useTeams();
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const filteredTeams = teams.filter((team) => {
+    const haystack = [team.name, team.slug, team.subdomain].join(" ").toLowerCase();
+    const matchesSearch = haystack.includes(search.trim().toLowerCase());
+    const matchesStatus =
+      !statusFilter ||
+      (statusFilter === "selling" && team.kiosk_enabled !== false && team.is_active !== false) ||
+      (statusFilter === "paused" && (team.kiosk_enabled === false || team.is_active === false));
+    return matchesSearch && matchesStatus;
+  });
   return (
     <>
       <PageHeader
@@ -631,9 +642,27 @@ function Teams() {
         subtitle="Configure o que cada torcida vai ver no totem."
         action={<Link className="primary link-button" to="/times/novo"><Plus size={16} /> Novo time</Link>}
       />
+      <section className="list-toolbar">
+        <label>
+          Buscar time
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome ou codigo do time" />
+        </label>
+        <label>
+          Situacao
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">Todos os times</option>
+            <option value="selling">Vendendo</option>
+            <option value="paused">Pausados</option>
+          </select>
+        </label>
+        <div className="toolbar-count">
+          <strong>{filteredTeams.length}</strong>
+          <span>{filteredTeams.length === 1 ? "time encontrado" : "times encontrados"}</span>
+        </div>
+      </section>
       <section className="team-card-grid">
         {loading && <div className="panel empty-state">Carregando times...</div>}
-        {!loading && teams.map((team) => (
+        {!loading && filteredTeams.map((team) => (
           <article className="team-card" key={team.id}>
             <div className="team-card-top">
               <div className="team-mark" style={{ background: team.primary_color || "#111827", color: team.secondary_color || "#ffffff" }}>
@@ -656,8 +685,8 @@ function Teams() {
             </div>
           </article>
         ))}
-        {!loading && teams.length === 0 && (
-          <div className="panel empty-state">Nenhum time cadastrado ainda.</div>
+        {!loading && filteredTeams.length === 0 && (
+          <div className="panel empty-state">{teams.length === 0 ? "Nenhum time cadastrado ainda." : "Nenhum time encontrado com esses filtros."}</div>
         )}
       </section>
     </>
@@ -1015,8 +1044,27 @@ function Devices({ role }: { role: Role | null }) {
   const [form, setForm] = useState(emptyDeviceForm);
   const [message, setMessage] = useState("");
   const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; deviceLabel: string; supportPin: string; ownerMessage: string } | null>(null);
+  const [deviceSearch, setDeviceSearch] = useState("");
+  const [teamFilter, setTeamFilter] = useState("");
+  const [healthFilter, setHealthFilter] = useState("");
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
+  const filteredDevices = devices.filter((device) => {
+    const haystack = [
+      device.label,
+      device.device_code,
+      device.city,
+      device.venue,
+      device.location,
+      device.owner_name,
+      device.owner_phone,
+      device.teams?.name,
+    ].filter(Boolean).join(" ").toLowerCase();
+    const matchesSearch = haystack.includes(deviceSearch.trim().toLowerCase());
+    const matchesTeam = !teamFilter || device.team_id === teamFilter;
+    const matchesHealth = !healthFilter || deviceHealthLabel(device) === healthFilter || device.status === healthFilter;
+    return matchesSearch && matchesTeam && matchesHealth;
+  });
 
   const load = async () => {
     const { data } = await supabase.from("kiosk_devices").select("*, teams(name, slug)").order("created_at", { ascending: false });
@@ -1225,8 +1273,36 @@ function Devices({ role }: { role: Role | null }) {
             <p>Resumo rapido para saber se precisa agir.</p>
           </div>
         </div>
+        <div className="list-toolbar embedded">
+          <label>
+            Buscar totem
+            <input value={deviceSearch} onChange={(event) => setDeviceSearch(event.target.value)} placeholder="Nome, cidade, local ou responsavel" />
+          </label>
+          <label>
+            Time
+            <select value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)}>
+              <option value="">Todos os times</option>
+              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Situacao
+            <select value={healthFilter} onChange={(event) => setHealthFilter(event.target.value)}>
+              <option value="">Todas</option>
+              <option value="online">Online</option>
+              <option value="offline">Sem contato</option>
+              <option value="attention">Com alerta</option>
+              <option value="maintenance">Em manutencao</option>
+              <option value="disabled">Desativado</option>
+            </select>
+          </label>
+          <div className="toolbar-count">
+            <strong>{filteredDevices.length}</strong>
+            <span>{filteredDevices.length === 1 ? "totem encontrado" : "totens encontrados"}</span>
+          </div>
+        </div>
         <div className="device-card-grid">
-          {devices.map((d) => (
+          {filteredDevices.map((d) => (
             <article className="device-card" key={d.id}>
               <div className="device-card-header">
                 <div>
@@ -1252,7 +1328,7 @@ function Devices({ role }: { role: Role | null }) {
               </div>
             </article>
           ))}
-          {devices.length === 0 && <div className="empty-state">Nenhum totem cadastrado ainda.</div>}
+          {filteredDevices.length === 0 && <div className="empty-state">{devices.length === 0 ? "Nenhum totem cadastrado ainda." : "Nenhum totem encontrado com esses filtros."}</div>}
         </div>
       </section>
     </>

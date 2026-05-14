@@ -113,6 +113,11 @@ tbody tr:hover { background: #f9fafb; }
 .inline-check input { width: auto; }
 .hint { color: var(--muted); font-size: 13px; line-height: 1.5; }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; }
+.list-toolbar { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: grid; grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px) auto; gap: 12px; align-items: end; box-shadow: 0 8px 28px rgba(15, 23, 42, .035); }
+.list-toolbar.embedded { grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px) minmax(180px, 220px) auto; margin-bottom: 16px; box-shadow: none; background: #f8fafc; }
+.toolbar-count { border: 1px solid var(--border); border-radius: 12px; min-height: 43px; padding: 8px 12px; display: grid; align-content: center; background: white; white-space: nowrap; }
+.toolbar-count strong { font-size: 18px; line-height: 1; }
+.toolbar-count span { color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; }
 .team-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
 .team-card { background: white; border: 1px solid var(--border); border-radius: 18px; padding: 18px; display: grid; gap: 18px; box-shadow: var(--shadow); }
 .team-card-top { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; }
@@ -274,7 +279,7 @@ tbody tr:hover { background: #f9fafb; }
   .sidebar nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sidebar-footer { display: none; }
   .content { padding: 18px; }
-  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card { grid-template-columns: 1fr; }
+  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card, .list-toolbar, .list-toolbar.embedded { grid-template-columns: 1fr; }
   .device-hero-panel { min-width: 0; }
   .issue-card, .sales-main, .compact-row { display: grid; }
   .compact-row > div:last-child { text-align: left; justify-items: start; }
