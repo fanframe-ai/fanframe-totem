@@ -182,6 +182,19 @@ const kioskTextGroups: Array<{ title: string; description: string; fields: Kiosk
   },
 ];
 
+type TeamEditorTab = "basico" | "venda" | "visual" | "textos" | "camisas" | "cenarios" | "ia" | "avancado";
+
+const teamEditorTabs: Array<{ id: TeamEditorTab; label: string }> = [
+  { id: "basico", label: "Basico" },
+  { id: "venda", label: "Venda" },
+  { id: "visual", label: "Visual" },
+  { id: "textos", label: "Textos" },
+  { id: "camisas", label: "Camisas" },
+  { id: "cenarios", label: "Cenarios" },
+  { id: "ia", label: "IA" },
+  { id: "avancado", label: "Avancado" },
+];
+
 function money(cents = 0, currency = "BRL") {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(cents / 100);
 }
@@ -596,24 +609,38 @@ function Teams() {
     <>
       <PageHeader
         title="Times"
-        subtitle="Crie times, preco, camisas, cenarios e estilo da foto."
+        subtitle="Configure o que cada torcida vai ver no totem."
         action={<Link className="primary link-button" to="/times/novo"><Plus size={16} /> Novo time</Link>}
       />
-      <div className="panel">
-        <DataTable columns={["Time", "Link", "Totem", "Preco", "Imagens", "Situacao", ""]}>
-          {!loading && teams.map((team) => (
-            <tr key={team.id}>
-              <td><strong>{team.name}</strong></td>
-              <td>/{team.slug}</td>
-              <td><Badge value={team.kiosk_enabled ? "habilitado" : "desabilitado"} /></td>
-              <td>{money(team.kiosk_price_cents, team.kiosk_currency)}</td>
-              <td>{team.shirts?.length || 0} camisas / {team.backgrounds?.length || 0} cenarios</td>
-              <td><Badge value={team.is_active ? "ativo" : "inativo"} /></td>
-              <td><Link to={`/times/${team.slug}`}>Editar</Link></td>
-            </tr>
-          ))}
-        </DataTable>
-      </div>
+      <section className="team-card-grid">
+        {loading && <div className="panel empty-state">Carregando times...</div>}
+        {!loading && teams.map((team) => (
+          <article className="team-card" key={team.id}>
+            <div className="team-card-top">
+              <div className="team-mark" style={{ background: team.primary_color || "#111827", color: team.secondary_color || "#ffffff" }}>
+                {team.logo_url ? <img src={team.logo_url} alt="" /> : team.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <h2>{team.name}</h2>
+                <p>{team.kiosk_enabled ? "Vendendo no totem" : "Venda pausada"}</p>
+              </div>
+              <Badge value={team.is_active ? "ativo" : "inativo"} />
+            </div>
+            <div className="team-card-summary">
+              <div><span>Preco</span><strong>{money(team.kiosk_price_cents, team.kiosk_currency)}</strong></div>
+              <div><span>Camisas</span><strong>{team.shirts?.length || 0}</strong></div>
+              <div><span>Cenarios</span><strong>{team.backgrounds?.length || 0}</strong></div>
+            </div>
+            <div className="team-card-footer">
+              <span>{team.slug ? `/${team.slug}` : "Sem codigo"}</span>
+              <Link className="primary link-button" to={`/times/${team.slug}`}>Editar time</Link>
+            </div>
+          </article>
+        ))}
+        {!loading && teams.length === 0 && (
+          <div className="panel empty-state">Nenhum time cadastrado ainda.</div>
+        )}
+      </section>
     </>
   );
 }
@@ -687,6 +714,7 @@ function TeamForm() {
   const [team, setTeam] = useState<Partial<TeamRow>>(emptyTeam);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [activeTab, setActiveTab] = useState<TeamEditorTab>("basico");
 
   useEffect(() => {
     if (isNew || !slug) return;
@@ -697,6 +725,15 @@ function TeamForm() {
 
   const set = <K extends keyof TeamRow>(key: K, value: TeamRow[K]) => setTeam((current) => ({ ...current, [key]: value }));
   const textOverrides = (team.text_overrides || {}) as Record<string, string>;
+  const shirts = (team.shirts || []) as TeamAsset[];
+  const backgrounds = (team.backgrounds || []) as TeamAsset[];
+  const missingItems = [
+    !team.name && "nome do time",
+    !team.kiosk_price_cents && "preco da foto",
+    shirts.length === 0 && "camisas",
+    backgrounds.length === 0 && "cenarios",
+    !team.generation_prompt && "estilo da IA",
+  ].filter(Boolean) as string[];
   const setTextOverride = (key: string, value: string) => {
     const next = { ...textOverrides };
     const cleanValue = value.trimStart();
@@ -753,101 +790,178 @@ function TeamForm() {
   return (
     <>
       <PageHeader title={isNew ? "Novo time" : "Editar time"} subtitle="Configure o que aparece no totem desse time." />
-      <form className="form-grid" onSubmit={save}>
-        <section className="panel form-section">
-          <h2>Dados do time</h2>
-          <label>Nome<input value={team.name || ""} onChange={(e) => { set("name", e.target.value); if (isNew) set("slug", slugify(e.target.value)); }} required /></label>
-          <div className="two-fields">
-            <label>Cor principal<input type="color" value={team.primary_color || "#111827"} onChange={(e) => set("primary_color", e.target.value)} /></label>
-            <label>Cor de apoio<input type="color" value={team.secondary_color || "#ffffff"} onChange={(e) => set("secondary_color", e.target.value)} /></label>
-          </div>
-          <label className="inline-check"><input type="checkbox" checked={team.is_active !== false} onChange={(e) => set("is_active", e.target.checked)} /> Time ativo</label>
-          <details className="advanced-box">
-            <summary>Avancado</summary>
-            <label>Codigo interno do time<input value={team.slug || ""} onChange={(e) => set("slug", slugify(e.target.value))} disabled={!isNew} required /></label>
-            <p className="hint">Use apenas se precisar controlar o codigo interno. Depois de criar, ele fica travado para evitar erro nos totens.</p>
-          </details>
-        </section>
-
-        <section className="panel form-section">
-          <h2>Venda no totem</h2>
-          <label className="inline-check"><input type="checkbox" checked={team.kiosk_enabled !== false} onChange={(e) => set("kiosk_enabled", e.target.checked)} /> Este time pode vender no totem</label>
-          <label>Preco da foto (R$)<input type="number" min="0" step="0.01" value={centsToReais(team.kiosk_price_cents)} onChange={(e) => set("kiosk_price_cents", reaisToCents(e.target.value))} /></label>
-          <label>Tempo limite da tela (segundos)<input type="number" min="15" max="180" value={team.kiosk_timeout_seconds || 60} onChange={(e) => set("kiosk_timeout_seconds", Number(e.target.value))} /></label>
-          <p className="hint">Depois desse tempo parado, o totem volta para o comeco automaticamente.</p>
-          <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_shirt_step !== false} onChange={(e) => set("kiosk_show_shirt_step", e.target.checked)} /> Mostrar escolha de camisa</label>
-          <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_background_step !== false} onChange={(e) => set("kiosk_show_background_step", e.target.checked)} /> Mostrar escolha de cenario</label>
-        </section>
-
-        <section className="panel form-section full">
-          <div className="section-heading">
-            <div>
-              <h2>Textos do app</h2>
-              <p>Troque as frases que o cliente ve no totem. Campo vazio usa o texto padrao.</p>
-            </div>
-          </div>
-          <div className="text-override-sections">
-            {kioskTextGroups.map((group) => (
-              <div className="text-override-group" key={group.title}>
-                <div>
-                  <h3>{group.title}</h3>
-                  <p>{group.description}</p>
-                </div>
-                <div className="text-override-grid">
-                  {group.fields.map((field) => (
-                    <label className={field.long ? "wide-field" : ""} key={field.key}>
-                      {field.label}
-                      {field.long ? (
-                        <textarea
-                          rows={3}
-                          value={textOverrides[field.key] || ""}
-                          onChange={(event) => setTextOverride(field.key, event.target.value)}
-                          placeholder={field.placeholder}
-                        />
-                      ) : (
-                        <input
-                          value={textOverrides[field.key] || ""}
-                          onChange={(event) => setTextOverride(field.key, event.target.value)}
-                          placeholder={field.placeholder}
-                        />
-                      )}
-                    </label>
-                  ))}
-                </div>
-              </div>
+      <form className="team-editor-shell" onSubmit={save}>
+        <section className="team-editor-main panel">
+          <div className="editor-tabs" role="tablist" aria-label="Configuracao do time">
+            {teamEditorTabs.map((tab) => (
+              <button
+                type="button"
+                key={tab.id}
+                className={activeTab === tab.id ? "active" : ""}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
+
+          {activeTab === "basico" && (
+            <div className="editor-section">
+              <div className="editor-section-heading">
+                <h2>Informacoes principais</h2>
+                <p>Comece pelo nome e pela identidade basica do time.</p>
+              </div>
+              <label>Nome do time<input value={team.name || ""} onChange={(e) => { set("name", e.target.value); if (isNew) set("slug", slugify(e.target.value)); }} required /></label>
+              <label className="inline-check"><input type="checkbox" checked={team.is_active !== false} onChange={(e) => set("is_active", e.target.checked)} /> Time ativo no painel</label>
+            </div>
+          )}
+
+          {activeTab === "venda" && (
+            <div className="editor-section">
+              <div className="editor-section-heading">
+                <h2>Venda no totem</h2>
+                <p>Defina se esse time vende e quanto o cliente paga pela foto.</p>
+              </div>
+              <label className="inline-check"><input type="checkbox" checked={team.kiosk_enabled !== false} onChange={(e) => set("kiosk_enabled", e.target.checked)} /> Permitir venda desse time no totem</label>
+              <div className="two-fields">
+                <label>Preco da foto (R$)<input type="number" min="0" step="0.01" value={centsToReais(team.kiosk_price_cents)} onChange={(e) => set("kiosk_price_cents", reaisToCents(e.target.value))} /></label>
+                <label>Tempo parado ate reiniciar<input type="number" min="15" max="180" value={team.kiosk_timeout_seconds || 60} onChange={(e) => set("kiosk_timeout_seconds", Number(e.target.value))} /></label>
+              </div>
+              <p className="hint">O tempo e contado em segundos. Quando ninguem toca na tela, o app volta sozinho para o inicio.</p>
+            </div>
+          )}
+
+          {activeTab === "visual" && (
+            <div className="editor-section">
+              <div className="editor-section-heading">
+                <h2>Visual do app</h2>
+                <p>Escolha cores e imagens que deixam o totem com a cara do time.</p>
+              </div>
+              <div className="two-fields">
+                <label>Cor principal<input type="color" value={team.primary_color || "#111827"} onChange={(e) => set("primary_color", e.target.value)} /></label>
+                <label>Cor de apoio<input type="color" value={team.secondary_color || "#ffffff"} onChange={(e) => set("secondary_color", e.target.value)} /></label>
+              </div>
+              <div className="two-fields">
+                <label>
+                  Logo do time
+                  <input type="file" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    set("logo_url", await uploadAsset(file, `${team.slug || "novo"}/branding/logo.${file.name.split(".").pop() || "png"}`));
+                  }} />
+                </label>
+                <label>
+                  Marca d'agua da foto
+                  <input type="file" accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    set("watermark_url", await uploadAsset(file, `${team.slug || "novo"}/branding/watermark.${file.name.split(".").pop() || "png"}`));
+                  }} />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "textos" && (
+            <div className="editor-section">
+              <div className="editor-section-heading">
+                <h2>Textos do app</h2>
+                <p>Troque as frases que o cliente ve no totem. Campo vazio usa o texto padrao.</p>
+              </div>
+              <div className="text-override-sections">
+                {kioskTextGroups.map((group) => (
+                  <div className="text-override-group" key={group.title}>
+                    <div>
+                      <h3>{group.title}</h3>
+                      <p>{group.description}</p>
+                    </div>
+                    <div className="text-override-grid">
+                      {group.fields.map((field) => (
+                        <label className={field.long ? "wide-field" : ""} key={field.key}>
+                          {field.label}
+                          {field.long ? (
+                            <textarea
+                              rows={3}
+                              value={textOverrides[field.key] || ""}
+                              onChange={(event) => setTextOverride(field.key, event.target.value)}
+                              placeholder={field.placeholder}
+                            />
+                          ) : (
+                            <input
+                              value={textOverrides[field.key] || ""}
+                              onChange={(event) => setTextOverride(field.key, event.target.value)}
+                              placeholder={field.placeholder}
+                            />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "camisas" && (
+            <div className="editor-section">
+              <AssetEditor label="Camisas" teamSlug={team.slug || ""} type="shirts" assets={shirts} onChange={(assets) => set("shirts", assets)} />
+            </div>
+          )}
+
+          {activeTab === "cenarios" && (
+            <div className="editor-section">
+              <AssetEditor label="Cenarios" teamSlug={team.slug || ""} type="backgrounds" assets={backgrounds} onChange={(assets) => set("backgrounds", assets)} />
+            </div>
+          )}
+
+          {activeTab === "ia" && (
+            <div className="editor-section">
+              <div className="editor-section-heading">
+                <h2>Foto com IA</h2>
+                <p>Explique como a foto final deve parecer. Escreva como se estivesse orientando um fotografo.</p>
+              </div>
+              <label>Estilo da foto<textarea rows={7} value={team.generation_prompt || ""} onChange={(e) => set("generation_prompt", e.target.value)} placeholder="Ex: foto realista de torcedor no estadio, mantendo rosto, postura natural, iluminacao profissional e camisa do time bem visivel." /></label>
+            </div>
+          )}
+
+          {activeTab === "avancado" && (
+            <div className="editor-section">
+              <div className="editor-section-heading">
+                <h2>Avancado</h2>
+                <p>Use apenas quando precisar mudar comportamento tecnico do app.</p>
+              </div>
+              <label>Codigo interno do time<input value={team.slug || ""} onChange={(e) => set("slug", slugify(e.target.value))} disabled={!isNew} required /></label>
+              <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_shirt_step !== false} onChange={(e) => set("kiosk_show_shirt_step", e.target.checked)} /> Mostrar escolha de camisa</label>
+              <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_background_step !== false} onChange={(e) => set("kiosk_show_background_step", e.target.checked)} /> Mostrar escolha de cenario</label>
+              <p className="hint">Depois de criar o time, o codigo interno fica travado para evitar erro nos totens ja instalados.</p>
+            </div>
+          )}
         </section>
 
-        <section className="panel form-section full">
-          <h2>Aparencia e foto</h2>
-          <label>Estilo da foto<textarea rows={4} value={team.generation_prompt || ""} onChange={(e) => set("generation_prompt", e.target.value)} placeholder="Ex: foto realista de torcedor no estadio, mantendo rosto e postura naturais." /></label>
-          <p className="hint">Escreva em linguagem simples como a foto final deve parecer.</p>
-          <div className="two-fields">
-            <label>
-              Logo
-              <input type="file" accept="image/*" onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                set("logo_url", await uploadAsset(file, `${team.slug || "novo"}/branding/logo.${file.name.split(".").pop() || "png"}`));
-              }} />
-            </label>
-            <label>
-              Marca d'agua
-              <input type="file" accept="image/*" onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                set("watermark_url", await uploadAsset(file, `${team.slug || "novo"}/branding/watermark.${file.name.split(".").pop() || "png"}`));
-              }} />
-            </label>
+        <aside className="team-preview-panel">
+          <div className="totem-preview" style={{ background: team.primary_color || "#111827", color: team.secondary_color || "#ffffff" }}>
+            <span>Previa do totem</span>
+            <strong>{team.name || "Nome do time"}</strong>
+            <p>{textOverrides.kiosk_home_title || textOverrides.welcome_title || "Vista o manto"}</p>
           </div>
-        </section>
-
-        <section className="panel full">
-          <h2>Camisas e cenarios</h2>
-          <AssetEditor label="Camisas" teamSlug={team.slug || ""} type="shirts" assets={(team.shirts || []) as TeamAsset[]} onChange={(assets) => set("shirts", assets)} />
-          <AssetEditor label="Cenarios" teamSlug={team.slug || ""} type="backgrounds" assets={(team.backgrounds || []) as TeamAsset[]} onChange={(assets) => set("backgrounds", assets)} />
-        </section>
+          <div className="preview-list">
+            <div><span>Preco</span><strong>{money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}</strong></div>
+            <div><span>Camisas</span><strong>{shirts.length}</strong></div>
+            <div><span>Cenarios</span><strong>{backgrounds.length}</strong></div>
+            <div><span>Status</span><strong>{team.kiosk_enabled !== false ? "Vendendo" : "Pausado"}</strong></div>
+          </div>
+          {missingItems.length > 0 ? (
+            <div className="setup-warning">
+              <strong>Falta revisar</strong>
+              <span>{missingItems.join(", ")}</span>
+            </div>
+          ) : (
+            <div className="setup-ok">
+              <strong>Pronto para totem</strong>
+              <span>Esse time tem o basico configurado.</span>
+            </div>
+          )}
+        </aside>
 
         {message && <div className="form-message full">{message}</div>}
         <div className="form-actions full">
@@ -971,10 +1085,17 @@ function Devices({ role }: { role: Role | null }) {
     <>
       <PageHeader title="Totens" subtitle="Cadastre cada computador do totem e acompanhe se esta funcionando." />
       {canEditDevices && (
-        <section className="panel device-create-panel">
-          <div className="section-heading">
+        <details className="panel device-create-panel create-device-details">
+          <summary>
             <div>
               <h2>Novo totem</h2>
+              <p>Abra somente quando for cadastrar um novo computador.</p>
+            </div>
+            <span>Cadastrar</span>
+          </summary>
+          <div className="section-heading">
+            <div>
+              <h2>Dados para instalacao</h2>
               <p>Preencha o basico. Codigo, versao e PIN podem ficar automaticos.</p>
             </div>
             <button className="primary" form="device-form">Salvar totem</button>
@@ -1075,7 +1196,7 @@ function Devices({ role }: { role: Role | null }) {
               <textarea readOnly value={installCode.ownerMessage} rows={8} />
             </div>
           )}
-        </section>
+        </details>
       )}
       {!canEditDevices && message && <div className="panel"><p className="hint">{message}</p></div>}
       <section className="panel">
@@ -1085,31 +1206,35 @@ function Devices({ role }: { role: Role | null }) {
             <p>Resumo rapido para saber se precisa agir.</p>
           </div>
         </div>
-        <DataTable columns={["Totem", "Time", "Saude", "Instalacao", "Ultimo contato", "Acoes"]}>
+        <div className="device-card-grid">
           {devices.map((d) => (
-            <tr key={d.id}>
-              <td className="device-name-cell">
-                <strong>{d.label || d.device_code}</strong>
-                <span>{buildDeviceLocationLabel(d)}</span>
-                <span>{d.owner_name || d.owner_phone ? `${d.owner_name || "Responsavel"} ${d.owner_phone ? `- ${d.owner_phone}` : ""}` : d.device_code}</span>
-              </td>
-              <td>{d.teams?.name || "-"}</td>
-              <td>
+            <article className="device-card" key={d.id}>
+              <div className="device-card-header">
+                <div>
+                  <h3>{d.label || d.device_code}</h3>
+                  <p>{buildDeviceLocationLabel(d)}</p>
+                </div>
                 <Badge value={deviceHealthLabel(d)} />
-                <br />
-                <span>{friendly(getDeviceVersionStatus(d))}</span>
-              </td>
-              <td><Badge value={d.install_status || "not_paired"} /></td>
-              <td>{dateTime(d.last_seen_at)}</td>
-              <td className="actions-cell">
-                <Link className="secondary link-button" to={`/totens/${d.id}`}>Abrir</Link>
+              </div>
+              <div className="device-card-meta">
+                <div><span>Time</span><strong>{d.teams?.name || "-"}</strong></div>
+                <div><span>Instalacao</span><strong>{friendly(d.install_status || "not_paired")}</strong></div>
+                <div><span>Ultimo contato</span><strong>{dateTime(d.last_seen_at)}</strong></div>
+                <div><span>Versao</span><strong>{friendly(getDeviceVersionStatus(d))}</strong></div>
+              </div>
+              <div className="device-card-owner">
+                {d.owner_name || d.owner_phone ? `${d.owner_name || "Responsavel"} ${d.owner_phone ? `- ${d.owner_phone}` : ""}` : d.device_code}
+              </div>
+              <div className="device-card-actions">
+                <Link className="primary link-button" to={`/totens/${d.id}`}>Abrir controle</Link>
                 {canEditDevices && <button className="secondary" onClick={() => generateInstall(d)}>Instalar</button>}
                 {canOperate && d.status === "maintenance" && <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Liberar venda</button>}
                 {canOperate && d.status !== "maintenance" && <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Pausar</button>}
-              </td>
-            </tr>
+              </div>
+            </article>
           ))}
-        </DataTable>
+          {devices.length === 0 && <div className="empty-state">Nenhum totem cadastrado ainda.</div>}
+        </div>
       </section>
     </>
   );
