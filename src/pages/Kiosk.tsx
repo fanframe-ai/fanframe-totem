@@ -6,12 +6,11 @@ import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
 import { useTeam, type TeamBackground, type TeamShirt } from "@/contexts/TeamContext";
 import { getAssetFullUrl } from "@/config/fanframe";
-import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
+import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
 import {
   buildDeliveryUrl,
   classifyKioskError,
   friendlyPaymentError,
-  getSupabaseFunctionErrorMessage,
   pollKioskCommand,
   pollKioskState,
   redeemInstallCode,
@@ -53,6 +52,23 @@ interface KioskPaymentResponse {
   simulated?: boolean;
   paid?: boolean;
   error?: string;
+}
+
+async function invokeKioskPayment(body: Record<string, unknown>) {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/create-kiosk-payment`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.error) {
+    throw new Error(String(payload?.error || `Erro HTTP ${response.status} ao iniciar pagamento.`));
+  }
+  return payload;
 }
 
 type TechnicalCheck = {
@@ -588,12 +604,10 @@ export default function KioskPage() {
     }
 
     const interval = setInterval(async () => {
-      const { data } = await supabase.functions.invoke("create-kiosk-payment", {
-        body: {
-          action: "status",
-          payment_id: paymentId,
-        },
-      });
+      const data = await invokeKioskPayment({
+        action: "status",
+        payment_id: paymentId,
+      }).catch(() => null);
 
       if (data?.paid) {
         clearInterval(interval);
@@ -629,8 +643,9 @@ export default function KioskPage() {
     setPaymentBusy(true);
     setError(null);
 
-    const { data, error: paymentError } = await supabase.functions.invoke("create-kiosk-payment", {
-      body: {
+    let data: unknown;
+    try {
+      data = await invokeKioskPayment({
         action: "create",
         team_slug: team.slug,
         device_code: activeDevice.deviceCode,
@@ -639,13 +654,11 @@ export default function KioskPage() {
         selected_shirt_id: selectedShirt.id,
         selected_background_id: selectedBackground.id,
         simulate: config.simulatePayments && method === "pix",
-      },
-    });
-
-    if (paymentError || data?.error) {
+      });
+    } catch (paymentError) {
       setPaymentBusy(false);
       setPaymentMethod(null);
-      const message = data?.error || (paymentError ? await getSupabaseFunctionErrorMessage(paymentError) : "Erro ao iniciar pagamento.");
+      const message = paymentError instanceof Error ? paymentError.message : "Erro ao iniciar pagamento.";
       setError(friendlyPaymentError(message));
       return;
     }
