@@ -86,6 +86,8 @@ const initialTechnicalChecks: TechnicalChecks = {
   diagnostics: { status: "idle", message: "Nao enviado" },
 };
 
+const paymentTestModeStorageKey = "fanframe:kiosk-payment-test-mode";
+
 function KioskButton({
   children,
   onClick,
@@ -375,12 +377,17 @@ export default function KioskPage() {
       const runtimeConfig = window.fanframeKiosk
         ? await window.fanframeKiosk.getConfig()
         : { ...browserPreviewConfig, teamSlug: urlTeam };
+      const paymentTestModeOverride = localStorage.getItem(paymentTestModeStorageKey);
+      const effectiveConfig = {
+        ...runtimeConfig,
+        simulatePayments: paymentTestModeOverride === null ? runtimeConfig.simulatePayments === true : paymentTestModeOverride === "true",
+      };
       const storedIdentity = await window.fanframeKiosk?.loadDeviceIdentity?.();
 
-      setConfig(runtimeConfig);
+      setConfig(effectiveConfig);
       if (storedIdentity) {
         setIdentity(storedIdentity);
-        const pairedTeam = storedIdentity.teamSlug || runtimeConfig.teamSlug;
+        const pairedTeam = storedIdentity.teamSlug || effectiveConfig.teamSlug;
         if (!pairedTeam) {
           setError("Totem pareado sem time vinculado. Gere um novo codigo de instalacao.");
           setStep("maintenance");
@@ -393,13 +400,13 @@ export default function KioskPage() {
 
       setIdentity(null);
 
-      if (!runtimeConfig.teamSlug) {
+      if (!effectiveConfig.teamSlug) {
         setStep("pairing");
         return;
       }
 
-      localStorage.setItem("fanframe:kiosk-team", runtimeConfig.teamSlug);
-      setSlug(runtimeConfig.teamSlug);
+      localStorage.setItem("fanframe:kiosk-team", effectiveConfig.teamSlug);
+      setSlug(effectiveConfig.teamSlug);
     };
 
     init().catch((err) => {
@@ -692,6 +699,16 @@ export default function KioskPage() {
   };
 
   const runCardPayment = async (method: PaymentMethod, payment: KioskPaymentResponse): Promise<KioskCardPaymentResult> => {
+    if (config?.simulatePayments) {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      return {
+        approved: true,
+        status: "approved",
+        provider: "simulated_local_test",
+        transactionCode: `TEST-${Date.now()}`,
+      };
+    }
+
     if (window.fanframeKiosk) {
       return window.fanframeKiosk.startCardPayment({
         sessionId: payment.sessionId,
@@ -945,6 +962,19 @@ export default function KioskPage() {
     }
   };
 
+  const togglePaymentTestMode = () => {
+    const nextValue = config?.simulatePayments !== true;
+    localStorage.setItem(paymentTestModeStorageKey, String(nextValue));
+    setConfig((current) => ({
+      ...(current || browserPreviewConfig),
+      simulatePayments: nextValue,
+    }));
+    setTechnicalCheck("payments", {
+      status: nextValue ? "ok" : "idle",
+      message: nextValue ? "Pagamento teste ativado neste PC." : "Pagamento real reativado.",
+    });
+  };
+
   const resetKioskInstallation = async () => {
     const confirmed = window.confirm("Resetar este totem? Ele vai perder o pareamento atual e voltar para a tela do codigo de instalacao.");
     if (!confirmed) return;
@@ -1032,6 +1062,7 @@ export default function KioskPage() {
                 <div><dt>Pagamentos</dt><dd className={`technical-${technicalChecks.payments.status}`}>{checkText(technicalChecks.payments)}</dd></div>
                 <div><dt>Diagnostico</dt><dd className={`technical-${technicalChecks.diagnostics.status}`}>{checkText(technicalChecks.diagnostics)}</dd></div>
                 <div><dt>Atualizacao</dt><dd>{updateStatus?.ready ? updateStatus.message : updateStatus?.message || "Nao verificada"}</dd></div>
+                <div><dt>Modo teste</dt><dd>{config?.simulatePayments ? "Pagamento teste ligado" : "Pagamento real"}</dd></div>
               </dl>
               <button onClick={runAllTechnicalTests}>Testar tudo</button>
               <button onClick={testInternet}>Testar internet</button>
@@ -1041,6 +1072,7 @@ export default function KioskPage() {
               <button onClick={sendManualDiagnostics}>Enviar diagnostico</button>
               <button onClick={() => window.location.reload()}>Sincronizar agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
+              <button onClick={togglePaymentTestMode}>{config?.simulatePayments ? "Desligar pagamento teste" : "Ativar pagamento teste"}</button>
               <button onClick={startAppUpdate} disabled={updateBusy}>{updateBusy ? "Atualizando..." : "Atualizar app"}</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
               {updateMessage && <p className="technical-note">{updateMessage}</p>}
