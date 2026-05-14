@@ -1409,6 +1409,8 @@ function DeviceDetail({ role }: { role: Role | null }) {
   const paymentStatus = health.paymentStatus && typeof health.paymentStatus === "object"
     ? health.paymentStatus as Record<string, unknown>
     : null;
+  const deviceIssues = getOperationalIssues(device);
+  const pendingCommandCount = commands.filter((c) => c.status === "pending" || c.status === "running").length;
 
   return (
     <>
@@ -1418,14 +1420,18 @@ function DeviceDetail({ role }: { role: Role | null }) {
         action={<Link className="secondary link-button" to="/totens">Voltar</Link>}
       />
 
-      <section className="stats-grid">
-        <StatCard label="Situacao" value={friendly(deviceHealthLabel(device))} tone={deviceHealthLabel(device) === "online" ? "success" : "warning"} />
-        <StatCard label="Instalacao" value={friendly(device.install_status || "not_paired")} />
-        <StatCard label="Versao do app" value={`${device.app_version || "-"} / ${device.expected_app_version || "-"}`} />
-        <StatCard label="Atualizacao" value={friendly(getDeviceVersionStatus(device))} tone={getDeviceVersionStatus(device) === "desatualizado" ? "warning" : "neutral"} />
-        <StatCard label="Ultimo contato" value={dateTime(device.last_seen_at)} />
-        <StatCard label="Ultimo erro" value={device.last_error_code || "-"} tone={device.last_error_code ? "danger" : "neutral"} />
-        <StatCard label="Acoes em fila" value={commands.filter((c) => c.status === "pending" || c.status === "running").length} />
+      <section className={`device-hero-panel ${deviceHealthLabel(device)}`}>
+        <div>
+          <span>Status do totem</span>
+          <h2>{friendly(deviceHealthLabel(device))}</h2>
+          <p>{deviceIssues[0]?.message || "Nenhum problema importante detectado agora."}</p>
+        </div>
+        <div className="device-hero-facts">
+          <div><span>Instalacao</span><strong>{friendly(device.install_status || "not_paired")}</strong></div>
+          <div><span>Ultimo contato</span><strong>{dateTime(device.last_seen_at)}</strong></div>
+          <div><span>Versao</span><strong>{device.app_version || "-"} / {device.expected_app_version || "-"}</strong></div>
+          <div><span>Acoes em fila</span><strong>{pendingCommandCount}</strong></div>
+        </div>
       </section>
 
       <section className="panel device-actions">
@@ -1434,16 +1440,21 @@ function DeviceDetail({ role }: { role: Role | null }) {
           <p className="hint">Use essas acoes sem acessar o Windows do local. O totem recebe o comando quando estiver online.</p>
         </div>
         <div className="actions-row">
-          {canEditDevices && <button className="secondary" onClick={generateInstall}>Gerar codigo para instalar</button>}
-          {canEditDevices && <button className="secondary" onClick={generateTechnicalPin}>Gerar novo PIN tecnico</button>}
-          {getDeviceVersionStatus(device) === "desatualizado" && <button className="secondary" onClick={copyUpdateMessage}><Copy size={16} /> Copiar mensagem de atualizacao</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("sync_config")}>Atualizar dados</button>}
-          {canOperate && <button className="secondary" onClick={() => sendCommand("send_diagnostics")}>Pedir diagnostico</button>}
-          {canOperate && <button className="secondary" onClick={() => sendCommand("restart_app")}>Reiniciar app</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("exit_maintenance")}>Liberar vendas</button>}
           {canOperate && <button className="danger" onClick={() => sendCommand("enter_maintenance")}>Pausar vendas</button>}
+          {canOperate && <button className="secondary" onClick={() => sendCommand("restart_app")}>Reiniciar app</button>}
+          {canEditDevices && <button className="secondary" onClick={generateInstall}>Gerar codigo de instalacao</button>}
           {!canOperate && !canEditDevices && <span className="hint">Seu perfil permite somente visualizacao.</span>}
         </div>
+        <details className="remote-secondary-actions">
+          <summary>Mais acoes de suporte</summary>
+          <div className="actions-row">
+            {canEditDevices && <button className="secondary" onClick={generateTechnicalPin}>Gerar novo PIN tecnico</button>}
+            {getDeviceVersionStatus(device) === "desatualizado" && <button className="secondary" onClick={copyUpdateMessage}><Copy size={16} /> Copiar mensagem de atualizacao</button>}
+            {canOperate && <button className="secondary" onClick={() => sendCommand("send_diagnostics")}>Pedir diagnostico</button>}
+          </div>
+        </details>
         {canEditDevices && (
           <div className="remote-team-switch">
             <div>
@@ -1670,22 +1681,46 @@ function Sessions() {
             <p>O caminho completo do cliente: escolha, pagamento, foto e entrega.</p>
           </div>
         </div>
-        <DataTable columns={["Time", "Totem", "Venda", "Escolha", "Valor", "Erro", "Criada"]}>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td>{row.teams?.name || "-"}</td>
-              <td>{row.kiosk_devices?.label || row.kiosk_devices?.device_code || "-"}</td>
-              <td><Badge value={row.status} /></td>
-              <td>{row.selected_shirt_id || "-"} / {row.selected_background_id || "-"}</td>
-              <td>{money(row.amount_cents, row.currency)}</td>
-              <td>{row.error_message || "-"}</td>
-              <td>{dateTime(row.created_at)}</td>
-            </tr>
-          ))}
-        </DataTable>
+        <div className="sales-card-list">
+          {rows.map((row) => {
+            const payment = payments.find((item) => item.session_id === row.id);
+            const generation = generations.find((item) => item.id === row.generation_queue_id);
+            return (
+              <article className="sales-card" key={row.id}>
+                <div className="sales-main">
+                  <div>
+                    <h3>{row.teams?.name || "Time nao informado"}</h3>
+                    <p>{row.kiosk_devices?.label || row.kiosk_devices?.device_code || "Totem nao informado"} - {dateTime(row.created_at)}</p>
+                  </div>
+                  <Badge value={row.status} />
+                </div>
+                <div className="sales-steps">
+                  <div><span>Pagamento</span><strong>{payment ? friendly(payment.status) : "Nao iniciado"}</strong></div>
+                  <div><span>Foto IA</span><strong>{generation ? friendly(generation.status) : "Aguardando"}</strong></div>
+                  <div><span>Valor</span><strong>{money(row.amount_cents, row.currency)}</strong></div>
+                </div>
+                {(row.error_message || generation?.error_message) && (
+                  <p className="sales-error">{row.error_message || generation?.error_message}</p>
+                )}
+                <details>
+                  <summary>Ver detalhes</summary>
+                  <div className="sales-detail-grid">
+                    <div><span>Camisa</span><strong>{row.selected_shirt_id || "-"}</strong></div>
+                    <div><span>Cenario</span><strong>{row.selected_background_id || "-"}</strong></div>
+                    <div><span>Pago em</span><strong>{dateTime(payment?.paid_at)}</strong></div>
+                    <div><span>Foto</span><strong>{generation?.result_image_url ? <a href={generation.result_image_url} target="_blank">Abrir</a> : "-"}</strong></div>
+                  </div>
+                </details>
+              </article>
+            );
+          })}
+          {rows.length === 0 && <div className="empty-state">Nenhum atendimento neste filtro.</div>}
+        </div>
       </div>
-      <section className="two-col">
-        <div className="panel">
+      <details className="panel advanced-box">
+        <summary>Pagamentos e fotos da IA em formato tecnico</summary>
+        <section className="two-col advanced-content">
+        <div className="subpanel">
           <h2>Pagamentos</h2>
           <DataTable columns={["Time", "Forma", "Situacao", "Valor", "Pago em"]}>
             {payments.slice(0, 120).map((row) => (
@@ -1699,7 +1734,7 @@ function Sessions() {
             ))}
           </DataTable>
         </div>
-        <div className="panel">
+        <div className="subpanel">
           <h2>Fotos da IA</h2>
           <DataTable columns={["Time", "Situacao", "Camisa", "Erro", "Foto"]}>
             {generations.slice(0, 120).map((row) => (
@@ -1714,6 +1749,7 @@ function Sessions() {
           </DataTable>
         </div>
       </section>
+      </details>
     </>
   );
 }
@@ -1739,20 +1775,25 @@ function ProblemsPage() {
       </section>
       <div className="panel">
         <h2>Resolver primeiro</h2>
-        <DataTable columns={["Urgencia", "Problema", "Totem", "O que aconteceu"]}>
+        <div className="issue-card-list">
           {operationalIssues.map((issue) => (
-            <tr key={`${issue.deviceId}-${issue.type}`}>
-              <td><Badge value={issue.severity} /></td>
-              <td>{friendly(issue.type)}</td>
-              <td><Link to={`/totens/${issue.deviceId}`}>{issue.deviceLabel}</Link></td>
-              <td>{issue.message}</td>
-            </tr>
+            <article className="issue-card" key={`${issue.deviceId}-${issue.type}`}>
+              <div>
+                <Badge value={issue.severity} />
+                <h3>{friendly(issue.type)}</h3>
+                <p>{issue.message}</p>
+                <span>{issue.deviceLabel}</span>
+              </div>
+              <Link className="primary link-button" to={`/totens/${issue.deviceId}`}>Resolver</Link>
+            </article>
           ))}
-        </DataTable>
-        {operationalIssues.length === 0 && <p className="hint">Nenhum problema operacional detectado nos totens cadastrados.</p>}
+          {operationalIssues.length === 0 && (
+            <div className="empty-state">Nenhum problema operacional detectado nos totens cadastrados.</div>
+          )}
+        </div>
       </div>
-      <div className="panel">
-        <h2>Alertas do sistema</h2>
+      <details className="panel advanced-box">
+        <summary>Alertas do sistema</summary>
         <DataTable columns={["Tipo", "Urgencia", "Mensagem", "Resolvido", "Criado"]}>
           {alerts.map((alert) => (
             <tr key={alert.id}>
@@ -1764,7 +1805,7 @@ function ProblemsPage() {
             </tr>
           ))}
         </DataTable>
-      </div>
+      </details>
       <details className="panel advanced-box">
         <summary>Historico tecnico de acoes</summary>
         <DataTable columns={["Acao", "Area", "Alvo", "Usuario", "Detalhe", "Criado"]}>
