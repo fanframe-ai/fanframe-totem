@@ -5,6 +5,7 @@ const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const {
+  getKioskControlShortcut,
   isBlockedKioskShortcut,
   isTechnicalShortcut,
   shouldEnableAutoLaunch,
@@ -346,6 +347,29 @@ async function createWindow() {
   win.webContents.on("before-input-event", (event, input) => {
     if (isTechnicalShortcut(input)) {
       win.webContents.send("kiosk:open-technical-mode");
+      event.preventDefault();
+      return;
+    }
+
+    const controlShortcut = getKioskControlShortcut(input);
+    if (controlShortcut === "minimize") {
+      win.setKiosk(false);
+      win.setFullScreen(false);
+      win.minimize();
+      event.preventDefault();
+      return;
+    }
+    if (controlShortcut === "toggle_fullscreen") {
+      const shouldLeaveFullscreen = win.isKiosk() || win.isFullScreen();
+      win.setKiosk(!shouldLeaveFullscreen);
+      win.setFullScreen(!shouldLeaveFullscreen);
+      event.preventDefault();
+      return;
+    }
+    if (controlShortcut === "quit") {
+      win.setKiosk(false);
+      win.setFullScreen(false);
+      app.quit();
       event.preventDefault();
       return;
     }

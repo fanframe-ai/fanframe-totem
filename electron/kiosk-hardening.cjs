@@ -19,8 +19,18 @@ function isTechnicalShortcut(input) {
   );
 }
 
+function getKioskControlShortcut(input) {
+  if (input?.type !== "keyDown" || input.control !== true || input.alt !== true) return null;
+
+  const key = normalizeKey(input.key);
+  if (key === "m") return "minimize";
+  if (key === "f") return "toggle_fullscreen";
+  if (key === "q") return "quit";
+  return null;
+}
+
 function isBlockedKioskShortcut(input, kioskActive = true) {
-  if (!kioskActive || input?.type !== "keyDown" || isTechnicalShortcut(input)) return false;
+  if (!kioskActive || input?.type !== "keyDown" || isTechnicalShortcut(input) || getKioskControlShortcut(input)) return false;
 
   const key = normalizeKey(input.key);
   const altBlocked = input.alt === true && ["f4", "tab", "escape", "space"].includes(key);
@@ -31,6 +41,7 @@ function isBlockedKioskShortcut(input, kioskActive = true) {
 }
 
 module.exports = {
+  getKioskControlShortcut,
   isBlockedKioskShortcut,
   isTechnicalShortcut,
   shouldEnableAutoLaunch,
