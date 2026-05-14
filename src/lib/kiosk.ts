@@ -128,6 +128,23 @@ export function classifyKioskError(message: string): KioskFriendlyError {
   };
 }
 
+export function friendlyPaymentError(message: string) {
+  const text = message.toLowerCase();
+  if (text.includes("invalid credential") || text.includes("unauthorized") || text.includes("401")) {
+    return "PagBank recusou a credencial de producao. Confira o token PagBank e se ele esta liberado para producao.";
+  }
+  if (text.includes("chave pix") || text.includes("pix de enderecamento") || text.includes("endereco")) {
+    return "A conta PagBank precisa ter uma chave PIX ativa para gerar o QR Code.";
+  }
+  if (text.includes("between 100") || text.includes("amount") || text.includes("valor")) {
+    return "Valor PIX invalido. Use no minimo R$ 1,00.";
+  }
+  if (text.includes("pagbank")) {
+    return `PagBank nao gerou o QR Code: ${message}`;
+  }
+  return message;
+}
+
 export async function getSupabaseFunctionErrorMessage(error: unknown) {
   const fallback = error instanceof Error ? error.message : "Erro na funcao do Supabase.";
   const context = error && typeof error === "object" && "context" in error

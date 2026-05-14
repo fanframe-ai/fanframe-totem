@@ -10,6 +10,8 @@ import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import {
   buildDeliveryUrl,
   classifyKioskError,
+  friendlyPaymentError,
+  getSupabaseFunctionErrorMessage,
   pollKioskCommand,
   pollKioskState,
   redeemInstallCode,
@@ -643,7 +645,8 @@ export default function KioskPage() {
     if (paymentError || data?.error) {
       setPaymentBusy(false);
       setPaymentMethod(null);
-      setError(data?.error || paymentError?.message || "Erro ao iniciar pagamento.");
+      const message = data?.error || (paymentError ? await getSupabaseFunctionErrorMessage(paymentError) : "Erro ao iniciar pagamento.");
+      setError(friendlyPaymentError(message));
       return;
     }
 

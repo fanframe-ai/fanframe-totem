@@ -61,6 +61,14 @@ function isPaidPagBankPayload(payload: Record<string, unknown>) {
   return json.includes('"PAID"') || json.includes('"AUTHORIZED"') || json.includes('"APPROVED"');
 }
 
+function statusForError(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (message.includes("invalid credential") || message.includes("unauthorized") || message.includes("401")) return 401;
+  if (message.includes("pagbank") || message.includes("pix")) return 502;
+  if (message.includes("valor") || message.includes("amount") || message.includes("between 100")) return 400;
+  return 500;
+}
+
 async function resolveTeam(supabase: ReturnType<typeof createClient>, slug?: string) {
   if (!slug) throw new Error("Missing team_slug");
 
@@ -191,6 +199,9 @@ async function createPayment(req: KioskPaymentRequest) {
   }
   const method: PaymentMethod = "pix";
   const amountCents = team.kiosk_price_cents ?? 0;
+  if (amountCents < 100) {
+    throw new Error("Valor PIX invalido. Use no minimo R$ 1,00.");
+  }
   const currency = team.kiosk_currency || "BRL";
   const referenceId = `kiosk-${crypto.randomUUID()}`;
   const shouldSimulate = req.simulate || Deno.env.get("KIOSK_SIMULATE_PAYMENTS") === "true";
@@ -353,6 +364,6 @@ serve(async (req) => {
     return jsonResponse({ error: "Unsupported action" }, 400);
   } catch (error) {
     console.error("[create-kiosk-payment]", error);
-    return jsonResponse({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+    return jsonResponse({ error: error instanceof Error ? error.message : "Unknown error" }, statusForError(error));
   }
 });

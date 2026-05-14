@@ -3,6 +3,7 @@ import {
   buildDeviceAuthHeaders,
   classifyKioskError,
   friendlyInstallCodeError,
+  friendlyPaymentError,
   hashKioskSecret,
   normalizeInstallCode,
   shouldReportHealth,
@@ -40,6 +41,12 @@ describe("kiosk pairing helpers", () => {
     expect(friendlyInstallCodeError("Install code expired")).toContain("expirou");
     expect(friendlyInstallCodeError("Invalid install code")).toContain("invalido");
     expect(friendlyInstallCodeError("Device disabled")).toContain("desativado");
+  });
+
+  it("maps PagBank payment failures to clear owner actions", () => {
+    expect(friendlyPaymentError("401 Invalid credential")).toContain("credencial");
+    expect(friendlyPaymentError("must be between 100 and 999999900")).toContain("R$ 1,00");
+    expect(friendlyPaymentError("PagBank PIX order failed")).toContain("PagBank nao gerou");
   });
 
   it("validates technical PINs against the paired device hash", async () => {
