@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 const {
+  getKioskControlAccelerators,
   getKioskControlShortcut,
   isBlockedKioskShortcut,
   isTechnicalShortcut,
   shouldEnableAutoLaunch,
 } = require("./kiosk-hardening.cjs") as {
+  getKioskControlAccelerators: () => Array<[string, string]>;
   getKioskControlShortcut: (input: Record<string, unknown>) => string | null;
   isBlockedKioskShortcut: (input: Record<string, unknown>, kioskActive?: boolean) => boolean;
   isTechnicalShortcut: (input: Record<string, unknown>) => boolean;
@@ -36,9 +38,19 @@ describe("kiosk hardening", () => {
 
   it("allows explicit kiosk control shortcuts for local support", () => {
     expect(getKioskControlShortcut({ type: "keyDown", control: true, alt: true, key: "m" })).toBe("minimize");
+    expect(getKioskControlShortcut({ type: "keyDown", control: true, shift: true, key: "m" })).toBe("minimize");
     expect(getKioskControlShortcut({ type: "keyDown", control: true, alt: true, key: "f" })).toBe("toggle_fullscreen");
     expect(getKioskControlShortcut({ type: "keyDown", control: true, alt: true, key: "q" })).toBe("quit");
+    expect(getKioskControlAccelerators()).toEqual([
+      ["CommandOrControl+Alt+M", "minimize"],
+      ["CommandOrControl+Shift+M", "minimize"],
+      ["CommandOrControl+Alt+F", "toggle_fullscreen"],
+      ["CommandOrControl+Shift+F", "toggle_fullscreen"],
+      ["CommandOrControl+Alt+Q", "quit"],
+      ["CommandOrControl+Shift+Q", "quit"],
+    ]);
     expect(isBlockedKioskShortcut({ type: "keyDown", control: true, alt: true, key: "m" }, true)).toBe(false);
     expect(isBlockedKioskShortcut({ type: "keyDown", control: true, alt: true, key: "f" }, true)).toBe(false);
+    expect(isBlockedKioskShortcut({ type: "keyDown", control: true, shift: true, key: "m" }, true)).toBe(false);
   });
 });

@@ -1,10 +1,11 @@
-const { app, BrowserWindow, ipcMain, Menu, net, shell } = require("electron");
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, net, shell } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const {
+  getKioskControlAccelerators,
   getKioskControlShortcut,
   isBlockedKioskShortcut,
   isTechnicalShortcut,
@@ -14,6 +15,7 @@ const { getPaymentReadiness } = require("./kiosk-payments.cjs");
 const { getUpdateReadiness } = require("./kiosk-updates.cjs");
 
 let staticServer;
+let mainWindow;
 
 function identityPath() {
   return path.join(app.getPath("userData"), "device-identity.json");
@@ -309,6 +311,39 @@ function configureAutoLaunch(config) {
   });
 }
 
+function applyKioskWindowControl(action, win = mainWindow) {
+  if (!win || win.isDestroyed()) return;
+
+  if (action === "minimize") {
+    win.setKiosk(false);
+    win.setFullScreen(false);
+    win.minimize();
+    return;
+  }
+
+  if (action === "toggle_fullscreen") {
+    const shouldLeaveFullscreen = win.isKiosk() || win.isFullScreen();
+    win.setKiosk(!shouldLeaveFullscreen);
+    win.setFullScreen(!shouldLeaveFullscreen);
+    if (shouldLeaveFullscreen) win.show();
+    return;
+  }
+
+  if (action === "quit") {
+    win.setKiosk(false);
+    win.setFullScreen(false);
+    app.quit();
+  }
+}
+
+function registerKioskControlShortcuts() {
+  globalShortcut.unregisterAll();
+  getKioskControlAccelerators().forEach(([accelerator, action]) => {
+    const ok = globalShortcut.register(accelerator, () => applyKioskWindowControl(action));
+    if (!ok) console.warn(`[kiosk] Failed to register shortcut ${accelerator}`);
+  });
+}
+
 async function createWindow() {
   const config = loadKioskConfig();
   configureAutoLaunch(config);
@@ -343,6 +378,8 @@ async function createWindow() {
   win.webContents.on("will-navigate", (event, url) => {
     if (!url.startsWith(baseUrl)) event.preventDefault();
   });
+  mainWindow = win;
+  registerKioskControlShortcuts();
 
   win.webContents.on("before-input-event", (event, input) => {
     if (isTechnicalShortcut(input)) {
@@ -352,24 +389,8 @@ async function createWindow() {
     }
 
     const controlShortcut = getKioskControlShortcut(input);
-    if (controlShortcut === "minimize") {
-      win.setKiosk(false);
-      win.setFullScreen(false);
-      win.minimize();
-      event.preventDefault();
-      return;
-    }
-    if (controlShortcut === "toggle_fullscreen") {
-      const shouldLeaveFullscreen = win.isKiosk() || win.isFullScreen();
-      win.setKiosk(!shouldLeaveFullscreen);
-      win.setFullScreen(!shouldLeaveFullscreen);
-      event.preventDefault();
-      return;
-    }
-    if (controlShortcut === "quit") {
-      win.setKiosk(false);
-      win.setFullScreen(false);
-      app.quit();
+    if (controlShortcut) {
+      applyKioskWindowControl(controlShortcut, win);
       event.preventDefault();
       return;
     }
@@ -408,6 +429,7 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
+  globalShortcut.unregisterAll();
   if (staticServer) staticServer.close();
   if (process.platform !== "darwin") app.quit();
 });
