@@ -249,6 +249,9 @@ export default function KioskPage() {
     event?.preventDefault();
     event?.stopPropagation();
     resetFlow();
+    window.setTimeout(() => {
+      window.location.replace("/kiosk");
+    }, 50);
   }, [resetFlow]);
 
   const applyRemoteState = useCallback(async (state: {
