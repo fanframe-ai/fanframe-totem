@@ -110,12 +110,14 @@ const paymentTestModeStorageKey = "fanframe:kiosk-payment-test-mode";
 function KioskButton({
   children,
   onClick,
+  onPointerUp,
   disabled,
   variant = "primary",
   className = "",
 }: {
   children: React.ReactNode;
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  onPointerUp?: React.PointerEventHandler<HTMLButtonElement>;
   disabled?: boolean;
   variant?: "primary" | "secondary" | "ghost";
   className?: string;
@@ -129,7 +131,9 @@ function KioskButton({
 
   return (
     <Button
+      type="button"
       onClick={onClick}
+      onPointerUp={onPointerUp}
       disabled={disabled}
       variant={variant === "primary" ? "default" : variant === "secondary" ? "outline" : "ghost"}
       className={`${baseClassName} ${className}`}
@@ -240,6 +244,12 @@ export default function KioskPage() {
     setDeliveryUrl(null);
     setDeliveryQrImage(null);
   }, [stopCamera, team?.kiosk_enabled]);
+
+  const finishResult = useCallback((event?: React.SyntheticEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    resetFlow();
+  }, [resetFlow]);
 
   const applyRemoteState = useCallback(async (state: {
     device?: { teamSlug?: string | null; configVersion?: number | null } | null;
@@ -1377,7 +1387,7 @@ export default function KioskPage() {
               {deliveryQrImage && <img src={deliveryQrImage} alt="QR Code de download" className="w-80 h-80 bg-white p-3 rounded-lg" />}
               <div>
                 <p className="text-3xl font-black uppercase leading-tight mb-5">{copy("kiosk_result_hint", "Escaneie para baixar no celular")}</p>
-                <KioskButton variant="secondary" onClick={resetFlow} className="w-full">{copy("kiosk_result_finish", "Finalizar")}</KioskButton>
+                <KioskButton variant="secondary" onClick={finishResult} onPointerUp={finishResult} className="w-full">{copy("kiosk_result_finish", "Finalizar")}</KioskButton>
               </div>
             </div>
           </section>
