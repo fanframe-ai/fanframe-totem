@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 release
+kiosk.config.json
 supabase/.temp
 .chrome-kiosk-check/
 kiosk-portrait-*.png
