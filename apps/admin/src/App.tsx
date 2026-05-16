@@ -1464,18 +1464,7 @@ function TeamForm() {
           )}
         </section>
 
-        <aside className="team-preview-panel">
-          <div className="totem-preview" style={{ background: team.primary_color || "#111827", color: team.secondary_color || "#ffffff" }}>
-            <span>Previa do totem</span>
-            <strong>{team.name || "Nome do time"}</strong>
-            <p>{textOverrides.kiosk_home_title || textOverrides.welcome_title || "Vista o manto"}</p>
-          </div>
-          <div className="preview-list">
-            <div><span>Preco</span><strong>{money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}</strong></div>
-            <div><span>Camisas</span><strong>{shirts.length}</strong></div>
-            <div><span>Cenarios</span><strong>{backgrounds.length}</strong></div>
-            <div><span>Status</span><strong>{team.kiosk_enabled !== false ? "Vendendo" : "Pausado"}</strong></div>
-          </div>
+        <div className="team-editor-status full">
           {missingItems.length > 0 ? (
             <div className="setup-warning">
               <strong>Falta revisar</strong>
@@ -1492,7 +1481,7 @@ function TeamForm() {
               <span>Publicado {team.published_at ? `em ${dateTime(team.published_at)}` : "e pronto para uso"}.</span>
             </div>
           )}
-        </aside>
+        </div>
 
         {message && <div className="form-message full">{message}</div>}
         <div className="form-actions full">
