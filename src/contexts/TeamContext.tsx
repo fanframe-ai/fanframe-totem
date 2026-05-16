@@ -82,6 +82,7 @@ export interface TeamConfig {
   kiosk_price_cents: number;
   kiosk_currency: string;
   kiosk_timeout_seconds: number;
+  kiosk_camera_countdown_seconds: number;
   kiosk_default_mode: string;
   kiosk_show_shirt_step: boolean;
   kiosk_show_background_step: boolean;
@@ -150,6 +151,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           kiosk_price_cents,
           kiosk_currency,
           kiosk_timeout_seconds,
+          kiosk_camera_countdown_seconds,
           kiosk_default_mode,
           kiosk_show_shirt_step,
           kiosk_show_background_step
@@ -213,6 +215,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           kiosk_price_cents: Number(view.kiosk_price_cents ?? 2500),
           kiosk_currency: String(view.kiosk_currency || "BRL"),
           kiosk_timeout_seconds: Number(view.kiosk_timeout_seconds ?? 60),
+          kiosk_camera_countdown_seconds: Number(view.kiosk_camera_countdown_seconds ?? 5),
           kiosk_default_mode: String(view.kiosk_default_mode || "standard"),
           kiosk_show_shirt_step: Boolean(view.kiosk_show_shirt_step ?? true),
           kiosk_show_background_step: Boolean(view.kiosk_show_background_step ?? true),

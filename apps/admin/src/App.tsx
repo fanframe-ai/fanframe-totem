@@ -117,6 +117,7 @@ const emptyTeam: Partial<TeamRow> = {
   kiosk_price_cents: 2500,
   kiosk_currency: "BRL",
   kiosk_timeout_seconds: 60,
+  kiosk_camera_countdown_seconds: 5,
   kiosk_default_mode: "standard",
   kiosk_show_shirt_step: true,
   kiosk_show_background_step: true,
@@ -334,10 +335,12 @@ type TeamKioskDraft = Pick<TeamRow,
   | "watermark_url"
   | "is_active"
   | "text_overrides"
+  | "kiosk_font_family"
   | "kiosk_enabled"
   | "kiosk_price_cents"
   | "kiosk_currency"
   | "kiosk_timeout_seconds"
+  | "kiosk_camera_countdown_seconds"
   | "kiosk_default_mode"
   | "kiosk_show_shirt_step"
   | "kiosk_show_background_step"
@@ -360,6 +363,7 @@ const kioskDraftKeys: Array<keyof TeamKioskDraft> = [
   "kiosk_price_cents",
   "kiosk_currency",
   "kiosk_timeout_seconds",
+  "kiosk_camera_countdown_seconds",
   "kiosk_default_mode",
   "kiosk_show_shirt_step",
   "kiosk_show_background_step",
@@ -1152,6 +1156,7 @@ function TeamVisualBuilder({
               </select>
             </label>
             <label>Preco da foto (R$)<input type="number" min="0" step="0.01" value={centsToReais(team.kiosk_price_cents)} onChange={(event) => set("kiosk_price_cents", reaisToCents(event.target.value))} /></label>
+            <label>Contagem da foto (s)<input type="number" min="0" max="10" value={team.kiosk_camera_countdown_seconds ?? 5} onChange={(event) => set("kiosk_camera_countdown_seconds", Number(event.target.value))} /></label>
             <label className="inline-check"><input type="checkbox" checked={team.kiosk_enabled !== false} onChange={(event) => set("kiosk_enabled", event.target.checked)} /> Permitir vendas desse time</label>
           </>
         )}
@@ -1226,7 +1231,13 @@ function TeamForm() {
     setBusy(true);
     setMessage("");
     const finalSlug = team.slug || slugify(team.name || `time-${Date.now()}`);
-    const draftConfig = buildKioskDraft(team);
+    const normalizedTeam = {
+      ...team,
+      kiosk_price_cents: Number(team.kiosk_price_cents || 0),
+      kiosk_timeout_seconds: Math.min(180, Math.max(15, Number(team.kiosk_timeout_seconds || 60))),
+      kiosk_camera_countdown_seconds: Math.min(10, Math.max(0, Number(team.kiosk_camera_countdown_seconds ?? 5))),
+    };
+    const draftConfig = buildKioskDraft(normalizedTeam);
     const basePayload = {
       name: team.name || "Novo time",
       slug: finalSlug,
@@ -1236,11 +1247,9 @@ function TeamForm() {
     };
     const payload = {
       ...emptyTeam,
-      ...team,
+      ...normalizedTeam,
       slug: finalSlug,
       subdomain: team.subdomain || finalSlug,
-      kiosk_price_cents: Number(team.kiosk_price_cents || 0),
-      kiosk_timeout_seconds: Math.min(180, Math.max(15, Number(team.kiosk_timeout_seconds || 60))),
       draft_config: draftConfig,
       published_config: publish ? draftConfig : team.published_config || {},
       published_config_version: publish ? Number(team.published_config_version || 1) + (isNew ? 0 : 1) : Number(team.published_config_version || 1),
@@ -1335,8 +1344,9 @@ function TeamForm() {
               <div className="two-fields">
                 <label>Preco da foto (R$)<input type="number" min="0" step="0.01" value={centsToReais(team.kiosk_price_cents)} onChange={(e) => set("kiosk_price_cents", reaisToCents(e.target.value))} /></label>
                 <label>Tempo parado ate reiniciar<input type="number" min="15" max="180" value={team.kiosk_timeout_seconds || 60} onChange={(e) => set("kiosk_timeout_seconds", Number(e.target.value))} /></label>
+                <label>Contagem antes da foto<input type="number" min="0" max="10" value={team.kiosk_camera_countdown_seconds ?? 5} onChange={(e) => set("kiosk_camera_countdown_seconds", Number(e.target.value))} /></label>
               </div>
-              <p className="hint">O tempo e contado em segundos. Quando ninguem toca na tela, o app volta sozinho para o inicio.</p>
+              <p className="hint">Os tempos sao em segundos. Use 0 na contagem da foto para capturar imediatamente.</p>
             </div>
           )}
 

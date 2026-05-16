@@ -201,14 +201,17 @@ export default function KioskPage() {
   const [deliveryUrl, setDeliveryUrl] = useState<string | null>(null);
   const [deliveryQrImage, setDeliveryQrImage] = useState<string | null>(null);
   const [mirrorCamera, setMirrorCamera] = useState(() => localStorage.getItem(cameraMirrorStorageKey) !== "false");
+  const [cameraCountdown, setCameraCountdown] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const cameraCountdownTimerRef = useRef<number | null>(null);
   const shirtRailRef = useRef<HTMLDivElement | null>(null);
   const backgroundRailRef = useRef<HTMLDivElement | null>(null);
   const technicalHoldTimerRef = useRef<number | null>(null);
   const { progress, complete } = useProgress(step === "generating");
 
   const timeoutSeconds = normalizeKioskTimeout(team?.kiosk_timeout_seconds);
+  const cameraCountdownSeconds = Math.min(10, Math.max(0, Number(team?.kiosk_camera_countdown_seconds ?? 5)));
   const visibleShirts = useMemo(() => filterVisibleAssets(team?.shirts || []), [team?.shirts]);
   const visibleBackgrounds = useMemo(() => filterVisibleAssets(team?.backgrounds || []), [team?.backgrounds]);
   const priceLabel = formatCurrencyFromCents(team?.kiosk_price_cents || 0, team?.kiosk_currency || "BRL");
@@ -227,7 +230,16 @@ export default function KioskPage() {
     streamRef.current = null;
   }, []);
 
+  const stopCameraCountdown = useCallback(() => {
+    if (cameraCountdownTimerRef.current) {
+      window.clearInterval(cameraCountdownTimerRef.current);
+      cameraCountdownTimerRef.current = null;
+    }
+    setCameraCountdown(null);
+  }, []);
+
   const resetFlow = useCallback(() => {
+    stopCameraCountdown();
     stopCamera();
     setStep(team?.kiosk_enabled ? "home" : "maintenance");
     setError(null);
@@ -245,7 +257,7 @@ export default function KioskPage() {
     setGeneratedImage(null);
     setDeliveryUrl(null);
     setDeliveryQrImage(null);
-  }, [stopCamera, team?.kiosk_enabled]);
+  }, [stopCamera, stopCameraCountdown, team?.kiosk_enabled]);
 
   const finishResult = useCallback((event?: React.SyntheticEvent<HTMLButtonElement>) => {
     event?.preventDefault();
@@ -558,8 +570,11 @@ export default function KioskPage() {
     };
 
     startCamera();
-    return stopCamera;
-  }, [step, stopCamera, userImage]);
+    return () => {
+      stopCameraCountdown();
+      stopCamera();
+    };
+  }, [step, stopCamera, stopCameraCountdown, userImage]);
 
   useEffect(() => {
     if (!pixPayment?.qrCodeText) {
@@ -695,7 +710,8 @@ export default function KioskPage() {
     }
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = useCallback(() => {
+    stopCameraCountdown();
     const video = videoRef.current;
     if (!video) return;
 
@@ -712,12 +728,58 @@ export default function KioskPage() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     setUserImage(canvas.toDataURL("image/jpeg", 0.92));
     stopCamera();
+  }, [mirrorCamera, stopCamera, stopCameraCountdown]);
+
+  const startCaptureCountdown = () => {
+    if (cameraCountdown !== null) return;
+    if (cameraCountdownSeconds <= 0) {
+      capturePhoto();
+      return;
+    }
+
+    let nextValue = cameraCountdownSeconds;
+    setCameraCountdown(nextValue);
+    cameraCountdownTimerRef.current = window.setInterval(() => {
+      nextValue -= 1;
+      if (nextValue <= 0) {
+        stopCameraCountdown();
+        capturePhoto();
+        return;
+      }
+      setCameraCountdown(nextValue);
+    }, 1000);
   };
 
   const retakePhoto = () => {
     if (retakes >= 1) return;
+    stopCameraCountdown();
     setRetakes((current) => current + 1);
     setUserImage(null);
+  };
+
+  const goBackFromPayment = () => {
+    setPaymentMethod(null);
+    setPixPayment(null);
+    setPaymentId(null);
+    setSessionId(null);
+    setPaymentBusy(false);
+    setError(null);
+    if (team?.kiosk_show_background_step !== false) {
+      setStep("background");
+      return;
+    }
+    if (team?.kiosk_show_shirt_step !== false) {
+      setStep("shirt");
+      return;
+    }
+    setStep("home");
+  };
+
+  const goBackFromCamera = () => {
+    stopCameraCountdown();
+    setUserImage(null);
+    setRetakes(0);
+    resetFlow();
   };
 
   const startGeneration = async () => {
@@ -1319,7 +1381,8 @@ export default function KioskPage() {
               <p className="text-4xl font-black mb-12">{priceLabel}</p>
 
               {!paymentMethod && (
-                <div className="grid grid-cols-1 gap-5">
+                <div className="grid grid-cols-[0.8fr_1.2fr] gap-5">
+                  <KioskButton variant="ghost" onClick={goBackFromPayment} className="w-full">{copy("kiosk_back", "Voltar")}</KioskButton>
                   <button className="min-h-[190px] rounded-lg bg-card border-2 border-border p-8 flex items-center gap-8 text-left active:scale-[0.99] transition" onClick={() => startPayment("pix")}>
                     <QrCode className="w-20 h-20 shrink-0" />
                     <span>
@@ -1357,7 +1420,7 @@ export default function KioskPage() {
         {step === "camera" && (
           <section className="flex-1 min-h-0 flex flex-col items-center">
             <h2 className="shrink-0 text-6xl font-black uppercase mb-7">{copy("kiosk_camera_title", "Sua foto")}</h2>
-            <div className="w-full flex-1 min-h-0 rounded-lg overflow-hidden bg-card border-2 border-border mb-7">
+            <div className="relative w-full flex-1 min-h-0 rounded-lg overflow-hidden bg-card border-2 border-border mb-7">
               {userImage ? (
                 <img src={userImage} alt="Foto capturada" className="w-full h-full object-cover" />
               ) : (
@@ -1367,6 +1430,13 @@ export default function KioskPage() {
                   playsInline
                   muted
                 />
+              )}
+              {cameraCountdown !== null && !userImage && (
+                <div className="absolute inset-0 grid place-items-center bg-black/35">
+                  <div className="grid place-items-center w-56 h-56 rounded-full border-8 border-white bg-black/70 text-white text-8xl font-black">
+                    {cameraCountdown}
+                  </div>
+                </div>
               )}
             </div>
             <div className="shrink-0 w-full grid grid-cols-2 gap-5">
@@ -1379,10 +1449,13 @@ export default function KioskPage() {
                   <KioskButton onClick={startGeneration} className="w-full">{copy("kiosk_camera_use", "Usar foto")}</KioskButton>
                 </>
               ) : (
-                <KioskButton onClick={capturePhoto} className="w-full col-span-2">
-                  <Camera className="w-6 h-6 mr-3" />
-                  {copy("kiosk_camera_capture", "Capturar")}
-                </KioskButton>
+                <>
+                  <KioskButton variant="ghost" onClick={goBackFromCamera} className="w-full">{copy("kiosk_back", "Voltar")}</KioskButton>
+                  <KioskButton onClick={startCaptureCountdown} disabled={cameraCountdown !== null} className="w-full">
+                    <Camera className="w-6 h-6 mr-3" />
+                    {cameraCountdown !== null ? `${copy("kiosk_camera_capture", "Capturar")} ${cameraCountdown}` : copy("kiosk_camera_capture", "Capturar")}
+                  </KioskButton>
+                </>
               )}
             </div>
           </section>

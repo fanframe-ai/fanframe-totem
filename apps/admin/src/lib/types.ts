@@ -38,6 +38,7 @@ export interface TeamRow {
   kiosk_price_cents: number;
   kiosk_currency: string;
   kiosk_timeout_seconds: number;
+  kiosk_camera_countdown_seconds: number;
   kiosk_default_mode: string;
   kiosk_show_shirt_step: boolean;
   kiosk_show_background_step: boolean;
