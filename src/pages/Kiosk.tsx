@@ -1481,13 +1481,17 @@ export default function KioskPage() {
         )}
 
         {step === "generating" && (
-          <section className="flex-1 min-h-0 grid place-items-center text-center">
-            <div className="max-w-2xl w-full">
-              <Loader2 className="w-28 h-28 animate-spin mx-auto mb-10" />
-              <h2 className="text-6xl font-black uppercase leading-none mb-6">{copy("kiosk_generating_title", "Gerando imagem")}</h2>
-              <p className="text-2xl text-muted-foreground mb-10">{copy("kiosk_generating_subtitle", "Nao feche nem desligue o totem.")}</p>
-              <Progress value={progress} className="h-6 mb-6" />
-              <p className="text-5xl font-black">{progress}%</p>
+          <section className="relative flex-1 min-h-0">
+            <div className="absolute inset-x-0 bottom-6 mx-auto w-full max-w-2xl rounded-lg border border-border bg-background/78 p-6 text-center shadow-[0_18px_54px_rgb(0_0_0_/_0.38)] backdrop-blur">
+              <div className="mb-4 flex items-center justify-center gap-4">
+                <Loader2 className="h-9 w-9 animate-spin shrink-0" />
+                <div className="text-left">
+                  <h2 className="text-3xl font-black uppercase leading-none">{copy("kiosk_generating_title", "Gerando imagem")}</h2>
+                  <p className="mt-2 text-lg leading-snug text-muted-foreground">{copy("kiosk_generating_subtitle", "Nao feche nem desligue o totem.")}</p>
+                </div>
+                <p className="ml-auto min-w-[88px] text-right text-3xl font-black">{progress}%</p>
+              </div>
+              <Progress value={progress} className="h-4" />
             </div>
           </section>
         )}
