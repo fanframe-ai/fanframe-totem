@@ -106,6 +106,7 @@ const initialTechnicalChecks: TechnicalChecks = {
 };
 
 const paymentTestModeStorageKey = "fanframe:kiosk-payment-test-mode";
+const cameraMirrorStorageKey = "fanframe:kiosk-camera-mirror";
 
 function KioskButton({
   children,
@@ -199,6 +200,7 @@ export default function KioskPage() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [deliveryUrl, setDeliveryUrl] = useState<string | null>(null);
   const [deliveryQrImage, setDeliveryQrImage] = useState<string | null>(null);
+  const [mirrorCamera, setMirrorCamera] = useState(() => localStorage.getItem(cameraMirrorStorageKey) !== "false");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const shirtRailRef = useRef<HTMLDivElement | null>(null);
@@ -703,6 +705,10 @@ export default function KioskPage() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    if (mirrorCamera) {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     setUserImage(canvas.toDataURL("image/jpeg", 0.92));
     stopCamera();
@@ -944,6 +950,16 @@ export default function KioskPage() {
     });
   };
 
+  const toggleCameraMirror = () => {
+    const nextValue = !mirrorCamera;
+    localStorage.setItem(cameraMirrorStorageKey, String(nextValue));
+    setMirrorCamera(nextValue);
+    setTechnicalCheck("camera", {
+      status: "ok",
+      message: nextValue ? "Correcao de camera invertida ligada." : "Correcao de camera invertida desligada.",
+    });
+  };
+
   const resetKioskInstallation = async () => {
     const confirmed = window.confirm("Resetar este totem? Ele vai perder o pareamento atual e voltar para a tela do codigo de instalacao.");
     if (!confirmed) return;
@@ -1033,6 +1049,7 @@ export default function KioskPage() {
                 <div><dt>Diagnostico</dt><dd className={`technical-${technicalChecks.diagnostics.status}`}>{checkText(technicalChecks.diagnostics)}</dd></div>
                 <div><dt>Atualizacao</dt><dd>{updateStatus?.ready ? updateStatus.message : updateStatus?.message || "Nao verificada"}</dd></div>
                 <div><dt>Modo teste</dt><dd>{config?.simulatePayments ? "Pagamento teste ligado" : "Pagamento real"}</dd></div>
+                <div><dt>Camera</dt><dd>{mirrorCamera ? "Correcao ligada" : "Correcao desligada"}</dd></div>
               </dl>
               <button onClick={runAllTechnicalTests}>Testar tudo</button>
               <button onClick={testInternet}>Testar internet</button>
@@ -1043,6 +1060,7 @@ export default function KioskPage() {
               <button onClick={() => window.location.reload()}>Sincronizar agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
               <button onClick={togglePaymentTestMode}>{config?.simulatePayments ? "Desligar pagamento teste" : "Ativar pagamento teste"}</button>
+              <button onClick={toggleCameraMirror}>{mirrorCamera ? "Desligar correcao da camera" : "Corrigir camera invertida"}</button>
               <button onClick={startAppUpdate} disabled={updateBusy}>{updateBusy ? "Atualizando..." : "Atualizar app"}</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
               {updateMessage && <p className="technical-note">{updateMessage}</p>}
@@ -1343,7 +1361,12 @@ export default function KioskPage() {
               {userImage ? (
                 <img src={userImage} alt="Foto capturada" className="w-full h-full object-cover" />
               ) : (
-                <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                <video
+                  ref={videoRef}
+                  className={`w-full h-full object-cover ${mirrorCamera ? "-scale-x-100" : ""}`}
+                  playsInline
+                  muted
+                />
               )}
             </div>
             <div className="shrink-0 w-full grid grid-cols-2 gap-5">
