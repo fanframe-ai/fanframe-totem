@@ -247,7 +247,7 @@ function downloadUpdateInstaller(url, destinationPath, redirectsLeft = 3) {
 
 async function startAppUpdate() {
   const config = loadKioskConfig();
-  const readiness = getUpdateReadiness(config);
+  const readiness = getUpdateReadiness(config, { searchDirs: getUpdateSearchDirs() });
 
   if (!readiness.ready) {
     return {
@@ -301,6 +301,16 @@ async function startAppUpdate() {
     status: "started",
     message: "Atualizacao iniciada. O FanFrame sera fechado para o instalador continuar.",
   };
+}
+
+function getUpdateSearchDirs() {
+  const dirs = [
+    path.join(app.getPath("userData"), "updates"),
+    app.getPath("downloads"),
+    app.getPath("desktop"),
+    process.cwd(),
+  ];
+  return [...new Set(dirs.filter(Boolean))];
 }
 
 function configureAutoLaunch(config) {
@@ -420,7 +430,7 @@ app.whenReady().then(() => {
   }));
   ipcMain.handle("kiosk:get-payment-status", () => getPaymentReadiness(loadKioskConfig()));
   ipcMain.handle("kiosk:get-update-status", () => ({
-    ...getUpdateReadiness(loadKioskConfig()),
+    ...getUpdateReadiness(loadKioskConfig(), { searchDirs: getUpdateSearchDirs() }),
     appVersion: app.getVersion(),
   }));
   ipcMain.handle("kiosk:start-app-update", startAppUpdate);

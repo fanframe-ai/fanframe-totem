@@ -64,6 +64,20 @@ Reative essas opcoes antes de devolver o PC para operacao no totem.
 
 O modo tecnico tem o botao `Atualizar app`. Ele nao atualiza no meio da venda: o dono do totem precisa abrir o modo tecnico com `Ctrl + Shift + F12`, digitar o PIN e apertar o botao.
 
+Fluxo mais simples para o dono do totem:
+
+1. Baixe o instalador novo no PC do totem.
+2. Deixe o arquivo na pasta `Downloads` ou na Area de Trabalho.
+3. O arquivo deve manter o nome gerado pelo build, como `FanFrame Kiosk Setup 0.1.2.exe`.
+4. Abra o modo tecnico e clique em `Atualizar app`.
+
+O app procura automaticamente o instalador mais recente em:
+
+- pasta interna de updates do FanFrame;
+- `Downloads`;
+- Area de Trabalho;
+- pasta atual do app.
+
 Configure uma das opcoes abaixo no `kiosk.config.json` do PC ou por variaveis de ambiente:
 
 - `updates.installerUrl` ou `FANFRAME_UPDATE_URL`: baixa o instalador novo e abre no Windows.
