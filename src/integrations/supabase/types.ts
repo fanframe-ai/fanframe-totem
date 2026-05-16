@@ -668,6 +668,7 @@ export type Database = {
           kiosk_currency: string
           kiosk_default_mode: string
           kiosk_enabled: boolean
+          kiosk_font_family: string | null
           kiosk_price_cents: number
           kiosk_show_background_step: boolean
           kiosk_show_shirt_step: boolean
@@ -698,6 +699,7 @@ export type Database = {
           kiosk_currency?: string
           kiosk_default_mode?: string
           kiosk_enabled?: boolean
+          kiosk_font_family?: string | null
           kiosk_price_cents?: number
           kiosk_show_background_step?: boolean
           kiosk_show_shirt_step?: boolean
@@ -728,6 +730,7 @@ export type Database = {
           kiosk_currency?: string
           kiosk_default_mode?: string
           kiosk_enabled?: boolean
+          kiosk_font_family?: string | null
           kiosk_price_cents?: number
           kiosk_show_background_step?: boolean
           kiosk_show_shirt_step?: boolean

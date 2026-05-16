@@ -29,6 +29,7 @@ export interface TeamRow {
   watermark_url: string | null;
   is_active: boolean;
   text_overrides: Record<string, string>;
+  kiosk_font_family: string | null;
   draft_config: Record<string, unknown>;
   published_config: Record<string, unknown>;
   published_config_version: number;

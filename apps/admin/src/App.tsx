@@ -108,6 +108,7 @@ const emptyTeam: Partial<TeamRow> = {
   watermark_url: null,
   is_active: true,
   text_overrides: {},
+  kiosk_font_family: "Inter, system-ui, sans-serif",
   draft_config: {},
   published_config: {},
   published_config_version: 1,
@@ -354,6 +355,7 @@ const kioskDraftKeys: Array<keyof TeamKioskDraft> = [
   "watermark_url",
   "is_active",
   "text_overrides",
+  "kiosk_font_family",
   "kiosk_enabled",
   "kiosk_price_cents",
   "kiosk_currency",
@@ -846,6 +848,15 @@ const builderScreens: Array<{ id: BuilderScreen; label: string }> = [
   { id: "result", label: "Entrega" },
 ];
 
+const fontOptions = [
+  { label: "Padrao limpo", value: "Inter, system-ui, sans-serif" },
+  { label: "Esportivo forte", value: "Arial Black, Impact, system-ui, sans-serif" },
+  { label: "Classico editorial", value: "Georgia, Times New Roman, serif" },
+  { label: "Moderno tecnico", value: "Segoe UI, system-ui, sans-serif" },
+  { label: "Impacto de arena", value: "Impact, Arial Black, sans-serif" },
+  { label: "Sistema Windows", value: "Segoe UI, Arial, sans-serif" },
+];
+
 const builderTextFields: Record<string, Omit<Extract<BuilderSelection, { type: "text" }>, "type">> = {
   kiosk_brand_label: { key: "kiosk_brand_label", label: "Texto pequeno do topo", fallback: "FanFrame Totem" },
   kiosk_total_label: { key: "kiosk_total_label", label: "Texto acima do valor", fallback: "Total" },
@@ -1099,7 +1110,15 @@ function TeamVisualBuilder({
       </aside>
 
       <section className="builder-stage" aria-label="Preview editavel do totem">
-        <div className="builder-phone" style={{ background: team.primary_color || "#050505", color: team.secondary_color || "#ffffff" }} onClick={() => setSelection({ type: "theme" })}>
+        <div
+          className="builder-phone"
+          style={{
+            background: team.primary_color || "#050505",
+            color: team.secondary_color || "#ffffff",
+            fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
+          }}
+          onClick={() => setSelection({ type: "theme" })}
+        >
           {renderHeader()}
           {renderPreviewScreen()}
         </div>
@@ -1127,6 +1146,11 @@ function TeamVisualBuilder({
               <label>Fundo<input type="color" value={team.primary_color || "#050505"} onChange={(event) => set("primary_color", event.target.value)} /></label>
               <label>Texto<input type="color" value={team.secondary_color || "#ffffff"} onChange={(event) => set("secondary_color", event.target.value)} /></label>
             </div>
+            <label>Fonte do time
+              <select value={team.kiosk_font_family || "Inter, system-ui, sans-serif"} onChange={(event) => set("kiosk_font_family", event.target.value)}>
+                {fontOptions.map((font) => <option key={font.value} value={font.value}>{font.label}</option>)}
+              </select>
+            </label>
             <label>Preco da foto (R$)<input type="number" min="0" step="0.01" value={centsToReais(team.kiosk_price_cents)} onChange={(event) => set("kiosk_price_cents", reaisToCents(event.target.value))} /></label>
             <label className="inline-check"><input type="checkbox" checked={team.kiosk_enabled !== false} onChange={(event) => set("kiosk_enabled", event.target.checked)} /> Permitir vendas desse time</label>
           </>

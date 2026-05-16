@@ -67,6 +67,7 @@ serve(async (req) => {
             watermark_url,
             is_active,
             text_overrides,
+            kiosk_font_family,
             published_config,
             published_config_version,
             kiosk_enabled,

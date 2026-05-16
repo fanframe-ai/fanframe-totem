@@ -77,6 +77,7 @@ export interface TeamConfig {
   watermark_url: string | null;
   is_active: boolean;
   text_overrides: TeamTextOverrides;
+  kiosk_font_family?: string | null;
   kiosk_enabled: boolean;
   kiosk_price_cents: number;
   kiosk_currency: string;
@@ -142,6 +143,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           watermark_url,
           is_active,
           text_overrides,
+          kiosk_font_family,
           published_config,
           published_config_version,
           kiosk_enabled,
@@ -206,6 +208,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           watermark_url: typeof view.watermark_url === "string" ? view.watermark_url : null,
           is_active: data.is_active ?? true,
           text_overrides: (view.text_overrides as TeamTextOverrides) || {},
+          kiosk_font_family: typeof view.kiosk_font_family === "string" ? view.kiosk_font_family : "Inter, system-ui, sans-serif",
           kiosk_enabled: Boolean(view.kiosk_enabled ?? false),
           kiosk_price_cents: Number(view.kiosk_price_cents ?? 2500),
           kiosk_currency: String(view.kiosk_currency || "BRL"),

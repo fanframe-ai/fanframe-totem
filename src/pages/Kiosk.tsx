@@ -1062,6 +1062,7 @@ export default function KioskPage() {
   const shellStyle = team ? ({
     "--team-primary": team.primary_color,
     "--team-secondary": team.secondary_color,
+    fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
   } as React.CSSProperties) : undefined;
   const maintenanceError = error ? classifyKioskError(error) : null;
 
