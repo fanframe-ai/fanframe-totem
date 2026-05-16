@@ -195,7 +195,6 @@ export default function KioskPage() {
   const [pixQrImage, setPixQrImage] = useState<string | null>(null);
   const [pixPayment, setPixPayment] = useState<KioskPaymentResponse | null>(null);
   const [userImage, setUserImage] = useState<string | null>(null);
-  const [retakes, setRetakes] = useState(0);
   const [queueId, setQueueId] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [deliveryUrl, setDeliveryUrl] = useState<string | null>(null);
@@ -252,7 +251,6 @@ export default function KioskPage() {
     setPixQrImage(null);
     setPixPayment(null);
     setUserImage(null);
-    setRetakes(0);
     setQueueId(null);
     setGeneratedImage(null);
     setDeliveryUrl(null);
@@ -751,9 +749,7 @@ export default function KioskPage() {
   };
 
   const retakePhoto = () => {
-    if (retakes >= 1) return;
     stopCameraCountdown();
-    setRetakes((current) => current + 1);
     setUserImage(null);
   };
 
@@ -778,7 +774,6 @@ export default function KioskPage() {
   const goBackFromCamera = () => {
     stopCameraCountdown();
     setUserImage(null);
-    setRetakes(0);
     resetFlow();
   };
 
@@ -1467,7 +1462,7 @@ export default function KioskPage() {
             <div className="shrink-0 w-full grid grid-cols-2 gap-5">
               {userImage ? (
                 <>
-                  <KioskButton variant="secondary" onClick={retakePhoto} disabled={retakes >= 1} className="w-full">
+                  <KioskButton variant="secondary" onClick={retakePhoto} className="w-full">
                     <RefreshCw className="w-5 h-5 mr-2" />
                     {copy("kiosk_camera_retake", "Refazer")}
                   </KioskButton>
