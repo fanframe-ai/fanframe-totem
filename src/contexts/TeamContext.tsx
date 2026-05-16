@@ -84,6 +84,7 @@ export interface TeamConfig {
   kiosk_default_mode: string;
   kiosk_show_shirt_step: boolean;
   kiosk_show_background_step: boolean;
+  published_config_version?: number;
 }
 
 interface TeamContextValue {
@@ -102,6 +103,10 @@ const TeamContext = createContext<TeamContextValue>({
 
 export function useTeam() {
   return useContext(TeamContext);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 export function TeamProvider({ children }: { children: ReactNode }) {
@@ -137,6 +142,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           watermark_url,
           is_active,
           text_overrides,
+          published_config,
+          published_config_version,
           kiosk_enabled,
           kiosk_price_cents,
           kiosk_currency,
@@ -178,29 +185,35 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        const published = isRecord(data.published_config) && Object.keys(data.published_config).length > 0
+          ? data.published_config
+          : {};
+        const view = { ...data, ...published };
+
         const teamConfig: TeamConfig = {
           id: data.id,
           slug: data.slug,
-          name: data.name,
+          name: String(view.name || data.name),
           subdomain: data.subdomain,
           replicate_api_token: null,
-          generation_prompt: null,
-          shirts: (data.shirts as unknown as TeamShirt[]) || [],
-          backgrounds: (data.backgrounds as unknown as TeamBackground[]) || [],
-          tutorial_assets: (data.tutorial_assets as { before: string; after: string }) || { before: "", after: "" },
-          primary_color: data.primary_color || "#000000",
-          secondary_color: data.secondary_color || "#FFFFFF",
-          logo_url: data.logo_url,
-          watermark_url: data.watermark_url,
+          generation_prompt: typeof view.generation_prompt === "string" ? view.generation_prompt : null,
+          shirts: (view.shirts as unknown as TeamShirt[]) || [],
+          backgrounds: (view.backgrounds as unknown as TeamBackground[]) || [],
+          tutorial_assets: (view.tutorial_assets as { before: string; after: string }) || { before: "", after: "" },
+          primary_color: String(view.primary_color || "#000000"),
+          secondary_color: String(view.secondary_color || "#FFFFFF"),
+          logo_url: typeof view.logo_url === "string" ? view.logo_url : null,
+          watermark_url: typeof view.watermark_url === "string" ? view.watermark_url : null,
           is_active: data.is_active ?? true,
-          text_overrides: (data.text_overrides as TeamTextOverrides) || {},
-          kiosk_enabled: data.kiosk_enabled ?? false,
-          kiosk_price_cents: data.kiosk_price_cents ?? 2500,
-          kiosk_currency: data.kiosk_currency || "BRL",
-          kiosk_timeout_seconds: data.kiosk_timeout_seconds ?? 60,
-          kiosk_default_mode: data.kiosk_default_mode || "standard",
-          kiosk_show_shirt_step: data.kiosk_show_shirt_step ?? true,
-          kiosk_show_background_step: data.kiosk_show_background_step ?? true,
+          text_overrides: (view.text_overrides as TeamTextOverrides) || {},
+          kiosk_enabled: Boolean(view.kiosk_enabled ?? false),
+          kiosk_price_cents: Number(view.kiosk_price_cents ?? 2500),
+          kiosk_currency: String(view.kiosk_currency || "BRL"),
+          kiosk_timeout_seconds: Number(view.kiosk_timeout_seconds ?? 60),
+          kiosk_default_mode: String(view.kiosk_default_mode || "standard"),
+          kiosk_show_shirt_step: Boolean(view.kiosk_show_shirt_step ?? true),
+          kiosk_show_background_step: Boolean(view.kiosk_show_background_step ?? true),
+          published_config_version: data.published_config_version ?? 1,
         };
 
         console.log("[TeamContext] Team loaded:", teamConfig.name);

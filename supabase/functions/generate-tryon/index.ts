@@ -154,13 +154,19 @@ async function getGenerationPrompt(supabase: ReturnType<typeof createClient>, te
     try {
       const { data: teamData } = await supabase
         .from("teams")
-        .select("generation_prompt")
+        .select("generation_prompt, published_config")
         .eq("slug", teamSlug)
         .single();
-      
-      if (teamData?.generation_prompt) {
+
+      const published = teamData?.published_config &&
+        typeof teamData.published_config === "object" &&
+        !Array.isArray(teamData.published_config)
+        ? teamData.published_config as Record<string, unknown>
+        : {};
+      const publishedPrompt = typeof published.generation_prompt === "string" ? published.generation_prompt : "";
+      if (publishedPrompt || teamData?.generation_prompt) {
         console.log(`Using team-specific prompt for ${teamSlug}`);
-        return teamData.generation_prompt;
+        return publishedPrompt || teamData.generation_prompt;
       }
     } catch (err) {
       console.error("Error fetching team prompt:", err);

@@ -67,6 +67,8 @@ serve(async (req) => {
             watermark_url,
             is_active,
             text_overrides,
+            published_config,
+            published_config_version,
             kiosk_enabled,
             kiosk_price_cents,
             kiosk_currency,
@@ -112,6 +114,12 @@ serve(async (req) => {
     if (redeemError) throw redeemError;
 
     const rawTeam = Array.isArray(rawDevice.teams) ? rawDevice.teams[0] : rawDevice.teams;
+    const publishedConfig = rawTeam?.published_config &&
+      typeof rawTeam.published_config === "object" &&
+      !Array.isArray(rawTeam.published_config)
+      ? rawTeam.published_config as Record<string, unknown>
+      : {};
+    const publishedTeam = rawTeam ? { ...rawTeam, ...publishedConfig } : null;
 
     await supabase.from("kiosk_device_events").insert({
       device_id: install.device_id,
@@ -130,8 +138,9 @@ serve(async (req) => {
         location: rawDevice.location,
         supportPinHash: rawDevice.support_pin_hash || null,
         configVersion: rawDevice.config_version,
+        publishedConfigVersion: rawTeam?.published_config_version || 1,
       },
-      team: rawTeam,
+      team: publishedTeam,
       deviceSecret,
     });
   } catch (error) {

@@ -661,6 +661,7 @@ export type Database = {
         Row: {
           backgrounds: Json
           created_at: string | null
+          draft_config: Json
           generation_prompt: string | null
           id: string
           is_active: boolean | null
@@ -674,6 +675,9 @@ export type Database = {
           logo_url: string | null
           name: string
           primary_color: string | null
+          published_at: string | null
+          published_config: Json
+          published_config_version: number
           replicate_api_token: string | null
           secondary_color: string | null
           shirts: Json
@@ -687,6 +691,7 @@ export type Database = {
         Insert: {
           backgrounds?: Json
           created_at?: string | null
+          draft_config?: Json
           generation_prompt?: string | null
           id?: string
           is_active?: boolean | null
@@ -700,6 +705,9 @@ export type Database = {
           logo_url?: string | null
           name: string
           primary_color?: string | null
+          published_at?: string | null
+          published_config?: Json
+          published_config_version?: number
           replicate_api_token?: string | null
           secondary_color?: string | null
           shirts?: Json
@@ -713,6 +721,7 @@ export type Database = {
         Update: {
           backgrounds?: Json
           created_at?: string | null
+          draft_config?: Json
           generation_prompt?: string | null
           id?: string
           is_active?: boolean | null
@@ -726,6 +735,9 @@ export type Database = {
           logo_url?: string | null
           name?: string
           primary_color?: string | null
+          published_at?: string | null
+          published_config?: Json
+          published_config_version?: number
           replicate_api_token?: string | null
           secondary_color?: string | null
           shirts?: Json

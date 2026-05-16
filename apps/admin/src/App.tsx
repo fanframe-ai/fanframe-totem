@@ -7,8 +7,11 @@ import {
   BarChart3,
   Copy,
   Cpu,
+  Image as ImageIcon,
   LayoutDashboard,
   LogOut,
+  MousePointer2,
+  Palette,
   Monitor,
   Plus,
   RefreshCw,
@@ -16,6 +19,7 @@ import {
   Settings,
   Shield,
   Shirt,
+  Type,
   Users,
 } from "lucide-react";
 import { supabase, publicAssetUrl } from "./lib/supabase";
@@ -104,6 +108,10 @@ const emptyTeam: Partial<TeamRow> = {
   watermark_url: null,
   is_active: true,
   text_overrides: {},
+  draft_config: {},
+  published_config: {},
+  published_config_version: 1,
+  published_at: null,
   kiosk_enabled: true,
   kiosk_price_cents: 2500,
   kiosk_currency: "BRL",
@@ -182,15 +190,12 @@ const kioskTextGroups: Array<{ title: string; description: string; fields: Kiosk
   },
 ];
 
-type TeamEditorTab = "basico" | "venda" | "visual" | "textos" | "camisas" | "cenarios" | "ia" | "avancado";
+type TeamEditorTab = "basico" | "venda" | "construtor" | "visual" | "textos" | "camisas" | "cenarios" | "ia" | "avancado";
 
 const teamEditorTabs: Array<{ id: TeamEditorTab; label: string }> = [
   { id: "basico", label: "Basico" },
   { id: "venda", label: "Venda" },
-  { id: "visual", label: "Visual" },
-  { id: "textos", label: "Textos" },
-  { id: "camisas", label: "Camisas" },
-  { id: "cenarios", label: "Cenarios" },
+  { id: "construtor", label: "Construtor" },
   { id: "ia", label: "IA" },
   { id: "avancado", label: "Avancado" },
 ];
@@ -314,6 +319,74 @@ function canSupportOperations(role: Role | null) {
 
 function canManageUsers(role: Role | null) {
   return role === "super_admin";
+}
+
+type TeamKioskDraft = Pick<TeamRow,
+  | "name"
+  | "generation_prompt"
+  | "shirts"
+  | "backgrounds"
+  | "tutorial_assets"
+  | "primary_color"
+  | "secondary_color"
+  | "logo_url"
+  | "watermark_url"
+  | "is_active"
+  | "text_overrides"
+  | "kiosk_enabled"
+  | "kiosk_price_cents"
+  | "kiosk_currency"
+  | "kiosk_timeout_seconds"
+  | "kiosk_default_mode"
+  | "kiosk_show_shirt_step"
+  | "kiosk_show_background_step"
+>;
+
+const kioskDraftKeys: Array<keyof TeamKioskDraft> = [
+  "name",
+  "generation_prompt",
+  "shirts",
+  "backgrounds",
+  "tutorial_assets",
+  "primary_color",
+  "secondary_color",
+  "logo_url",
+  "watermark_url",
+  "is_active",
+  "text_overrides",
+  "kiosk_enabled",
+  "kiosk_price_cents",
+  "kiosk_currency",
+  "kiosk_timeout_seconds",
+  "kiosk_default_mode",
+  "kiosk_show_shirt_step",
+  "kiosk_show_background_step",
+];
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function buildKioskDraft(team: Partial<TeamRow>) {
+  return kioskDraftKeys.reduce<Record<string, unknown>>((draft, key) => {
+    draft[key] = team[key] ?? emptyTeam[key];
+    return draft;
+  }, {});
+}
+
+function mergeKioskDraft(team: Partial<TeamRow>, config: unknown) {
+  if (!isObjectRecord(config) || Object.keys(config).length === 0) return team;
+  const allowed = kioskDraftKeys.reduce<Record<string, unknown>>((next, key) => {
+    if (key in config) next[key] = config[key as string];
+    return next;
+  }, {});
+  return { ...team, ...allowed };
+}
+
+function hasUnpublishedDraft(team: Partial<TeamRow>) {
+  const draft = JSON.stringify(buildKioskDraft(team));
+  const published = JSON.stringify(team.published_config || {});
+  return draft !== published;
 }
 
 async function uploadAsset(file: File, path: string) {
@@ -755,6 +828,337 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
   );
 }
 
+type BuilderScreen = "home" | "shirts" | "backgrounds" | "pix" | "result";
+type BuilderSelection =
+  | { type: "text"; key: string; label: string; fallback: string; long?: boolean }
+  | { type: "theme" }
+  | { type: "logo" }
+  | { type: "shirt"; index: number }
+  | { type: "background"; index: number };
+
+type TeamSetter = <K extends keyof TeamRow>(key: K, value: TeamRow[K]) => void;
+
+const builderScreens: Array<{ id: BuilderScreen; label: string }> = [
+  { id: "home", label: "Inicio" },
+  { id: "shirts", label: "Camisas" },
+  { id: "backgrounds", label: "Cenarios" },
+  { id: "pix", label: "PIX" },
+  { id: "result", label: "Entrega" },
+];
+
+const builderTextFields: Record<string, Omit<Extract<BuilderSelection, { type: "text" }>, "type">> = {
+  kiosk_brand_label: { key: "kiosk_brand_label", label: "Texto pequeno do topo", fallback: "FanFrame Totem" },
+  kiosk_total_label: { key: "kiosk_total_label", label: "Texto acima do valor", fallback: "Total" },
+  kiosk_home_eyebrow: { key: "kiosk_home_eyebrow", label: "Chamada pequena", fallback: "Experiencia interativa" },
+  kiosk_home_title: { key: "kiosk_home_title", label: "Titulo da tela inicial", fallback: "Vista o manto" },
+  kiosk_home_subtitle: { key: "kiosk_home_subtitle", label: "Texto de apoio da tela inicial", fallback: "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", long: true },
+  kiosk_home_cta: { key: "kiosk_home_cta", label: "Botao da tela inicial", fallback: "Comecar" },
+  kiosk_shirt_step: { key: "kiosk_shirt_step", label: "Passo da camisa", fallback: "Passo 1 de 3" },
+  kiosk_shirt_title: { key: "kiosk_shirt_title", label: "Titulo da camisa", fallback: "Escolha a camisa" },
+  kiosk_background_step: { key: "kiosk_background_step", label: "Passo do cenario", fallback: "Passo 2 de 3" },
+  kiosk_background_title: { key: "kiosk_background_title", label: "Titulo do cenario", fallback: "Escolha o cenario" },
+  kiosk_continue: { key: "kiosk_continue", label: "Botao continuar", fallback: "Continuar" },
+  kiosk_cancel: { key: "kiosk_cancel", label: "Botao cancelar", fallback: "Cancelar" },
+  kiosk_payment_step: { key: "kiosk_payment_step", label: "Passo do pagamento", fallback: "Passo 3 de 3" },
+  kiosk_payment_title: { key: "kiosk_payment_title", label: "Titulo do pagamento", fallback: "Pagamento PIX" },
+  kiosk_payment_pix_hint: { key: "kiosk_payment_pix_hint", label: "Ajuda do PIX", fallback: "Aponte a camera do celular para o QR Code.", long: true },
+  kiosk_payment_waiting: { key: "kiosk_payment_waiting", label: "Texto aguardando pagamento", fallback: "Aguardando pagamento" },
+  kiosk_result_title: { key: "kiosk_result_title", label: "Titulo da entrega", fallback: "Imagem pronta" },
+  kiosk_result_hint: { key: "kiosk_result_hint", label: "Texto do QR final", fallback: "Escaneie para baixar no celular", long: true },
+  kiosk_result_finish: { key: "kiosk_result_finish", label: "Botao finalizar", fallback: "Finalizar" },
+};
+
+function readBuilderText(texts: Record<string, string>, key: string) {
+  const field = builderTextFields[key];
+  return texts[key] || field?.fallback || "";
+}
+
+function EditablePreviewText({
+  fieldKey,
+  texts,
+  selected,
+  variant,
+  onSelect,
+  onChange,
+}: {
+  fieldKey: string;
+  texts: Record<string, string>;
+  selected: boolean;
+  variant?: string;
+  onSelect: () => void;
+  onChange: (key: string, value: string) => void;
+}) {
+  const field = builderTextFields[fieldKey];
+  const value = readBuilderText(texts, fieldKey);
+  const className = `preview-editable ${variant || ""} ${selected ? "selected" : ""}`;
+
+  if (selected) {
+    const commonProps = {
+      value,
+      onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(fieldKey, event.target.value),
+      onClick: (event: React.MouseEvent) => event.stopPropagation(),
+      "aria-label": field?.label || "Texto",
+    };
+    return field?.long ? (
+      <textarea className={`${className} preview-inline-field`} rows={3} autoFocus {...commonProps} />
+    ) : (
+      <input className={`${className} preview-inline-field`} autoFocus {...commonProps} />
+    );
+  }
+
+  return (
+    <button type="button" className={className} onClick={(event) => { event.stopPropagation(); onSelect(); }}>
+      {value}
+    </button>
+  );
+}
+
+function TeamVisualBuilder({
+  team,
+  textOverrides,
+  shirts,
+  backgrounds,
+  set,
+  setTextOverride,
+}: {
+  team: Partial<TeamRow>;
+  textOverrides: Record<string, string>;
+  shirts: TeamAsset[];
+  backgrounds: TeamAsset[];
+  set: TeamSetter;
+  setTextOverride: (key: string, value: string) => void;
+}) {
+  const [screen, setScreen] = useState<BuilderScreen>("home");
+  const [selection, setSelection] = useState<BuilderSelection>({ type: "text", ...builderTextFields.kiosk_home_title });
+  const selectedTextKey = selection.type === "text" ? selection.key : "";
+  const visibleShirts = shirts.filter((asset) => asset.visible !== false);
+  const visibleBackgrounds = backgrounds.filter((asset) => asset.visible !== false);
+
+  const selectText = (key: string) => setSelection({ type: "text", ...builderTextFields[key] });
+  const updateAsset = (kind: "shirt" | "background", index: number, patch: Partial<TeamAsset>) => {
+    const current = kind === "shirt" ? shirts : backgrounds;
+    const next = [...current];
+    next[index] = { ...next[index], ...patch };
+    set(kind === "shirt" ? "shirts" : "backgrounds", next as TeamRow["shirts"]);
+  };
+  const addAsset = (kind: "shirt" | "background") => {
+    const type = kind === "shirt" ? "shirts" : "backgrounds";
+    const current = kind === "shirt" ? shirts : backgrounds;
+    const id = `${type}-${Date.now()}`;
+    const next = [...current, { id, name: kind === "shirt" ? "Nova camisa" : "Novo cenario", subtitle: "", imageUrl: "", assetPath: "", visible: true }];
+    set(type, next as TeamRow["shirts"]);
+    setSelection({ type: kind, index: next.length - 1 } as BuilderSelection);
+    setScreen(kind === "shirt" ? "shirts" : "backgrounds");
+  };
+  const removeAsset = (kind: "shirt" | "background", index: number) => {
+    const type = kind === "shirt" ? "shirts" : "backgrounds";
+    const current = kind === "shirt" ? shirts : backgrounds;
+    set(type, current.filter((_, itemIndex) => itemIndex !== index) as TeamRow["shirts"]);
+    setSelection({ type: "theme" });
+  };
+  const moveAsset = (kind: "shirt" | "background", index: number, direction: -1 | 1) => {
+    const current = kind === "shirt" ? shirts : backgrounds;
+    const target = index + direction;
+    if (target < 0 || target >= current.length) return;
+    const next = [...current];
+    [next[index], next[target]] = [next[target], next[index]];
+    set(kind === "shirt" ? "shirts" : "backgrounds", next as TeamRow["shirts"]);
+    setSelection({ type: kind, index: target } as BuilderSelection);
+  };
+  const uploadTeamImage = async (file: File, target: "logo_url" | "watermark_url") => {
+    const extension = file.name.split(".").pop() || "png";
+    const name = target === "logo_url" ? "logo" : "watermark";
+    set(target, await uploadAsset(file, `${team.slug || "novo"}/branding/${name}.${extension}`));
+  };
+  const uploadAssetImage = async (file: File, kind: "shirt" | "background", index: number) => {
+    const asset = kind === "shirt" ? shirts[index] : backgrounds[index];
+    if (!asset) return;
+    const type = kind === "shirt" ? "shirts" : "backgrounds";
+    const extension = file.name.split(".").pop() || "png";
+    const url = await uploadAsset(file, `${team.slug || "novo"}/${type}/${asset.id}.${extension}`);
+    updateAsset(kind, index, { imageUrl: url, assetPath: url });
+  };
+  const renderHeader = () => (
+    <div className="kiosk-preview-header">
+      <div>
+        <EditablePreviewText fieldKey="kiosk_brand_label" texts={textOverrides} selected={selectedTextKey === "kiosk_brand_label"} variant="micro" onSelect={() => selectText("kiosk_brand_label")} onChange={setTextOverride} />
+        <button type="button" className={`preview-team-name ${selection.type === "logo" ? "selected" : ""}`} onClick={(event) => { event.stopPropagation(); setSelection({ type: "logo" }); }}>
+          {team.logo_url ? <img src={publicAssetUrl(team.logo_url)} alt="" /> : null}
+          <span>{team.name || "Nome do time"}</span>
+        </button>
+      </div>
+      <button type="button" className="preview-price" onClick={(event) => { event.stopPropagation(); setSelection({ type: "theme" }); }}>
+        <EditablePreviewText fieldKey="kiosk_total_label" texts={textOverrides} selected={selectedTextKey === "kiosk_total_label"} variant="micro" onSelect={() => selectText("kiosk_total_label")} onChange={setTextOverride} />
+        <strong>{money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}</strong>
+      </button>
+    </div>
+  );
+  const renderAssetCard = (asset: TeamAsset, index: number, kind: "shirt" | "background") => (
+    <button
+      type="button"
+      className={`builder-asset-preview-card ${selection.type === kind && selection.index === index ? "selected" : ""}`}
+      key={asset.id}
+      onClick={(event) => { event.stopPropagation(); setSelection({ type: kind, index } as BuilderSelection); }}
+    >
+      <div className="asset-preview-image">
+        {asset.imageUrl ? <img src={publicAssetUrl(asset.imageUrl)} alt="" /> : <ImageIcon size={28} />}
+      </div>
+      <strong>{asset.name || (kind === "shirt" ? "Nome da camisa" : "Nome do cenario")}</strong>
+      <span>{asset.subtitle || "Texto curto"}</span>
+    </button>
+  );
+  const renderPreviewScreen = () => {
+    if (screen === "home") {
+      return (
+        <div className="builder-preview-body centered">
+          <EditablePreviewText fieldKey="kiosk_home_eyebrow" texts={textOverrides} selected={selectedTextKey === "kiosk_home_eyebrow"} variant="eyebrow" onSelect={() => selectText("kiosk_home_eyebrow")} onChange={setTextOverride} />
+          <EditablePreviewText fieldKey="kiosk_home_title" texts={textOverrides} selected={selectedTextKey === "kiosk_home_title"} variant="hero-title" onSelect={() => selectText("kiosk_home_title")} onChange={setTextOverride} />
+          <EditablePreviewText fieldKey="kiosk_home_subtitle" texts={textOverrides} selected={selectedTextKey === "kiosk_home_subtitle"} variant="subtitle" onSelect={() => selectText("kiosk_home_subtitle")} onChange={setTextOverride} />
+          <EditablePreviewText fieldKey="kiosk_home_cta" texts={textOverrides} selected={selectedTextKey === "kiosk_home_cta"} variant="cta" onSelect={() => selectText("kiosk_home_cta")} onChange={setTextOverride} />
+        </div>
+      );
+    }
+    if (screen === "shirts") {
+      return (
+        <div className="builder-preview-body">
+          <EditablePreviewText fieldKey="kiosk_shirt_step" texts={textOverrides} selected={selectedTextKey === "kiosk_shirt_step"} variant="eyebrow" onSelect={() => selectText("kiosk_shirt_step")} onChange={setTextOverride} />
+          <EditablePreviewText fieldKey="kiosk_shirt_title" texts={textOverrides} selected={selectedTextKey === "kiosk_shirt_title"} variant="section-title" onSelect={() => selectText("kiosk_shirt_title")} onChange={setTextOverride} />
+          <div className="builder-asset-preview-row">
+            {shirts.length ? shirts.slice(0, 3).map((asset, index) => renderAssetCard(asset, index, "shirt")) : <button type="button" className="empty-builder-card" onClick={() => addAsset("shirt")}>Adicionar camisa</button>}
+          </div>
+          <div className="builder-preview-actions">
+            <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
+            <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
+          </div>
+        </div>
+      );
+    }
+    if (screen === "backgrounds") {
+      return (
+        <div className="builder-preview-body">
+          <EditablePreviewText fieldKey="kiosk_background_step" texts={textOverrides} selected={selectedTextKey === "kiosk_background_step"} variant="eyebrow" onSelect={() => selectText("kiosk_background_step")} onChange={setTextOverride} />
+          <EditablePreviewText fieldKey="kiosk_background_title" texts={textOverrides} selected={selectedTextKey === "kiosk_background_title"} variant="section-title" onSelect={() => selectText("kiosk_background_title")} onChange={setTextOverride} />
+          <div className="builder-asset-preview-row">
+            {backgrounds.length ? backgrounds.slice(0, 3).map((asset, index) => renderAssetCard(asset, index, "background")) : <button type="button" className="empty-builder-card" onClick={() => addAsset("background")}>Adicionar cenario</button>}
+          </div>
+          <div className="builder-preview-actions">
+            <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
+            <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
+          </div>
+        </div>
+      );
+    }
+    if (screen === "pix") {
+      return (
+        <div className="builder-preview-body centered">
+          <EditablePreviewText fieldKey="kiosk_payment_step" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_step"} variant="eyebrow" onSelect={() => selectText("kiosk_payment_step")} onChange={setTextOverride} />
+          <EditablePreviewText fieldKey="kiosk_payment_title" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_title"} variant="section-title" onSelect={() => selectText("kiosk_payment_title")} onChange={setTextOverride} />
+          <div className="fake-qr">PIX</div>
+          <EditablePreviewText fieldKey="kiosk_payment_pix_hint" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_pix_hint"} variant="subtitle" onSelect={() => selectText("kiosk_payment_pix_hint")} onChange={setTextOverride} />
+          <EditablePreviewText fieldKey="kiosk_payment_waiting" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_waiting"} variant="status-pill" onSelect={() => selectText("kiosk_payment_waiting")} onChange={setTextOverride} />
+        </div>
+      );
+    }
+    return (
+      <div className="builder-preview-body centered">
+        <EditablePreviewText fieldKey="kiosk_result_title" texts={textOverrides} selected={selectedTextKey === "kiosk_result_title"} variant="section-title" onSelect={() => selectText("kiosk_result_title")} onChange={setTextOverride} />
+        <div className="fake-photo">Foto IA</div>
+        <EditablePreviewText fieldKey="kiosk_result_hint" texts={textOverrides} selected={selectedTextKey === "kiosk_result_hint"} variant="subtitle" onSelect={() => selectText("kiosk_result_hint")} onChange={setTextOverride} />
+        <EditablePreviewText fieldKey="kiosk_result_finish" texts={textOverrides} selected={selectedTextKey === "kiosk_result_finish"} variant="cta compact" onSelect={() => selectText("kiosk_result_finish")} onChange={setTextOverride} />
+      </div>
+    );
+  };
+  const selectedAsset = selection.type === "shirt" ? shirts[selection.index] : selection.type === "background" ? backgrounds[selection.index] : null;
+  const selectedAssetKind = selection.type === "shirt" || selection.type === "background" ? selection.type : null;
+
+  return (
+    <div className="visual-builder">
+      <aside className="builder-tools">
+        <div className="builder-tools-title">
+          <MousePointer2 size={18} />
+          <div>
+            <strong>Editar no preview</strong>
+            <span>Clique em textos, imagens e cards.</span>
+          </div>
+        </div>
+        <div className="builder-screen-list">
+          {builderScreens.map((item) => (
+            <button type="button" key={item.id} className={screen === item.id ? "active" : ""} onClick={() => setScreen(item.id)}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="builder-tool-button" onClick={() => setSelection({ type: "theme" })}><Palette size={16} /> Cores e preco</button>
+        <button type="button" className="builder-tool-button" onClick={() => setSelection({ type: "logo" })}><ImageIcon size={16} /> Logo do time</button>
+        <button type="button" className="builder-tool-button" onClick={() => addAsset("shirt")}><Plus size={16} /> Nova camisa</button>
+        <button type="button" className="builder-tool-button" onClick={() => addAsset("background")}><Plus size={16} /> Novo cenario</button>
+        <div className="builder-mini-list">
+          <strong>Visiveis no totem</strong>
+          <span>{visibleShirts.length} camisa(s) e {visibleBackgrounds.length} cenario(s)</span>
+        </div>
+      </aside>
+
+      <section className="builder-stage" aria-label="Preview editavel do totem">
+        <div className="builder-phone" style={{ background: team.primary_color || "#050505", color: team.secondary_color || "#ffffff" }} onClick={() => setSelection({ type: "theme" })}>
+          {renderHeader()}
+          {renderPreviewScreen()}
+        </div>
+      </section>
+
+      <aside className="builder-inspector">
+        {selection.type === "text" && (
+          <>
+            <div className="inspector-heading"><Type size={17} /><strong>{selection.label}</strong></div>
+            <label>
+              Texto
+              {selection.long ? (
+                <textarea rows={5} value={readBuilderText(textOverrides, selection.key)} onChange={(event) => setTextOverride(selection.key, event.target.value)} />
+              ) : (
+                <input value={readBuilderText(textOverrides, selection.key)} onChange={(event) => setTextOverride(selection.key, event.target.value)} />
+              )}
+            </label>
+            <p className="hint">Tambem da para editar esse texto direto no preview.</p>
+          </>
+        )}
+        {selection.type === "theme" && (
+          <>
+            <div className="inspector-heading"><Palette size={17} /><strong>Cores e venda</strong></div>
+            <div className="two-fields">
+              <label>Fundo<input type="color" value={team.primary_color || "#050505"} onChange={(event) => set("primary_color", event.target.value)} /></label>
+              <label>Texto<input type="color" value={team.secondary_color || "#ffffff"} onChange={(event) => set("secondary_color", event.target.value)} /></label>
+            </div>
+            <label>Preco da foto (R$)<input type="number" min="0" step="0.01" value={centsToReais(team.kiosk_price_cents)} onChange={(event) => set("kiosk_price_cents", reaisToCents(event.target.value))} /></label>
+            <label className="inline-check"><input type="checkbox" checked={team.kiosk_enabled !== false} onChange={(event) => set("kiosk_enabled", event.target.checked)} /> Permitir vendas desse time</label>
+          </>
+        )}
+        {selection.type === "logo" && (
+          <>
+            <div className="inspector-heading"><ImageIcon size={17} /><strong>Logo e marca</strong></div>
+            {team.logo_url && <img className="inspector-image-preview" src={publicAssetUrl(team.logo_url)} alt="" />}
+            <label className="file-input">Trocar logo<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadTeamImage(file, "logo_url"); }} /></label>
+            <label className="file-input">Marca d'agua da foto<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadTeamImage(file, "watermark_url"); }} /></label>
+          </>
+        )}
+        {selectedAsset && selectedAssetKind && (
+          <>
+            <div className="inspector-heading"><Shirt size={17} /><strong>{selectedAssetKind === "shirt" ? "Camisa" : "Cenario"}</strong></div>
+            {selectedAsset.imageUrl && <img className="inspector-image-preview" src={publicAssetUrl(selectedAsset.imageUrl)} alt="" />}
+            <label>Nome<input value={selectedAsset.name || ""} onChange={(event) => updateAsset(selectedAssetKind, selection.index, { name: event.target.value })} /></label>
+            <label>Texto curto<input value={selectedAsset.subtitle || ""} onChange={(event) => updateAsset(selectedAssetKind, selection.index, { subtitle: event.target.value })} /></label>
+            <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadAssetImage(file, selectedAssetKind, selection.index); }} /></label>
+            <label className="inline-check"><input type="checkbox" checked={selectedAsset.visible !== false} onChange={(event) => updateAsset(selectedAssetKind, selection.index, { visible: event.target.checked })} /> Mostrar no totem</label>
+            <div className="inspector-actions">
+              <button type="button" className="secondary" onClick={() => moveAsset(selectedAssetKind, selection.index, -1)}>Mover esquerda</button>
+              <button type="button" className="secondary" onClick={() => moveAsset(selectedAssetKind, selection.index, 1)}>Mover direita</button>
+            </div>
+            <button type="button" className="danger" onClick={() => removeAsset(selectedAssetKind, selection.index)}>Remover</button>
+          </>
+        )}
+      </aside>
+    </div>
+  );
+}
+
 function TeamForm() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -762,12 +1166,15 @@ function TeamForm() {
   const [team, setTeam] = useState<Partial<TeamRow>>(emptyTeam);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [activeTab, setActiveTab] = useState<TeamEditorTab>("basico");
+  const [activeTab, setActiveTab] = useState<TeamEditorTab>("construtor");
 
   useEffect(() => {
     if (isNew || !slug) return;
     supabase.from("teams").select("*").eq("slug", slug).maybeSingle().then(({ data }) => {
-      if (data) setTeam({ ...emptyTeam, ...(data as TeamRow), text_overrides: ((data as TeamRow).text_overrides || {}) });
+      if (data) {
+        const row = { ...emptyTeam, ...(data as TeamRow), text_overrides: ((data as TeamRow).text_overrides || {}) };
+        setTeam(mergeKioskDraft(row, row.draft_config));
+      }
     });
   }, [slug, isNew]);
 
@@ -775,6 +1182,7 @@ function TeamForm() {
   const textOverrides = (team.text_overrides || {}) as Record<string, string>;
   const shirts = (team.shirts || []) as TeamAsset[];
   const backgrounds = (team.backgrounds || []) as TeamAsset[];
+  const pendingDraft = hasUnpublishedDraft(team);
   const missingItems = [
     !team.name && "nome do time",
     !team.kiosk_price_cents && "preco da foto",
@@ -790,11 +1198,18 @@ function TeamForm() {
     set("text_overrides", next);
   };
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  async function saveTeam(publish: boolean) {
     setBusy(true);
     setMessage("");
     const finalSlug = team.slug || slugify(team.name || `time-${Date.now()}`);
+    const draftConfig = buildKioskDraft(team);
+    const basePayload = {
+      name: team.name || "Novo time",
+      slug: finalSlug,
+      subdomain: team.subdomain || finalSlug,
+      is_active: team.is_active !== false,
+      draft_config: draftConfig,
+    };
     const payload = {
       ...emptyTeam,
       ...team,
@@ -802,18 +1217,24 @@ function TeamForm() {
       subdomain: team.subdomain || finalSlug,
       kiosk_price_cents: Number(team.kiosk_price_cents || 0),
       kiosk_timeout_seconds: Math.min(180, Math.max(15, Number(team.kiosk_timeout_seconds || 60))),
+      draft_config: draftConfig,
+      published_config: publish ? draftConfig : team.published_config || {},
+      published_config_version: publish ? Number(team.published_config_version || 1) + (isNew ? 0 : 1) : Number(team.published_config_version || 1),
+      published_at: publish ? new Date().toISOString() : team.published_at || null,
     };
 
-    const result = isNew
-      ? await supabase.from("teams").insert(payload).select("slug").single()
-      : await supabase.from("teams").update(payload).eq("id", team.id);
+    const result = isNew || publish
+      ? (isNew
+        ? await supabase.from("teams").insert(payload).select("slug").single()
+        : await supabase.from("teams").update(payload).eq("id", team.id))
+      : await supabase.from("teams").update(basePayload).eq("id", team.id);
 
     setBusy(false);
     if (result.error) {
       setMessage(result.error.message);
       return;
     }
-    if (!isNew && team.id) {
+    if (publish && !isNew && team.id) {
       const { data: devices } = await supabase
         .from("kiosk_devices")
         .select("id, config_version")
@@ -828,11 +1249,27 @@ function TeamForm() {
           reason: "team_updated",
           teamId: team.id,
           teamSlug: finalSlug,
+          publishedConfigVersion: payload.published_config_version,
         });
       }));
     }
     if (isNew && result.data?.slug) navigate(`/times/${result.data.slug}`, { replace: true });
-    setMessage(isNew ? "Time salvo com sucesso." : "Time salvo. Totens online vao atualizar automaticamente.");
+    setTeam((current) => ({
+      ...current,
+      ...basePayload,
+      ...(publish ? {
+        ...payload,
+        published_config: draftConfig,
+        published_config_version: payload.published_config_version,
+        published_at: payload.published_at,
+      } : {}),
+    }));
+    setMessage(publish ? "Publicado. Os totens vao ver a atualizacao quando sincronizarem." : "Rascunho salvo. Nada mudou nos totens ainda.");
+  }
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    await saveTeam(false);
   }
 
   return (
@@ -876,6 +1313,23 @@ function TeamForm() {
                 <label>Tempo parado ate reiniciar<input type="number" min="15" max="180" value={team.kiosk_timeout_seconds || 60} onChange={(e) => set("kiosk_timeout_seconds", Number(e.target.value))} /></label>
               </div>
               <p className="hint">O tempo e contado em segundos. Quando ninguem toca na tela, o app volta sozinho para o inicio.</p>
+            </div>
+          )}
+
+          {activeTab === "construtor" && (
+            <div className="editor-section builder-editor-section">
+              <div className="editor-section-heading">
+                <h2>Construtor visual</h2>
+                <p>Edite o app clicando direto na previa. As mudancas so chegam no totem quando voce salvar.</p>
+              </div>
+              <TeamVisualBuilder
+                team={team}
+                textOverrides={textOverrides}
+                shirts={shirts}
+                backgrounds={backgrounds}
+                set={set}
+                setTextOverride={setTextOverride}
+              />
             </div>
           )}
 
@@ -1003,10 +1457,15 @@ function TeamForm() {
               <strong>Falta revisar</strong>
               <span>{missingItems.join(", ")}</span>
             </div>
+          ) : pendingDraft ? (
+            <div className="setup-warning">
+              <strong>Rascunho nao publicado</strong>
+              <span>Salve e publique para mandar essa versao aos totens.</span>
+            </div>
           ) : (
             <div className="setup-ok">
               <strong>Pronto para totem</strong>
-              <span>Esse time tem o basico configurado.</span>
+              <span>Publicado {team.published_at ? `em ${dateTime(team.published_at)}` : "e pronto para uso"}.</span>
             </div>
           )}
         </aside>
@@ -1014,7 +1473,10 @@ function TeamForm() {
         {message && <div className="form-message full">{message}</div>}
         <div className="form-actions full">
           <Link className="secondary link-button" to="/times">Cancelar</Link>
-          <button className="primary" disabled={busy}><Save size={16} /> {busy ? "Salvando..." : "Salvar time"}</button>
+          <button className="secondary" disabled={busy}><Save size={16} /> {busy ? "Salvando..." : "Salvar rascunho"}</button>
+          <button className="primary" type="button" disabled={busy || missingItems.length > 0} onClick={() => saveTeam(true)}>
+            <RefreshCw size={16} /> {busy ? "Publicando..." : "Publicar no totem"}
+          </button>
         </div>
       </form>
     </>

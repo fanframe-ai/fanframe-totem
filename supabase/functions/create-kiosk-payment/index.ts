@@ -69,21 +69,31 @@ function statusForError(error: unknown) {
   return 500;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
 async function resolveTeam(supabase: ReturnType<typeof createClient>, slug?: string) {
   if (!slug) throw new Error("Missing team_slug");
 
   const { data, error } = await supabase
     .from("teams")
-    .select("id, slug, name, kiosk_enabled, kiosk_price_cents, kiosk_currency, kiosk_timeout_seconds, is_active")
+    .select("id, slug, name, kiosk_enabled, kiosk_price_cents, kiosk_currency, kiosk_timeout_seconds, is_active, published_config, published_config_version")
     .eq("slug", slug)
     .maybeSingle();
 
   if (error) throw error;
-  if (!data || !data.is_active || !data.kiosk_enabled) {
+  if (!data || !data.is_active) {
     throw new Error("Kiosk is not enabled for this team");
   }
 
-  return data;
+  const published = isRecord(data.published_config) ? data.published_config : {};
+  const team = { ...data, ...published };
+  if (team.kiosk_enabled === false) {
+    throw new Error("Kiosk is not enabled for this team");
+  }
+
+  return team;
 }
 
 async function resolveDevice(
@@ -220,7 +230,16 @@ async function createPayment(req: KioskPaymentRequest) {
       selected_background_id: req.selected_background_id || null,
       amount_cents: amountCents,
       currency,
-      metadata: { team_slug: team.slug },
+      metadata: {
+        team_slug: team.slug,
+        published_config_version: team.published_config_version || 1,
+        config_snapshot: {
+          name: team.name,
+          kiosk_price_cents: amountCents,
+          kiosk_currency: currency,
+          kiosk_timeout_seconds: team.kiosk_timeout_seconds || null,
+        },
+      },
     })
     .select("*")
     .single();

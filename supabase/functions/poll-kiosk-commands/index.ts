@@ -35,7 +35,7 @@ serve(async (req) => {
 
     const { data: device, error: deviceError } = await supabase
       .from("kiosk_devices")
-      .select("id, team_id, device_secret_hash, status, config_version, support_pin_hash, teams(slug, name)")
+      .select("id, team_id, device_secret_hash, status, config_version, support_pin_hash, teams(slug, name, published_config_version)")
       .eq("device_code", deviceCode)
       .maybeSingle();
     if (deviceError) throw deviceError;
@@ -101,6 +101,7 @@ serve(async (req) => {
       teamName: rawTeam?.name || null,
       status: device.status,
       configVersion: device.config_version || 0,
+      publishedConfigVersion: rawTeam?.published_config_version || 1,
       supportPinHash: device.support_pin_hash || null,
     };
 
