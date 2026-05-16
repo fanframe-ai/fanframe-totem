@@ -1,6 +1,6 @@
 import { type Dispatch, type FormEvent, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
@@ -782,6 +782,14 @@ export default function KioskPage() {
     resetFlow();
   };
 
+  const getBackAction = () => {
+    if (step === "shirt") return resetFlow;
+    if (step === "background") return () => setStep(team?.kiosk_show_shirt_step === false ? "home" : "shirt");
+    if (step === "payment") return goBackFromPayment;
+    if (step === "camera") return goBackFromCamera;
+    return null;
+  };
+
   const startGeneration = async () => {
     if (!team || !selectedShirt || !selectedBackground || !userImage || !sessionId || !paymentId) return;
     setStep("generating");
@@ -1158,6 +1166,7 @@ export default function KioskPage() {
     fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
   } as React.CSSProperties) : undefined;
   const maintenanceError = error ? classifyKioskError(error) : null;
+  const backAction = getBackAction();
 
   if (step === "pairing") {
     return (
@@ -1240,6 +1249,17 @@ export default function KioskPage() {
           </div>
         </header>
 
+        {backAction && (
+          <button
+            type="button"
+            aria-label={copy("kiosk_back", "Voltar")}
+            onClick={backAction}
+            className="fixed left-12 top-36 z-40 grid h-20 w-20 place-items-center rounded-full border-2 border-border bg-card/90 text-foreground shadow-[0_18px_48px_rgb(0_0_0_/_0.35)] backdrop-blur active:scale-95"
+          >
+            <ArrowLeft className="h-10 w-10" strokeWidth={3} />
+          </button>
+        )}
+
         {step === "home" && (
           <section className="flex-1 min-h-0 flex flex-col justify-center text-center">
             <div className="max-w-3xl mx-auto">
@@ -1306,8 +1326,7 @@ export default function KioskPage() {
                 </>
               )}
             </div>
-            <footer className="shrink-0 pt-7 grid grid-cols-[0.8fr_1.2fr] gap-5">
-              <KioskButton variant="ghost" onClick={resetFlow} className="w-full">{copy("kiosk_cancel", "Cancelar")}</KioskButton>
+            <footer className="shrink-0 pt-7">
               <KioskButton onClick={goAfterShirt} disabled={!selectedShirt} className="w-full">{copy("kiosk_continue", "Continuar")}</KioskButton>
             </footer>
           </section>
@@ -1366,8 +1385,7 @@ export default function KioskPage() {
                 </>
               )}
             </div>
-            <footer className="shrink-0 pt-7 grid grid-cols-[0.8fr_1.2fr] gap-5">
-              <KioskButton variant="ghost" onClick={() => setStep("shirt")} className="w-full">{copy("kiosk_back", "Voltar")}</KioskButton>
+            <footer className="shrink-0 pt-7">
               <KioskButton onClick={() => setStep("payment")} disabled={!selectedBackground} className="w-full">{copy("kiosk_pay", "Pagar")}</KioskButton>
             </footer>
           </section>
@@ -1381,8 +1399,7 @@ export default function KioskPage() {
               <p className="text-4xl font-black mb-12">{priceLabel}</p>
 
               {!paymentMethod && (
-                <div className="grid grid-cols-[0.8fr_1.2fr] gap-5">
-                  <KioskButton variant="ghost" onClick={goBackFromPayment} className="w-full">{copy("kiosk_back", "Voltar")}</KioskButton>
+                <div className="grid grid-cols-1 gap-5 max-w-3xl mx-auto">
                   <button className="min-h-[190px] rounded-lg bg-card border-2 border-border p-8 flex items-center gap-8 text-left active:scale-[0.99] transition" onClick={() => startPayment("pix")}>
                     <QrCode className="w-20 h-20 shrink-0" />
                     <span>
@@ -1450,8 +1467,7 @@ export default function KioskPage() {
                 </>
               ) : (
                 <>
-                  <KioskButton variant="ghost" onClick={goBackFromCamera} className="w-full">{copy("kiosk_back", "Voltar")}</KioskButton>
-                  <KioskButton onClick={startCaptureCountdown} disabled={cameraCountdown !== null} className="w-full">
+                  <KioskButton onClick={startCaptureCountdown} disabled={cameraCountdown !== null} className="w-full col-span-2">
                     <Camera className="w-6 h-6 mr-3" />
                     {cameraCountdown !== null ? `${copy("kiosk_camera_capture", "Capturar")} ${cameraCountdown}` : copy("kiosk_camera_capture", "Capturar")}
                   </KioskButton>

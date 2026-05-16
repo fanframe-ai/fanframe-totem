@@ -1,7 +1,7 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "FanFrame Kiosk desktop app for Windows totens.",
   "author": "FanFrame AI",
   "type": "module",
