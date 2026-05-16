@@ -783,8 +783,6 @@ export default function KioskPage() {
   };
 
   const getBackAction = () => {
-    if (step === "shirt") return resetFlow;
-    if (step === "background") return () => setStep(team?.kiosk_show_shirt_step === false ? "home" : "shirt");
     if (step === "payment") return goBackFromPayment;
     if (step === "camera") return goBackFromCamera;
     return null;
@@ -1337,6 +1335,16 @@ export default function KioskPage() {
             <div className="shrink-0">
               <p className="text-lg uppercase text-muted-foreground font-black">{copy("kiosk_background_step", "Passo 2 de 3")}</p>
               <h2 className="text-6xl font-black uppercase leading-none mb-8">{copy("kiosk_background_title", "Escolha o cenario", "background_title")}</h2>
+              {team?.kiosk_show_shirt_step !== false && (
+                <button
+                  type="button"
+                  onClick={() => setStep("shirt")}
+                  className="mb-7 inline-flex min-h-[64px] items-center gap-3 rounded-full border-2 border-border bg-card px-6 text-xl font-black uppercase text-foreground shadow-[0_12px_34px_rgb(0_0_0_/_0.24)] active:scale-95"
+                >
+                  <ArrowLeft className="h-7 w-7" strokeWidth={3} />
+                  {copy("kiosk_back", "Voltar")}
+                </button>
+              )}
             </div>
             <div className="relative flex-1 min-h-0">
               <div
