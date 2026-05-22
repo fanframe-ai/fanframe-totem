@@ -259,12 +259,18 @@ async function startAppUpdate() {
 
   let command = readiness.updateCommand || readiness.installerPath;
   let args = readiness.updateArgs || [];
+  let intermediateStatus = null;
 
   if (!command && readiness.installerUrl) {
     const updateDir = path.join(app.getPath("userData"), "updates");
     const fileName = `FanFrame-Kiosk-Setup-${Date.now()}.exe`;
     try {
       command = await downloadUpdateInstaller(readiness.installerUrl, path.join(updateDir, fileName));
+      intermediateStatus = {
+        ok: true,
+        status: "downloaded",
+        message: "Instalador baixado. Iniciando atualizacao...",
+      };
     } catch {
       return {
         ok: false,
@@ -308,6 +314,7 @@ async function startAppUpdate() {
     ok: true,
     status: "started",
     message: "Atualizacao iniciada. O app sera fechado.",
+    ...(intermediateStatus ? { intermediateStatus } : {}),
   };
 }
 

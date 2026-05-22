@@ -1046,7 +1046,7 @@ export default function KioskPage() {
         return;
       }
       const result = await window.fanframeKiosk.startAppUpdate();
-      setUpdateMessage(result.status === "downloaded" ? "Instalador baixado. Iniciando atualizacao..." : result.message);
+      setUpdateMessage(result.intermediateStatus ? `${result.intermediateStatus.message} ${result.message}` : result.message);
     } catch (err) {
       setUpdateMessage(err instanceof Error ? err.message : "Nao foi possivel iniciar a atualizacao. Tente novamente com internet ativa.");
     } finally {

@@ -42,7 +42,7 @@ export interface KioskPaymentStatus {
 
 export interface KioskUpdateStatus {
   ready: boolean;
-  mode: "command" | "local_installer" | "download" | "not_configured";
+  mode: "command" | "local_installer" | "remote_installer" | "not_configured";
   message: string;
   appVersion: string;
   installerUrl?: string;
@@ -55,6 +55,11 @@ export interface KioskUpdateResult {
   ok: boolean;
   status: string;
   message: string;
+  intermediateStatus?: {
+    ok: boolean;
+    status: "downloaded";
+    message: string;
+  };
 }
 
 export interface KioskCardPaymentRequest {
