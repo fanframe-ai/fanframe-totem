@@ -65,13 +65,43 @@ function isHttpUrl(value: unknown): value is string {
 
 function buildWhatsAppUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return "";
-  const digits = value.replace(/\D/g, "");
+  const input = value.trim();
+  let url: URL | null = null;
+  try {
+    url = new URL(input);
+  } catch {
+    // Non-URL inputs are normalized below.
+  }
+
+  if (url) {
+    const host = url.hostname.toLowerCase();
+    const phone = host === "wa.me"
+      ? url.pathname.split("/").filter(Boolean)[0] || ""
+      : host === "api.whatsapp.com" && url.pathname === "/send"
+        ? url.searchParams.get("phone") || ""
+        : "";
+    const digits = phone.replace(/\D/g, "");
+    return digits ? `https://wa.me/${digits}` : "";
+  }
+
+  const digits = input.replace(/\D/g, "");
   return digits ? `https://wa.me/${digits}` : "";
 }
 
 function buildInstagramUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return "";
-  const handle = value.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/$/, "");
+  const input = value.trim();
+  let handle = "";
+  try {
+    const url = new URL(input);
+    const host = url.hostname.toLowerCase();
+    if (host !== "instagram.com" && host !== "www.instagram.com") return "";
+    handle = url.pathname.split("/").filter(Boolean)[0] || "";
+  } catch {
+    handle = input.replace(/^@/, "");
+  }
+
+  if (!/^[A-Za-z0-9._]{1,30}$/.test(handle)) return "";
   return handle ? `https://instagram.com/${encodeURIComponent(handle)}` : "";
 }
 
