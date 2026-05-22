@@ -69,20 +69,20 @@ function getUpdateReadiness(config, options = {}) {
     };
   }
 
-  if (updates.installerPath) {
-    return {
-      ready: true,
-      mode: "local_installer",
-      message: "Instalador local configurado neste PC.",
-      ...updates,
-    };
-  }
-
   if (updates.installerUrl.startsWith("https://")) {
     return {
       ready: true,
       mode: "remote_installer",
       message: "Atualizacao pronta para baixar e instalar.",
+      ...updates,
+    };
+  }
+
+  if (updates.installerPath) {
+    return {
+      ready: true,
+      mode: "local_installer",
+      message: "Instalador local configurado neste PC.",
       ...updates,
     };
   }

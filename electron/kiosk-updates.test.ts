@@ -52,6 +52,21 @@ describe("kiosk update readiness", () => {
     });
   });
 
+  it("prefers a remote installer url over a downloaded local installer", () => {
+    expect(getUpdateReadiness(
+      {
+        updates: {
+          installerUrl: "https://fanframe.ai/releases/FanFrame-Kiosk-Setup.exe",
+        },
+      },
+      { searchDirs: ["D:/Downloads"], fileExists: (filePath) => filePath.endsWith("FanFrame Kiosk Setup 0.2.1.exe") },
+    )).toMatchObject({
+      ready: true,
+      mode: "remote_installer",
+      installerUrl: "https://fanframe.ai/releases/FanFrame-Kiosk-Setup.exe",
+    });
+  });
+
   it("prefers a local installer found in Downloads when no url is configured", () => {
     expect(getUpdateReadiness(
       { updates: {} },

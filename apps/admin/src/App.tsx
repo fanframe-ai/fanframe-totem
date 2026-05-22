@@ -1995,7 +1995,11 @@ function DeviceDetail({ role }: { role: Role | null }) {
   useEffect(() => {
     if (!device) return;
     setUpdateSettings({
-      installerUrl: typeof device.config?.updateInstallerUrl === "string" ? device.config.updateInstallerUrl : "",
+      installerUrl: typeof device.config?.updates?.installerUrl === "string"
+        ? device.config.updates.installerUrl
+        : typeof device.config?.updateInstallerUrl === "string"
+          ? device.config.updateInstallerUrl
+          : "",
       expectedAppVersion: device.expected_app_version || "",
       updateChannel: device.update_channel || "stable",
     });
@@ -2119,8 +2123,19 @@ function DeviceDetail({ role }: { role: Role | null }) {
     setMessage("");
     const nextConfig = { ...(device.config || {}) };
     const updateInstallerUrl = updateSettings.installerUrl.trim();
-    if (updateInstallerUrl) nextConfig.updateInstallerUrl = updateInstallerUrl;
-    else delete nextConfig.updateInstallerUrl;
+    const nextUpdates = {
+      ...(nextConfig.updates && typeof nextConfig.updates === "object" && !Array.isArray(nextConfig.updates) ? nextConfig.updates : {}),
+    };
+    if (updateInstallerUrl) {
+      nextConfig.updateInstallerUrl = updateInstallerUrl;
+      nextUpdates.installerUrl = updateInstallerUrl;
+      nextConfig.updates = nextUpdates;
+    } else {
+      delete nextConfig.updateInstallerUrl;
+      delete nextUpdates.installerUrl;
+      if (Object.keys(nextUpdates).length > 0) nextConfig.updates = nextUpdates;
+      else delete nextConfig.updates;
+    }
 
     try {
       const { error } = await supabase

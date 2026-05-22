@@ -62,6 +62,10 @@ export interface TeamRow {
 
 export interface KioskDeviceConfig {
   updateInstallerUrl?: string;
+  updates?: {
+    installerUrl?: string;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
