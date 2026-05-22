@@ -135,6 +135,13 @@ const emptyTeam: Partial<TeamRow> = {
   kiosk_show_background_step: true,
 };
 
+const assetLimits = {
+  imageMaxMb: 8,
+  videoMaxMb: 80,
+  videoRecommendedSeconds: 30,
+  videoRecommendedRatio: "9:16",
+};
+
 type KioskTextField = {
   key: string;
   label: string;
@@ -424,6 +431,14 @@ async function uploadAsset(file: File, path: string) {
   });
   if (error) throw error;
   return publicAssetUrl(path);
+}
+
+function validateExperienceFile(file: File, kind: "image" | "video") {
+  const limitMb = kind === "video" ? assetLimits.videoMaxMb : assetLimits.imageMaxMb;
+  const sizeMb = file.size / 1024 / 1024;
+  if (sizeMb > limitMb) {
+    throw new Error(`Arquivo muito pesado. Limite: ${limitMb} MB.`);
+  }
 }
 
 function useAuth() {
@@ -1217,6 +1232,7 @@ function TeamForm() {
   const [team, setTeam] = useState<Partial<TeamRow>>(emptyTeam);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [uploadError, setUploadError] = useState("");
   const [activeTab, setActiveTab] = useState<TeamEditorTab>("construtor");
 
   useEffect(() => {
@@ -1254,9 +1270,15 @@ function TeamForm() {
     set("tutorial_assets", { ...tutorialAssets, ...patch });
   };
   const uploadExperienceImage = async (file: File, key: "before" | "after" | "kioskBackground" | "waitingVideo" | "deliveryLogo") => {
-    const extension = file.name.split(".").pop() || (key === "waitingVideo" ? "mp4" : "png");
-    const url = await uploadAsset(file, `${team.slug || "novo"}/experience/${key}.${extension}`);
-    setTutorialAssets({ [key]: url });
+    try {
+      setUploadError("");
+      validateExperienceFile(file, key === "waitingVideo" ? "video" : "image");
+      const extension = file.name.split(".").pop() || (key === "waitingVideo" ? "mp4" : "png");
+      const url = await uploadAsset(file, `${team.slug || "novo"}/experience/${key}.${extension}`);
+      setTutorialAssets({ [key]: url });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Nao foi possivel enviar o arquivo.");
+    }
   };
   const addWaitingSlide = () => {
     setTutorialAssets({
@@ -1282,9 +1304,15 @@ function TeamForm() {
   const uploadWaitingSlideImage = async (file: File, index: number) => {
     const slide = waitingSlides[index];
     if (!slide) return;
-    const extension = file.name.split(".").pop() || "png";
-    const url = await uploadAsset(file, `${team.slug || "novo"}/experience/waiting-${slide.id}.${extension}`);
-    updateWaitingSlide(index, { imageUrl: url });
+    try {
+      setUploadError("");
+      validateExperienceFile(file, "image");
+      const extension = file.name.split(".").pop() || "png";
+      const url = await uploadAsset(file, `${team.slug || "novo"}/experience/waiting-${slide.id}.${extension}`);
+      updateWaitingSlide(index, { imageUrl: url });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Nao foi possivel enviar o arquivo.");
+    }
   };
 
   async function saveTeam(publish: boolean) {
@@ -1434,6 +1462,11 @@ function TeamForm() {
                 <h2>Experiencia do cliente</h2>
                 <p>Configure as imagens que explicam o antes/depois e o conteudo que aparece enquanto a IA gera a foto.</p>
               </div>
+              <div className="asset-guidance">
+                <p>Video recomendado: MP4 vertical {assetLimits.videoRecommendedRatio}, ate {assetLimits.videoRecommendedSeconds} segundos, ate {assetLimits.videoMaxMb} MB, sem audio importante.</p>
+                <p>Imagens recomendadas: JPG/PNG vertical, ate {assetLimits.imageMaxMb} MB.</p>
+              </div>
+              {uploadError && <div className="form-error">{uploadError}</div>}
               <section className="experience-grid">
                 <div className="experience-card">
                   <strong>Antes</strong>
