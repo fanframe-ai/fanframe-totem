@@ -73,6 +73,9 @@ label { display: grid; gap: 7px; color: #334155; font-size: 13px; font-weight: 8
 .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: grid; gap: 10px; box-shadow: 0 8px 28px rgba(15, 23, 42, .04); }
 .stat-card span { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
 .stat-card strong { font-size: 26px; letter-spacing: -.02em; }
+.stat-card small { color: var(--muted); font-size: 11px; font-weight: 800; }
+.problem-link-card { cursor: pointer; }
+.problem-link-card:hover { transform: translateY(-1px); border-color: #cbd5e1; }
 .stat-card.success strong { color: var(--success); }
 .stat-card.warning strong { color: var(--warning); }
 .stat-card.danger strong { color: var(--danger); }
@@ -103,7 +106,7 @@ tbody tr:hover { background: #f9fafb; }
 .badge { display: inline-flex; min-height: 26px; align-items: center; border-radius: 999px; padding: 0 10px; background: #f1f5f9; color: #334155; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: .02em; }
 .badge.paid, .badge.completed, .badge.ativo, .badge.active, .badge.habilitado, .badge.online, .badge.paired { background: #d1fae5; color: var(--success); }
 .badge.pending, .badge.processing, .badge.warning, .badge.attention, .badge.maintenance, .badge.not_paired, .badge.update, .badge.desatualizado, .badge.sem, .badge.sem.alvo, .badge.sem.versao { background: #fef3c7; color: var(--warning); }
-.badge.failed, .badge.cancelled, .badge.offline, .badge.critical, .badge.desabilitado, .badge.disabled, .badge.payment { background: #fee2e2; color: var(--danger); }
+.badge.failed, .badge.cancelled, .badge.offline, .badge.critical, .badge.danger, .badge.desabilitado, .badge.disabled, .badge.payment, .badge.ai { background: #fee2e2; color: var(--danger); }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .form-section { display: grid; gap: 14px; align-content: start; }

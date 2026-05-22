@@ -263,6 +263,7 @@ const friendlyLabels: Record<string, string> = {
   completed: "Concluido",
   configured: "Configurado",
   critical: "Critico",
+  danger: "Urgente",
   debit: "Debito",
   disabled: "Desativado",
   error: "Erro",
@@ -272,10 +273,12 @@ const friendlyLabels: Record<string, string> = {
   habilitado: "Ligado",
   inativo: "Inativo",
   info: "Informacao",
+  ai: "IA",
   kiosk: "Totem",
   maintenance: "Em manutencao",
   not_paired: "Nao instalado",
   offline: "Sem contato",
+  ok: "Ok",
   online: "Online",
   paid: "Pago",
   paired: "Instalado",
@@ -284,6 +287,7 @@ const friendlyLabels: Record<string, string> = {
   pending: "Pendente",
   pix: "PIX",
   plugpag: "Cartao",
+  pin: "PIN tecnico",
   processing: "Em andamento",
   revoked: "Cancelado",
   running: "Em andamento",
@@ -601,6 +605,16 @@ function StatCard({ label, value, tone = "neutral" }: { label: string; value: st
   );
 }
 
+function ProblemMetricCard({ label, value, tone = "neutral" }: { label: string; value: string | number; tone?: string }) {
+  return (
+    <Link className={`stat-card problem-link-card ${tone}`} to="/problemas">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>/problemas</small>
+    </Link>
+  );
+}
+
 function useTeams() {
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -641,6 +655,9 @@ function Dashboard() {
   const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
   const onlineDevices = devices.filter((d) => deviceHealthLabel(d) === "online").length;
   const offlineDevices = devices.filter((d) => isOffline(d.last_seen_at)).length;
+  const paymentIssueCount = operationalIssues.filter((issue) => issue.type === "payment").length;
+  const aiIssueCount = operationalIssues.filter((issue) => issue.type === "ai").length;
+  const versionIssueCount = operationalIssues.filter((issue) => issue.type === "version").length;
 
   return (
     <>
@@ -657,8 +674,11 @@ function Dashboard() {
         </div>
       </section>
       <section className="stats-grid compact-stats">
+        <ProblemMetricCard label="Totens sem contato" value={offlineDevices} tone={offlineDevices ? "danger" : "neutral"} />
+        <ProblemMetricCard label="Pagamentos com erro" value={paymentIssueCount} tone={paymentIssueCount ? "danger" : "neutral"} />
+        <ProblemMetricCard label="IA com falha" value={aiIssueCount} tone={aiIssueCount ? "danger" : "neutral"} />
+        <ProblemMetricCard label="Precisam atualizar" value={versionIssueCount} tone={versionIssueCount ? "warning" : "neutral"} />
         <StatCard label="Totens online" value={onlineDevices} tone="success" />
-        <StatCard label="Sem contato" value={offlineDevices} tone={offlineDevices ? "danger" : "neutral"} />
         <StatCard label="Vendas hoje" value={paidToday.length} tone="success" />
         <StatCard label="Receita hoje" value={money(revenue)} tone="success" />
         <StatCard label="Times ativos" value={teams.filter((t) => t.is_active).length} />
@@ -2656,6 +2676,16 @@ function ProblemsPage() {
     supabase.from("kiosk_admin_audit_events").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAuditEvents((data || []) as AdminAuditEvent[]));
   }, []);
   const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
+  const issuesBySeverity = {
+    danger: operationalIssues.filter((issue) => issue.severity === "danger"),
+    warning: operationalIssues.filter((issue) => issue.severity === "warning"),
+    ok: operationalIssues.filter((issue) => issue.severity === "ok"),
+  };
+  const issueGroups = [
+    { title: "Resolver agora", issues: issuesBySeverity.danger },
+    { title: "Verificar hoje", issues: issuesBySeverity.warning },
+    { title: "Informativo", issues: issuesBySeverity.ok },
+  ];
   return (
     <>
       <PageHeader title="Problemas" subtitle="Tudo que precisa de atencao, em linguagem simples." />
@@ -2665,25 +2695,27 @@ function ProblemsPage() {
         <StatCard label="Em manutencao" value={devices.filter((d) => d.status === "maintenance").length} />
         <StatCard label="Precisam atualizar" value={devices.filter((d) => getDeviceVersionStatus(d) === "desatualizado").length} tone="warning" />
       </section>
-      <div className="panel">
-        <h2>Resolver primeiro</h2>
-        <div className="issue-card-list">
-          {operationalIssues.map((issue) => (
-            <article className="issue-card" key={`${issue.deviceId}-${issue.type}`}>
-              <div>
-                <Badge value={issue.severity} />
-                <h3>{friendly(issue.type)}</h3>
-                <p>{issue.message}</p>
-                <span>{issue.deviceLabel}</span>
-              </div>
-              <Link className="primary link-button" to={`/totens/${issue.deviceId}`}>Resolver</Link>
-            </article>
-          ))}
-          {operationalIssues.length === 0 && (
-            <div className="empty-state">Nenhum problema operacional detectado nos totens cadastrados.</div>
-          )}
+      {issueGroups.map((group) => (
+        <div className="panel" key={group.title}>
+          <h2>{group.title}</h2>
+          <div className="issue-card-list">
+            {group.issues.map((issue) => (
+              <article className="issue-card" key={`${issue.deviceId}-${issue.type}`}>
+                <div>
+                  <Badge value={issue.severity} />
+                  <h3>{friendly(issue.type)}</h3>
+                  <p>{issue.message}</p>
+                  <span>{issue.deviceLabel}</span>
+                </div>
+                <Link className="primary link-button" to={`/totens/${issue.deviceId}`}>Resolver</Link>
+              </article>
+            ))}
+            {group.issues.length === 0 && (
+              <div className="empty-state">Nenhum item nesta prioridade.</div>
+            )}
+          </div>
         </div>
-      </div>
+      ))}
       <details className="panel advanced-box">
         <summary>Alertas do sistema</summary>
         <DataTable columns={["Tipo", "Urgencia", "Mensagem", "Resolvido", "Criado"]}>

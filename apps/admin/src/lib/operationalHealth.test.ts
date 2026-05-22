@@ -19,11 +19,58 @@ const baseDevice: KioskDevice = {
   app_version: "0.1.0",
   expected_app_version: "0.1.0",
   last_seen_at: new Date("2026-05-10T12:00:00.000Z").toISOString(),
+  install_status: "paired",
+  support_pin_hash: "pin-hash",
   config: {},
   created_at: new Date("2026-05-01T12:00:00.000Z").toISOString(),
 };
 
 describe("operational health", () => {
+  it("flags a device offline after 5 minutes without contact", () => {
+    const issues = getOperationalIssues({
+      ...baseDevice,
+      last_seen_at: new Date("2026-05-10T11:54:30.000Z").toISOString(),
+    }, new Date("2026-05-10T12:00:00.000Z").getTime());
+
+    expect(issues).toMatchObject([
+      { type: "offline", severity: "warning" },
+    ]);
+  });
+
+  it("flags a device with payment errors as urgent", () => {
+    const issues = getOperationalIssues({
+      ...baseDevice,
+      last_health_status: {
+        paymentStatus: {
+          ready: false,
+          mode: "not_configured",
+          message: "PagBank PIX nao configurado.",
+        },
+      },
+    }, new Date("2026-05-10T12:00:00.000Z").getTime());
+
+    expect(issues).toMatchObject([
+      { type: "payment", severity: "danger" },
+    ]);
+  });
+
+  it("flags a device running an old app version", () => {
+    const issues = getOperationalIssues({
+      ...baseDevice,
+      app_version: "0.0.9",
+    }, new Date("2026-05-10T12:00:00.000Z").getTime());
+
+    expect(issues).toMatchObject([
+      { type: "version", severity: "warning" },
+    ]);
+  });
+
+  it("does not flag a healthy online device", () => {
+    const issues = getOperationalIssues(baseDevice, new Date("2026-05-10T12:00:00.000Z").getTime());
+
+    expect(issues).toEqual([]);
+  });
+
   it("marks devices offline after the allowed window", () => {
     expect(isDeviceOffline(baseDevice.last_seen_at, new Date("2026-05-10T12:04:59.000Z").getTime())).toBe(false);
     expect(isDeviceOffline(baseDevice.last_seen_at, new Date("2026-05-10T12:05:01.000Z").getTime())).toBe(true);
@@ -60,6 +107,7 @@ describe("operational health", () => {
     }, new Date("2026-05-10T12:00:00.000Z").getTime());
 
     expect(issues.map((issue) => issue.type)).toEqual(["payment"]);
+    expect(issues[0]?.severity).toBe("danger");
     expect(issues[0]?.message).toContain("PagBank PIX nao configurado");
   });
 

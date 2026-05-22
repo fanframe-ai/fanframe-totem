@@ -1,7 +1,7 @@
 import type { KioskDevice } from "./types";
 
-export type OperationalIssueType = "offline" | "error" | "version" | "pairing" | "maintenance" | "payment";
-export type OperationalIssueSeverity = "warning" | "critical";
+export type OperationalIssueType = "offline" | "error" | "version" | "pairing" | "maintenance" | "payment" | "ai" | "pin";
+export type OperationalIssueSeverity = "ok" | "warning" | "danger";
 
 export type OperationalIssue = {
   type: OperationalIssueType;
@@ -12,6 +12,8 @@ export type OperationalIssue = {
 };
 
 const OFFLINE_AFTER_MS = 5 * 60 * 1000;
+const OFFLINE_DANGER_AFTER_MS = 15 * 60 * 1000;
+const REPEATED_AI_ERROR_COUNT = 3;
 
 export function isDeviceOffline(lastSeen: string | null | undefined, now = Date.now()) {
   if (!lastSeen) return true;
@@ -36,24 +38,61 @@ function getPaymentStatus(device: KioskDevice) {
   return paymentStatus as { ready?: unknown; message?: unknown };
 }
 
+function minutesWithoutContact(lastSeen: string | null | undefined, now: number) {
+  if (!lastSeen) return Number.POSITIVE_INFINITY;
+  return now - new Date(lastSeen).getTime();
+}
+
+function getRepeatedAiErrorCount(device: KioskDevice) {
+  const health = device.last_health_status || {};
+  const candidates = [
+    health.aiErrorCount,
+    health.iaErrorCount,
+    health.generationErrorCount,
+    health.repeatedAiErrors,
+    health.repeatedIaErrors,
+  ];
+  const count = candidates.find((value) => typeof value === "number");
+  return typeof count === "number" ? count : 0;
+}
+
+function hasAiLastError(device: KioskDevice) {
+  const code = (device.last_error_code || "").toLowerCase();
+  const message = (device.last_error_message || "").toLowerCase();
+  return code.startsWith("ia") || code.startsWith("ai") || code.includes("generation") || message.includes("ia") || message.includes("ai");
+}
+
 export function getOperationalIssues(device: KioskDevice, now = Date.now()): OperationalIssue[] {
   const label = device.label || device.device_code;
   const issues: OperationalIssue[] = [];
 
   if (isDeviceOffline(device.last_seen_at, now)) {
+    const offlineSeverity = minutesWithoutContact(device.last_seen_at, now) > OFFLINE_DANGER_AFTER_MS ? "danger" : "warning";
     issues.push({
       type: "offline",
-      severity: "critical",
+      severity: offlineSeverity,
       deviceId: device.id,
       deviceLabel: label,
       message: `${label} esta offline ou sem contato recente.`,
     });
   }
 
-  if (device.last_error_code) {
+  const repeatedAiErrorCount = getRepeatedAiErrorCount(device);
+  const hasAiError = hasAiLastError(device);
+  if (repeatedAiErrorCount >= REPEATED_AI_ERROR_COUNT || hasAiError) {
+    issues.push({
+      type: "ai",
+      severity: "danger",
+      deviceId: device.id,
+      deviceLabel: label,
+      message: `${label} esta com falha repetida na IA${repeatedAiErrorCount ? ` (${repeatedAiErrorCount} erros recentes)` : ""}.`,
+    });
+  }
+
+  if (device.last_error_code && !hasAiError) {
     issues.push({
       type: "error",
-      severity: "critical",
+      severity: "danger",
       deviceId: device.id,
       deviceLabel: label,
       message: `${label} reportou erro ${device.last_error_code}: ${device.last_error_message || "sem detalhe"}.`,
@@ -80,6 +119,16 @@ export function getOperationalIssues(device: KioskDevice, now = Date.now()): Ope
     });
   }
 
+  if (!device.support_pin_hash) {
+    issues.push({
+      type: "pin",
+      severity: "warning",
+      deviceId: device.id,
+      deviceLabel: label,
+      message: `${label} ainda nao tem PIN tecnico configurado.`,
+    });
+  }
+
   if (device.status === "maintenance") {
     issues.push({
       type: "maintenance",
@@ -94,7 +143,7 @@ export function getOperationalIssues(device: KioskDevice, now = Date.now()): Ope
   if (paymentStatus && paymentStatus.ready === false) {
     issues.push({
       type: "payment",
-      severity: "critical",
+      severity: "danger",
       deviceId: device.id,
       deviceLabel: label,
       message: `${label} esta com pagamento indisponivel: ${String(paymentStatus.message || "sem detalhe")}.`,
