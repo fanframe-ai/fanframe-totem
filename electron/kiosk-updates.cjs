@@ -75,6 +75,7 @@ function getUpdateReadiness(config, options = {}) {
       mode: "remote_installer",
       message: "Atualizacao pronta para baixar e instalar.",
       ...updates,
+      installerPath: "",
     };
   }
 

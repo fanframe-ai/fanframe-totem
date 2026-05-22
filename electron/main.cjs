@@ -257,11 +257,17 @@ async function startAppUpdate() {
     };
   }
 
-  let command = readiness.updateCommand || readiness.installerPath;
-  let args = readiness.updateArgs || [];
+  let command = "";
+  let args = [];
   let intermediateStatus = null;
 
-  if (!command && readiness.installerUrl) {
+  if (readiness.mode === "command") {
+    command = readiness.updateCommand;
+    args = readiness.updateArgs || [];
+  } else if (readiness.mode === "local_installer") {
+    command = readiness.installerPath;
+    args = readiness.updateArgs || [];
+  } else if (readiness.mode === "remote_installer" && readiness.installerUrl) {
     const updateDir = path.join(app.getPath("userData"), "updates");
     const fileName = `FanFrame-Kiosk-Setup-${Date.now()}.exe`;
     try {
