@@ -63,10 +63,44 @@ function isPaidPagBankPayload(payload: Record<string, unknown>) {
 
 function statusForError(error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (message.includes("pagbank_api_token") || message.includes("not configured")) return 500;
   if (message.includes("invalid credential") || message.includes("unauthorized") || message.includes("401")) return 401;
-  if (message.includes("pagbank") || message.includes("pix")) return 502;
   if (message.includes("valor") || message.includes("amount") || message.includes("between 100")) return 400;
+  if (message.includes("pagbank") || message.includes("pix")) return 502;
   return 500;
+}
+
+function publicErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("pagbank_api_token") || normalized.includes("not configured")) {
+    return "PagBank PIX ainda nao configurado.";
+  }
+  if (
+    normalized.includes("pagbank pix order failed") ||
+    normalized.includes("invalid credential") ||
+    normalized.includes("unauthorized") ||
+    normalized.includes("access_denied") ||
+    normalized.includes("401")
+  ) {
+    return "PagBank nao gerou o QR Code. Verifique credencial, chave PIX e liberacao da conta.";
+  }
+  if (normalized.includes("valor") || normalized.includes("amount") || normalized.includes("between 100")) {
+    return "Valor PIX invalido. Use no minimo R$ 1,00.";
+  }
+  if (
+    normalized.includes("totem") ||
+    normalized.includes("kiosk") ||
+    normalized.includes("codigo") ||
+    normalized.includes("pareado") ||
+    normalized.includes("painel") ||
+    normalized.includes("pix")
+  ) {
+    return message;
+  }
+
+  return "Nao foi possivel iniciar o pagamento. Tente novamente ou chame o suporte.";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -383,6 +417,6 @@ serve(async (req) => {
     return jsonResponse({ error: "Unsupported action" }, 400);
   } catch (error) {
     console.error("[create-kiosk-payment]", error);
-    return jsonResponse({ error: error instanceof Error ? error.message : "Unknown error" }, statusForError(error));
+    return jsonResponse({ error: publicErrorMessage(error) }, statusForError(error));
   }
 });

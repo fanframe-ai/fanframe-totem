@@ -222,44 +222,47 @@ serve(async (req) => {
 
   if (req.method === "POST") {
     try {
-      const body = await req.json();
-      if (body?.action === "share_consent") {
-        const token = String(body.token || "");
-        if (!token) return jsonResponse({ error: "Missing token" }, 400);
-
-        const { data: link, error } = await supabase
-          .from("kiosk_delivery_links")
-          .select("*")
-          .eq("token", token)
-          .maybeSingle();
-
-        if (error || !link) return jsonResponse({ error: "Link not found" }, 404);
-        if (new Date(link.expires_at).getTime() < Date.now()) {
-          return jsonResponse({ error: "Link expired" }, 410);
-        }
-
-        const consentText = JSON.stringify({
-          text: "Cliente autorizou o uso da foto gerada em posts, stories ou materiais de divulgacao FanFrame. Publicacao depende de revisao humana.",
-          delivery_link_id: link.id,
-          session_id: link.session_id,
-          result_image_url: link.result_image_url,
-        });
-
-        const { error: consentError } = await supabase.from("consent_logs").insert({
-          team_id: link.team_id,
-          user_id: `kiosk_delivery:${link.id}`,
-          consent_type: "kiosk_social_share",
-          consent_text: consentText,
-          ip_address: req.headers.get("x-forwarded-for") || null,
-          user_agent: req.headers.get("user-agent") || null,
-        });
-        if (consentError) throw consentError;
-
-        return jsonResponse({ ok: true });
+      const body = await req.json().catch(() => ({}));
+      if (body?.action !== "share_consent") {
+        return jsonResponse({ error: "Unsupported action" }, 400);
       }
+
+      const token = String(body.token || "");
+      if (!token) return jsonResponse({ error: "Missing token" }, 400);
+
+      const { data: link, error } = await supabase
+        .from("kiosk_delivery_links")
+        .select("*")
+        .eq("token", token)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!link) return jsonResponse({ error: "Link not found" }, 404);
+      if (new Date(link.expires_at).getTime() < Date.now()) {
+        return jsonResponse({ error: "Link expired" }, 410);
+      }
+
+      const consentText = JSON.stringify({
+        text: "Cliente autorizou o uso da foto gerada em posts, stories ou materiais de divulgacao FanFrame. Publicacao depende de revisao humana.",
+        delivery_link_id: link.id,
+        session_id: link.session_id,
+        result_image_url: link.result_image_url,
+      });
+
+      const { error: consentError } = await supabase.from("consent_logs").insert({
+        team_id: link.team_id,
+        user_id: `kiosk_delivery:${link.id}`,
+        consent_type: "kiosk_social_share",
+        consent_text: consentText,
+        ip_address: req.headers.get("x-forwarded-for") || null,
+        user_agent: req.headers.get("user-agent") || null,
+      });
+      if (consentError) throw consentError;
+
+      return jsonResponse({ ok: true });
     } catch (error) {
       console.error("[create-delivery-link:consent]", error);
-      return jsonResponse({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+      return jsonResponse({ error: "Nao foi possivel registrar a autorizacao." }, 500);
     }
   }
 
@@ -345,6 +348,6 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("[create-delivery-link]", error);
-    return jsonResponse({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+    return jsonResponse({ error: "Nao foi possivel criar o link de entrega." }, 500);
   }
 });
