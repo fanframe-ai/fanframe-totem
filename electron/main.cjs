@@ -263,7 +263,15 @@ async function startAppUpdate() {
   if (!command && readiness.installerUrl) {
     const updateDir = path.join(app.getPath("userData"), "updates");
     const fileName = `FanFrame-Kiosk-Setup-${Date.now()}.exe`;
-    command = await downloadUpdateInstaller(readiness.installerUrl, path.join(updateDir, fileName));
+    try {
+      command = await downloadUpdateInstaller(readiness.installerUrl, path.join(updateDir, fileName));
+    } catch {
+      return {
+        ok: false,
+        status: "download_failed",
+        message: "Nao foi possivel baixar a atualizacao. Verifique a internet.",
+      };
+    }
     args = [];
   }
 
@@ -299,7 +307,7 @@ async function startAppUpdate() {
   return {
     ok: true,
     status: "started",
-    message: "Atualizacao iniciada. O FanFrame sera fechado para o instalador continuar.",
+    message: "Atualizacao iniciada. O app sera fechado.",
   };
 }
 

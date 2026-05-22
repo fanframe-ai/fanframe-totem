@@ -1956,6 +1956,11 @@ function DeviceDetail({ role }: { role: Role | null }) {
   const [changingTeam, setChangingTeam] = useState(false);
   const [installCode, setInstallCode] = useState<{ code: string; expiresAt: string; supportPin: string; ownerMessage: string } | null>(null);
   const [newTechnicalPin, setNewTechnicalPin] = useState("");
+  const [updateSettings, setUpdateSettings] = useState({
+    installerUrl: "",
+    expectedAppVersion: "",
+    updateChannel: "stable" as NonNullable<KioskDevice["update_channel"]>,
+  });
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
 
@@ -1986,6 +1991,15 @@ function DeviceDetail({ role }: { role: Role | null }) {
   useEffect(() => {
     if (device?.team_id) setNewTeamId(device.team_id);
   }, [device?.team_id]);
+
+  useEffect(() => {
+    if (!device) return;
+    setUpdateSettings({
+      installerUrl: typeof device.config?.updateInstallerUrl === "string" ? device.config.updateInstallerUrl : "",
+      expectedAppVersion: device.expected_app_version || "",
+      updateChannel: device.update_channel || "stable",
+    });
+  }, [device]);
 
   async function generateInstall() {
     if (!device) return;
@@ -2099,6 +2113,35 @@ function DeviceDetail({ role }: { role: Role | null }) {
     }
   }
 
+  async function saveDeviceUpdateSettings(event: FormEvent) {
+    event.preventDefault();
+    if (!device) return;
+    setMessage("");
+    const nextConfig = { ...(device.config || {}) };
+    const updateInstallerUrl = updateSettings.installerUrl.trim();
+    if (updateInstallerUrl) nextConfig.updateInstallerUrl = updateInstallerUrl;
+    else delete nextConfig.updateInstallerUrl;
+
+    try {
+      const { error } = await supabase
+        .from("kiosk_devices")
+        .update({
+          expected_app_version: updateSettings.expectedAppVersion.trim() || null,
+          update_channel: updateSettings.updateChannel,
+          config: nextConfig,
+          config_version: (device.config_version || 0) + 1,
+        })
+        .eq("id", device.id);
+      if (error) throw error;
+
+      await enqueueDeviceCommand(device.id, "sync_config", { reason: "update_settings_changed" });
+      setMessage("Configuracao de atualizacao salva. O totem vai sincronizar quando estiver online.");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao salvar atualizacao do totem.");
+    }
+  }
+
   if (!device) {
     return (
       <>
@@ -2194,6 +2237,46 @@ function DeviceDetail({ role }: { role: Role | null }) {
         )}
       </section>
 
+      {canEditDevices && (
+        <section className="panel">
+          <div className="section-heading">
+            <div>
+              <h2>Atualizacao do app</h2>
+              <p className="hint">Configure a versao que este totem deve usar e o link HTTPS do instalador.</p>
+            </div>
+          </div>
+          <form className="compact-grid" onSubmit={saveDeviceUpdateSettings}>
+            <label>Link do instalador
+              <input
+                placeholder="https://fanframe.ai/releases/FanFrame-Kiosk-Setup.exe"
+                value={updateSettings.installerUrl}
+                onChange={(event) => setUpdateSettings({ ...updateSettings, installerUrl: event.target.value })}
+              />
+            </label>
+            <label>Versao desejada
+              <input
+                placeholder="0.2.1"
+                value={updateSettings.expectedAppVersion}
+                onChange={(event) => setUpdateSettings({ ...updateSettings, expectedAppVersion: event.target.value })}
+              />
+            </label>
+            <label>Canal de atualizacao
+              <select
+                value={updateSettings.updateChannel}
+                onChange={(event) => setUpdateSettings({ ...updateSettings, updateChannel: event.target.value as NonNullable<KioskDevice["update_channel"]> })}
+              >
+                <option value="stable">Producao</option>
+                <option value="beta">Teste</option>
+                <option value="maintenance">Manutencao</option>
+              </select>
+            </label>
+            <div className="form-actions">
+              <button className="primary">Salvar atualizacao</button>
+            </div>
+          </form>
+        </section>
+      )}
+
       <section className="two-col">
         <div className="panel settings-list">
           <h2>Dono e local</h2>
@@ -2205,6 +2288,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
           <div><strong>Email</strong><span>{device.owner_email || "-"}</span></div>
           <div><strong>WhatsApp</strong><span>{device.owner_phone || "-"}</span></div>
           <div><strong>PIN do suporte local</strong><span>{device.support_pin_hash ? "Configurado" : "Nao definido"}</span></div>
+          <div><strong>Link do instalador</strong><span>{device.config?.updateInstallerUrl || "-"}</span></div>
           <div><strong>Canal de atualizacao</strong><span>{friendly(device.update_channel || "stable")}</span></div>
           <div><strong>Versao desejada</strong><span>{device.expected_app_version || "-"}</span></div>
           <div><strong>Observacoes</strong><span>{device.installation_notes || "-"}</span></div>

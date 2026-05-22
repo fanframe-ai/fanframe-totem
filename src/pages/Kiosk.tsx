@@ -960,18 +960,18 @@ export default function KioskPage() {
     setTechnicalStatus(status || technicalStatus);
     setTechnicalCheck("internet", {
       status: online ? "ok" : "fail",
-      message: online ? "Internet disponivel" : "Sem internet no PC",
+      message: online ? "Internet disponivel para sincronizar." : "Sem internet no PC. Verifique Wi-Fi ou cabo.",
     });
   };
 
   const testSupabase = async () => {
-    setTechnicalCheck("supabase", { status: "running", message: "Consultando Supabase..." });
+    setTechnicalCheck("supabase", { status: "running", message: "Sincronizando com o painel..." });
     const startedAt = performance.now();
     const { error: pingError } = await supabase.from("teams").select("id").limit(1);
     const elapsedMs = Math.round(performance.now() - startedAt);
     setTechnicalCheck("supabase", {
       status: pingError ? "fail" : "ok",
-      message: pingError ? `Falha: ${pingError.message}` : `Supabase respondeu em ${elapsedMs}ms`,
+      message: pingError ? `Painel indisponivel: ${pingError.message}` : `Painel respondeu em ${elapsedMs}ms`,
     });
   };
 
@@ -1007,7 +1007,7 @@ export default function KioskPage() {
       setTechnicalCheck("diagnostics", { status: "fail", message: "Pareie o totem antes de enviar diagnostico." });
       return;
     }
-    setTechnicalCheck("diagnostics", { status: "running", message: "Enviando diagnostico..." });
+    setTechnicalCheck("diagnostics", { status: "running", message: "Enviando diagnostico para o painel..." });
     try {
       const health = await collectHealthPayload({
         manualDiagnostics: true,
@@ -1021,7 +1021,7 @@ export default function KioskPage() {
           payload: { checks: technicalChecks, currentScreen: step, paymentStatus: health.paymentStatus },
         },
       });
-      setTechnicalCheck("diagnostics", { status: "ok", message: "Diagnostico enviado para o painel." });
+      setTechnicalCheck("diagnostics", { status: "ok", message: "Diagnostico enviado. O suporte ja pode ver este totem." });
     } catch (err) {
       setTechnicalCheck("diagnostics", {
         status: "fail",
@@ -1037,7 +1037,7 @@ export default function KioskPage() {
     }
 
     setUpdateBusy(true);
-    setUpdateMessage("Preparando atualizacao...");
+    setUpdateMessage("Verificando instalador de atualizacao...");
     try {
       const updater = await window.fanframeKiosk.getUpdateStatus?.();
       setUpdateStatus(updater || null);
@@ -1046,9 +1046,9 @@ export default function KioskPage() {
         return;
       }
       const result = await window.fanframeKiosk.startAppUpdate();
-      setUpdateMessage(result.message);
+      setUpdateMessage(result.status === "downloaded" ? "Instalador baixado. Iniciando atualizacao..." : result.message);
     } catch (err) {
-      setUpdateMessage(err instanceof Error ? err.message : "Nao foi possivel iniciar a atualizacao.");
+      setUpdateMessage(err instanceof Error ? err.message : "Nao foi possivel iniciar a atualizacao. Tente novamente com internet ativa.");
     } finally {
       setUpdateBusy(false);
     }
@@ -1138,7 +1138,7 @@ export default function KioskPage() {
               setTechnicalPinError("PIN invalido. Gere um novo PIN tecnico no painel e tente novamente.");
             }}>
               <h2>Modo tecnico</h2>
-              <p>Area local limitada para o dono do totem testar conexao, camera, sincronizacao e reiniciar o app.</p>
+              <p>Area local limitada para testar conexao, camera, sincronizacao com o painel e atualizacao do app.</p>
               <input value={pinInput} onChange={(event) => setPinInput(event.target.value)} placeholder="PIN" type="password" />
               {technicalPinError && <p>{technicalPinError}</p>}
               <button>Entrar</button>
@@ -1160,21 +1160,21 @@ export default function KioskPage() {
               </dl>
               <dl className="technical-status">
                 <div><dt>Internet</dt><dd className={`technical-${technicalChecks.internet.status}`}>{checkText(technicalChecks.internet)}</dd></div>
-                <div><dt>Supabase</dt><dd className={`technical-${technicalChecks.supabase.status}`}>{checkText(technicalChecks.supabase)}</dd></div>
+                <div><dt>Painel</dt><dd className={`technical-${technicalChecks.supabase.status}`}>{checkText(technicalChecks.supabase)}</dd></div>
                 <div><dt>Camera</dt><dd className={`technical-${technicalChecks.camera.status}`}>{checkText(technicalChecks.camera)}</dd></div>
                 <div><dt>Pagamentos</dt><dd className={`technical-${technicalChecks.payments.status}`}>{checkText(technicalChecks.payments)}</dd></div>
                 <div><dt>Diagnostico</dt><dd className={`technical-${technicalChecks.diagnostics.status}`}>{checkText(technicalChecks.diagnostics)}</dd></div>
-                <div><dt>Atualizacao</dt><dd>{updateStatus?.ready ? updateStatus.message : updateStatus?.message || "Nao verificada"}</dd></div>
+                <div><dt>Atualizacao</dt><dd>{updateStatus?.message || "Ainda nao verificada neste PC."}</dd></div>
                 <div><dt>Modo teste</dt><dd>{config?.simulatePayments ? "Pagamento teste ligado" : "Pagamento real"}</dd></div>
                 <div><dt>Camera</dt><dd>{mirrorCamera ? "Correcao ligada" : "Correcao desligada"}</dd></div>
               </dl>
               <button onClick={runAllTechnicalTests}>Testar tudo</button>
               <button onClick={testInternet}>Testar internet</button>
-              <button onClick={testSupabase}>Testar Supabase</button>
+              <button onClick={testSupabase}>Testar painel</button>
               <button onClick={testCamera}>Testar camera</button>
               <button onClick={testPayments}>Testar pagamentos</button>
               <button onClick={sendManualDiagnostics}>Enviar diagnostico</button>
-              <button onClick={() => window.location.reload()}>Sincronizar agora</button>
+              <button onClick={() => window.location.reload()}>Sincronizar dados agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
               <button onClick={togglePaymentTestMode}>{config?.simulatePayments ? "Desligar pagamento teste" : "Ativar pagamento teste"}</button>
               <button onClick={toggleCameraMirror}>{mirrorCamera ? "Desligar correcao da camera" : "Corrigir camera invertida"}</button>

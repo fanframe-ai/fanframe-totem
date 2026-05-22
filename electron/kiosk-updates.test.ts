@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const { findLatestLocalInstaller, getUpdateReadiness } = require("./kiosk-updates.cjs") as {
   findLatestLocalInstaller: (searchDirs: string[]) => string;
-  getUpdateReadiness: (config: Record<string, unknown>, options?: { searchDirs?: string[] }) => {
+  getUpdateReadiness: (config: Record<string, unknown>, options?: { searchDirs?: string[]; fileExists?: (path: string) => boolean }) => {
     ready: boolean;
     mode: string;
     message: string;
@@ -40,19 +40,33 @@ describe("kiosk update readiness", () => {
     });
   });
 
-  it("accepts a remote installer URL", () => {
+  it("accepts a remote installer url as an update source", () => {
     expect(getUpdateReadiness({
-      updates: { installerUrl: "https://example.com/FanFrame-Kiosk-Setup.exe" },
+      updates: {
+        installerUrl: "https://fanframe.ai/releases/FanFrame-Kiosk-Setup.exe",
+      },
     })).toMatchObject({
       ready: true,
-      mode: "download",
+      mode: "remote_installer",
+      installerUrl: "https://fanframe.ai/releases/FanFrame-Kiosk-Setup.exe",
     });
   });
 
-  it("reports when updates are not configured", () => {
-    expect(getUpdateReadiness({})).toMatchObject({
+  it("prefers a local installer found in Downloads when no url is configured", () => {
+    expect(getUpdateReadiness(
+      { updates: {} },
+      { searchDirs: ["D:/Downloads"], fileExists: (filePath) => filePath.endsWith("FanFrame Kiosk Setup 0.2.1.exe") },
+    )).toMatchObject({
+      ready: true,
+      mode: "local_installer",
+    });
+  });
+
+  it("returns a clear message when no update source exists", () => {
+    expect(getUpdateReadiness({ updates: {} }, { searchDirs: [], fileExists: () => false })).toMatchObject({
       ready: false,
       mode: "not_configured",
+      message: "Nenhum instalador de atualizacao configurado neste PC.",
     });
   });
 

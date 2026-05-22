@@ -60,6 +60,11 @@ export interface TeamRow {
   kiosk_show_background_step: boolean;
 }
 
+export interface KioskDeviceConfig {
+  updateInstallerUrl?: string;
+  [key: string]: unknown;
+}
+
 export interface KioskDevice {
   id: string;
   team_id: string;
@@ -86,7 +91,7 @@ export interface KioskDevice {
   status: "active" | "maintenance" | "disabled";
   app_version: string | null;
   last_seen_at: string | null;
-  config: Record<string, unknown>;
+  config: KioskDeviceConfig;
   created_at: string;
   teams?: { name: string; slug: string } | null;
 }

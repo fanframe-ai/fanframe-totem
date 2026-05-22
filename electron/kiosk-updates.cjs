@@ -1,16 +1,31 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const packageJson = require("../package.json");
 
 function hasText(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function findLatestLocalInstaller(searchDirs = []) {
+const knownInstallerFileNames = [
+  `FanFrame Kiosk Setup ${packageJson.version}.exe`,
+  "FanFrame Kiosk Setup.exe",
+  "FanFrame-Kiosk-Setup.exe",
+];
+
+function findLatestLocalInstaller(searchDirs = [], options = {}) {
   const candidates = [];
   const installerPattern = /^FanFrame Kiosk Setup .+\.exe$/i;
+  const fileExists = typeof options.fileExists === "function" ? options.fileExists : fs.existsSync;
 
   for (const dir of searchDirs) {
-    if (!hasText(dir) || !fs.existsSync(dir)) continue;
+    if (!hasText(dir)) continue;
+    if (!fs.existsSync(dir)) {
+      for (const fileName of knownInstallerFileNames) {
+        const filePath = path.join(dir, fileName);
+        if (fileExists(filePath)) return filePath;
+      }
+      continue;
+    }
     for (const fileName of fs.readdirSync(dir)) {
       if (!installerPattern.test(fileName)) continue;
       const filePath = path.join(dir, fileName);
@@ -32,7 +47,7 @@ function normalizeUpdateConfig(config, options = {}) {
   const updateArgs = Array.isArray(updates.updateArgs)
     ? updates.updateArgs.filter((item) => typeof item === "string")
     : [];
-  const discoveredInstallerPath = findLatestLocalInstaller(options.searchDirs || []);
+  const discoveredInstallerPath = findLatestLocalInstaller(options.searchDirs || [], options);
 
   return {
     installerUrl: hasText(updates.installerUrl) ? updates.installerUrl.trim() : "",
@@ -63,11 +78,11 @@ function getUpdateReadiness(config, options = {}) {
     };
   }
 
-  if (updates.installerUrl) {
+  if (updates.installerUrl.startsWith("https://")) {
     return {
       ready: true,
-      mode: "download",
-      message: "Link do instalador configurado. O app pode baixar e abrir a atualizacao.",
+      mode: "remote_installer",
+      message: "Atualizacao pronta para baixar e instalar.",
       ...updates,
     };
   }
@@ -75,7 +90,7 @@ function getUpdateReadiness(config, options = {}) {
   return {
     ready: false,
     mode: "not_configured",
-    message: "Nenhum instalador de atualizacao encontrado. Baixe o FanFrame Kiosk Setup mais recente na pasta Downloads ou configure um link de atualizacao.",
+    message: "Nenhum instalador de atualizacao configurado neste PC.",
     ...updates,
   };
 }
