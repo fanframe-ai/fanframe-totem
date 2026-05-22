@@ -23,6 +23,17 @@ Para publicar tambem o webhook PagBank:
 .\scripts\deploy-supabase-totem.ps1 -IncludePagBank
 ```
 
+## Antes de instalar em um ponto
+
+- [ ] Time publicado no painel.
+- [ ] Totem cadastrado com local e responsavel.
+- [ ] Codigo de instalacao gerado.
+- [ ] PIN tecnico enviado ao dono.
+- [ ] Instalador baixado no PC do totem.
+- [ ] Camera testada.
+- [ ] PIX testado com valor baixo.
+- [ ] QR final testado no celular.
+
 ## 2. Admin
 
 - Criar pelo menos um time real.

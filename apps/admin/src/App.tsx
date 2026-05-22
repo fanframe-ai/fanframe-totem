@@ -142,6 +142,13 @@ const assetLimits = {
   videoRecommendedRatio: "9:16",
 };
 
+function getDeviceInstallerUrl(device?: Pick<KioskDevice, "config"> | null) {
+  if (!device?.config) return "";
+  if (typeof device.config.updates?.installerUrl === "string") return device.config.updates.installerUrl;
+  if (typeof device.config.updateInstallerUrl === "string") return device.config.updateInstallerUrl;
+  return "";
+}
+
 type KioskTextField = {
   key: string;
   label: string;
@@ -1802,6 +1809,7 @@ function Devices({ role }: { role: Role | null }) {
           deviceLabel,
           teamName: device.teams?.name,
           location: buildDeviceLocationLabel(device),
+          installerUrl: getDeviceInstallerUrl(device),
           installCode: result.code,
           supportPin,
           expiresAt: result.expiresAt,
@@ -2092,6 +2100,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
           deviceLabel: device.label || device.device_code,
           teamName: device.teams?.name,
           location: buildDeviceLocationLabel(device),
+          installerUrl: updateSettings.installerUrl || getDeviceInstallerUrl(device),
           installCode: result.code,
           supportPin,
           expiresAt: result.expiresAt,

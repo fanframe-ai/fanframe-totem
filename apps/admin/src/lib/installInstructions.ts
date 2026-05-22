@@ -2,6 +2,7 @@ export type OwnerInstallMessageInput = {
   deviceLabel: string;
   teamName?: string | null;
   location?: string | null;
+  installerUrl?: string | null;
   installCode: string;
   supportPin: string;
   expiresAt: string;
@@ -25,23 +26,30 @@ export function formatInstallExpiration(expiresAt: string) {
 export function buildOwnerInstallMessage(input: OwnerInstallMessageInput) {
   const teamLine = input.teamName ? `Time: ${input.teamName}` : "Time: definido pelo administrador";
   const locationLine = input.location ? `Local: ${input.location}` : "Local: conferir no painel";
+  const installerLine = input.installerUrl
+    ? `Link do instalador: ${input.installerUrl}`
+    : "Link do instalador: use o arquivo enviado pelo administrador.";
 
   return [
     `Instalacao FanFrame Totem - ${input.deviceLabel}`,
     "",
     teamLine,
     locationLine,
+    installerLine,
     `Codigo de instalacao: ${input.installCode}`,
     `PIN tecnico: ${input.supportPin}`,
     `Expira em: ${formatInstallExpiration(input.expiresAt)}`,
     "",
     "Passos no PC Windows do totem:",
-    "1. Abra o FanFrame Kiosk.",
-    "2. Digite o codigo de instalacao.",
+    "1. Baixe e instale o FanFrame Kiosk pelo link acima.",
+    "2. Abra o app e digite o codigo de instalacao.",
     "3. Aguarde aparecer a tela inicial do time.",
-    "4. Para testar internet/camera, pressione Ctrl + Shift + F12 e digite o PIN tecnico.",
+    "4. Abra o modo tecnico com Ctrl + Shift + F12 e digite o PIN tecnico.",
+    "5. Toque em Testar tudo.",
+    "6. Confira internet, camera, PIX e QR final no celular.",
     "",
-    "Nao altere arquivos internos do aplicativo. Configuracoes de time, preco e IA sao atualizadas remotamente pelo administrador FanFrame.",
+    "Nao mexa em Supabase, PagBank ou IA. Essa parte fica com o administrador FanFrame.",
+    "Se algo falhar, envie uma foto da tela para o administrador antes de tentar reinstalar.",
   ].join("\n");
 }
 
