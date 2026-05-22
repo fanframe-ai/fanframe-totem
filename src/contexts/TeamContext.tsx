@@ -61,6 +61,20 @@ export interface TeamTextOverrides {
   kiosk_pay?: string;
 }
 
+export interface TeamWaitingSlide {
+  id: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+}
+
+export interface TeamTutorialAssets {
+  before?: string;
+  after?: string;
+  kioskBackground?: string;
+  waitingSlides?: TeamWaitingSlide[];
+}
+
 export interface TeamConfig {
   id: string;
   slug: string;
@@ -70,7 +84,7 @@ export interface TeamConfig {
   generation_prompt: string | null;
   shirts: TeamShirt[];
   backgrounds: TeamBackground[];
-  tutorial_assets: { before: string; after: string };
+  tutorial_assets: TeamTutorialAssets;
   primary_color: string;
   secondary_color: string;
   logo_url: string | null;
@@ -109,6 +123,29 @@ export function useTeam() {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
+  if (!isRecord(value)) return {};
+
+  const waitingSlides = Array.isArray(value.waitingSlides)
+    ? value.waitingSlides
+        .filter(isRecord)
+        .map((slide, index) => ({
+          id: String(slide.id || `slide-${index + 1}`),
+          title: String(slide.title || ""),
+          subtitle: typeof slide.subtitle === "string" ? slide.subtitle : "",
+          imageUrl: typeof slide.imageUrl === "string" ? slide.imageUrl : "",
+        }))
+        .filter((slide) => slide.title || slide.subtitle || slide.imageUrl)
+    : [];
+
+  return {
+    before: typeof value.before === "string" ? value.before : "",
+    after: typeof value.after === "string" ? value.after : "",
+    kioskBackground: typeof value.kioskBackground === "string" ? value.kioskBackground : "",
+    waitingSlides,
+  };
 }
 
 export function TeamProvider({ children }: { children: ReactNode }) {
@@ -203,7 +240,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           generation_prompt: typeof view.generation_prompt === "string" ? view.generation_prompt : null,
           shirts: (view.shirts as unknown as TeamShirt[]) || [],
           backgrounds: (view.backgrounds as unknown as TeamBackground[]) || [],
-          tutorial_assets: (view.tutorial_assets as { before: string; after: string }) || { before: "", after: "" },
+          tutorial_assets: normalizeTutorialAssets(view.tutorial_assets),
           primary_color: String(view.primary_color || "#000000"),
           secondary_color: String(view.secondary_color || "#FFFFFF"),
           logo_url: typeof view.logo_url === "string" ? view.logo_url : null,

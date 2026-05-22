@@ -13,6 +13,21 @@ export interface TeamAsset {
   visible?: boolean;
 }
 
+export interface TeamWaitingSlide {
+  id: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+}
+
+export interface TeamTutorialAssets {
+  before?: string;
+  after?: string;
+  kioskBackground?: string;
+  waitingSlides?: TeamWaitingSlide[];
+  [key: string]: unknown;
+}
+
 export interface TeamRow {
   id: string;
   slug: string;
@@ -22,7 +37,7 @@ export interface TeamRow {
   generation_prompt: string | null;
   shirts: TeamAsset[];
   backgrounds: TeamAsset[];
-  tutorial_assets: Record<string, string>;
+  tutorial_assets: TeamTutorialAssets;
   primary_color: string;
   secondary_color: string;
   logo_url: string | null;

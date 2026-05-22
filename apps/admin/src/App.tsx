@@ -41,6 +41,8 @@ import type {
   Role,
   TeamAsset,
   TeamRow,
+  TeamTutorialAssets,
+  TeamWaitingSlide,
 } from "./lib/types";
 
 type AuthState = {
@@ -101,7 +103,7 @@ const emptyTeam: Partial<TeamRow> = {
   generation_prompt: "",
   shirts: [],
   backgrounds: [],
-  tutorial_assets: {},
+  tutorial_assets: { waitingSlides: [] },
   primary_color: "#111827",
   secondary_color: "#ffffff",
   logo_url: null,
@@ -192,12 +194,13 @@ const kioskTextGroups: Array<{ title: string; description: string; fields: Kiosk
   },
 ];
 
-type TeamEditorTab = "basico" | "venda" | "construtor" | "visual" | "textos" | "camisas" | "cenarios" | "ia" | "avancado";
+type TeamEditorTab = "basico" | "venda" | "construtor" | "experiencia" | "visual" | "textos" | "camisas" | "cenarios" | "ia" | "avancado";
 
 const teamEditorTabs: Array<{ id: TeamEditorTab; label: string }> = [
   { id: "basico", label: "Basico" },
   { id: "venda", label: "Venda" },
   { id: "construtor", label: "Construtor" },
+  { id: "experiencia", label: "Experiencia" },
   { id: "ia", label: "IA" },
   { id: "avancado", label: "Avancado" },
 ];
@@ -1211,6 +1214,8 @@ function TeamForm() {
   const textOverrides = (team.text_overrides || {}) as Record<string, string>;
   const shirts = (team.shirts || []) as TeamAsset[];
   const backgrounds = (team.backgrounds || []) as TeamAsset[];
+  const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
+  const waitingSlides = Array.isArray(tutorialAssets.waitingSlides) ? tutorialAssets.waitingSlides : [];
   const pendingDraft = hasUnpublishedDraft(team);
   const missingItems = [
     !team.name && "nome do time",
@@ -1225,6 +1230,42 @@ function TeamForm() {
     if (cleanValue.trim()) next[key] = cleanValue;
     else delete next[key];
     set("text_overrides", next);
+  };
+  const setTutorialAssets = (patch: Partial<TeamTutorialAssets>) => {
+    set("tutorial_assets", { ...tutorialAssets, ...patch });
+  };
+  const uploadExperienceImage = async (file: File, key: "before" | "after" | "kioskBackground") => {
+    const extension = file.name.split(".").pop() || "png";
+    const url = await uploadAsset(file, `${team.slug || "novo"}/experience/${key}.${extension}`);
+    setTutorialAssets({ [key]: url });
+  };
+  const addWaitingSlide = () => {
+    setTutorialAssets({
+      waitingSlides: [
+        ...waitingSlides,
+        {
+          id: `slide-${Date.now()}`,
+          title: "Nova mensagem",
+          subtitle: "",
+          imageUrl: "",
+        },
+      ],
+    });
+  };
+  const updateWaitingSlide = (index: number, patch: Partial<TeamWaitingSlide>) => {
+    const next = [...waitingSlides];
+    next[index] = { ...next[index], ...patch };
+    setTutorialAssets({ waitingSlides: next });
+  };
+  const removeWaitingSlide = (index: number) => {
+    setTutorialAssets({ waitingSlides: waitingSlides.filter((_, itemIndex) => itemIndex !== index) });
+  };
+  const uploadWaitingSlideImage = async (file: File, index: number) => {
+    const slide = waitingSlides[index];
+    if (!slide) return;
+    const extension = file.name.split(".").pop() || "png";
+    const url = await uploadAsset(file, `${team.slug || "novo"}/experience/waiting-${slide.id}.${extension}`);
+    updateWaitingSlide(index, { imageUrl: url });
   };
 
   async function saveTeam(publish: boolean) {
@@ -1364,6 +1405,59 @@ function TeamForm() {
                 set={set}
                 setTextOverride={setTextOverride}
               />
+            </div>
+          )}
+
+          {activeTab === "experiencia" && (
+            <div className="editor-section">
+              <div className="editor-section-heading">
+                <h2>Experiencia do cliente</h2>
+                <p>Configure as imagens que explicam o antes/depois e o conteudo que aparece enquanto a IA gera a foto.</p>
+              </div>
+              <section className="experience-grid">
+                <div className="experience-card">
+                  <strong>Antes</strong>
+                  <span>Foto normal, antes da transformacao.</span>
+                  {tutorialAssets.before ? <img src={publicAssetUrl(String(tutorialAssets.before))} alt="" /> : <div className="experience-placeholder">Sem imagem</div>}
+                  <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "before"); }} /></label>
+                </div>
+                <div className="experience-card">
+                  <strong>Depois</strong>
+                  <span>Exemplo do resultado com camisa/cenario.</span>
+                  {tutorialAssets.after ? <img src={publicAssetUrl(String(tutorialAssets.after))} alt="" /> : <div className="experience-placeholder">Sem imagem</div>}
+                  <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "after"); }} /></label>
+                </div>
+                <div className="experience-card">
+                  <strong>Fundo do app</strong>
+                  <span>Imagem sutil no fundo das telas do totem.</span>
+                  {tutorialAssets.kioskBackground ? <img src={publicAssetUrl(String(tutorialAssets.kioskBackground))} alt="" /> : <div className="experience-placeholder">Sem imagem</div>}
+                  <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "kioskBackground"); }} /></label>
+                </div>
+              </section>
+
+              <div className="section-heading">
+                <div>
+                  <h2>Durante a espera</h2>
+                  <p>Esses slides aparecem enquanto a imagem esta sendo gerada. Use frases, curiosidades e imagens do time.</p>
+                </div>
+                <button type="button" className="secondary" onClick={addWaitingSlide}><Plus size={16} /> Adicionar slide</button>
+              </div>
+              <div className="waiting-slide-list">
+                {waitingSlides.map((slide, index) => (
+                  <article className="waiting-slide-card" key={slide.id}>
+                    <div className="waiting-slide-preview">
+                      {slide.imageUrl ? <img src={publicAssetUrl(slide.imageUrl)} alt="" /> : <ImageIcon size={28} />}
+                    </div>
+                    <label>Titulo<input value={slide.title || ""} onChange={(event) => updateWaitingSlide(index, { title: event.target.value })} placeholder="Ex: O manto esta quase pronto" /></label>
+                    <label>Frase curta<textarea rows={3} value={slide.subtitle || ""} onChange={(event) => updateWaitingSlide(index, { subtitle: event.target.value })} placeholder="Ex: Enquanto isso, conheca uma curiosidade do time." /></label>
+                    <label className="file-input">Imagem do slide<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadWaitingSlideImage(file, index); }} /></label>
+                    <button type="button" className="danger" onClick={() => removeWaitingSlide(index)}>Remover slide</button>
+                  </article>
+                ))}
+                {waitingSlides.length === 0 && (
+                  <div className="empty-state">Nenhum slide cadastrado. Se deixar vazio, o app usa o logo, a camisa e o cenario escolhidos.</div>
+                )}
+              </div>
             </div>
           )}
 

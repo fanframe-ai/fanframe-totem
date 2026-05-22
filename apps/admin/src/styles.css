@@ -207,6 +207,15 @@ tbody tr:hover { background: #f9fafb; }
 .builder-inspector input[type="color"] { height: 44px; padding: 4px; }
 .inspector-image-preview { width: 100%; max-height: 190px; object-fit: contain; border: 1px solid var(--border); border-radius: 12px; background: #f8fafc; padding: 10px; }
 .inspector-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.experience-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.experience-card { border: 1px solid var(--border); border-radius: 16px; background: #f8fafc; padding: 14px; display: grid; gap: 10px; align-content: start; }
+.experience-card strong, .experience-card span { display: block; }
+.experience-card span { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.experience-card img, .experience-placeholder { width: 100%; aspect-ratio: 4 / 5; border: 1px solid var(--border); border-radius: 12px; background: #ffffff; object-fit: cover; display: grid; place-items: center; color: var(--muted); font-size: 13px; font-weight: 900; }
+.waiting-slide-list { display: grid; gap: 12px; }
+.waiting-slide-card { border: 1px solid var(--border); border-radius: 16px; background: #ffffff; padding: 14px; display: grid; grid-template-columns: 180px minmax(220px, 1fr) minmax(260px, 1.2fr) 160px 130px; gap: 12px; align-items: end; }
+.waiting-slide-preview { width: 180px; aspect-ratio: 16 / 10; border: 1px solid var(--border); border-radius: 12px; background: #f8fafc; display: grid; place-items: center; overflow: hidden; color: var(--muted); }
+.waiting-slide-preview img { width: 100%; height: 100%; object-fit: cover; }
 .create-device-details > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 18px; align-items: center; }
 .create-device-details > summary::-webkit-details-marker { display: none; }
 .create-device-details > summary h2 { margin: 0 0 4px; }
@@ -326,7 +335,8 @@ tbody tr:hover { background: #f9fafb; }
   .team-preview-panel { position: static; }
   .visual-builder { grid-template-columns: 1fr; }
   .builder-tools, .builder-inspector { border: 0; border-bottom: 1px solid var(--border); }
-  .asset-grid { grid-template-columns: repeat(2, 1fr); }
+  .asset-grid, .experience-grid { grid-template-columns: repeat(2, 1fr); }
+  .waiting-slide-card { grid-template-columns: 180px 1fr; }
   .compact-grid, .owner-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
 }
 
@@ -337,7 +347,8 @@ tbody tr:hover { background: #f9fafb; }
   .sidebar nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sidebar-footer { display: none; }
   .content { padding: 18px; }
-  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card, .list-toolbar, .list-toolbar.embedded { grid-template-columns: 1fr; }
+  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .experience-grid, .waiting-slide-card, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card, .list-toolbar, .list-toolbar.embedded { grid-template-columns: 1fr; }
+  .waiting-slide-preview { width: 100%; }
   .device-hero-panel { min-width: 0; }
   .issue-card, .sales-main, .compact-row { display: grid; }
   .compact-row > div:last-child { text-align: left; justify-items: start; }

@@ -4,9 +4,11 @@ import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Qr
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
-import { useTeam, type TeamBackground, type TeamShirt, type TeamTextOverrides } from "@/contexts/TeamContext";
+import { useTeam, type TeamBackground, type TeamShirt, type TeamTextOverrides, type TeamWaitingSlide } from "@/contexts/TeamContext";
 import { getAssetFullUrl } from "@/config/fanframe";
 import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
+import beforeExampleImage from "@/assets/before-example.jpg";
+import afterExampleImage from "@/assets/after-example.png";
 import {
   buildDeliveryUrl,
   classifyKioskError,
@@ -199,6 +201,7 @@ export default function KioskPage() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [deliveryUrl, setDeliveryUrl] = useState<string | null>(null);
   const [deliveryQrImage, setDeliveryQrImage] = useState<string | null>(null);
+  const [waitingSlideIndex, setWaitingSlideIndex] = useState(0);
   const [mirrorCamera, setMirrorCamera] = useState(() => localStorage.getItem(cameraMirrorStorageKey) !== "false");
   const [cameraCountdown, setCameraCountdown] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -224,6 +227,35 @@ export default function KioskPage() {
     deviceSecret: identity?.deviceSecret || config?.deviceSecret || "",
   }), [config?.deviceCode, config?.deviceSecret, identity?.deviceCode, identity?.deviceSecret]);
   const hasDeviceAuth = Boolean(activeDevice.deviceCode && activeDevice.deviceSecret);
+  const tutorialAssets = team?.tutorial_assets || {};
+  const homeBeforeImage = tutorialAssets.before || beforeExampleImage;
+  const homeAfterImage = tutorialAssets.after || afterExampleImage;
+  const waitingSlides = useMemo<TeamWaitingSlide[]>(() => {
+    const configuredSlides = tutorialAssets.waitingSlides || [];
+    if (configuredSlides.length > 0) return configuredSlides;
+    return [
+      {
+        id: "team",
+        title: team?.name ? `Voce esta com ${team.name}` : "Sua foto esta ficando pronta",
+        subtitle: "Estamos preparando a imagem final com a identidade do time.",
+        imageUrl: team?.logo_url || "",
+      },
+      {
+        id: "shirt",
+        title: selectedShirt?.name || "Camisa escolhida",
+        subtitle: selectedShirt?.subtitle || "A IA esta ajustando a camisa na sua foto.",
+        imageUrl: selectedShirt?.imageUrl || "",
+      },
+      {
+        id: "background",
+        title: selectedBackground?.name || "Cenario escolhido",
+        subtitle: selectedBackground?.subtitle || "O fundo tambem entra na composicao final.",
+        imageUrl: selectedBackground?.imageUrl || "",
+      },
+    ].filter((slide) => slide.title || slide.subtitle || slide.imageUrl);
+  }, [selectedBackground, selectedShirt, team?.logo_url, team?.name, tutorialAssets.waitingSlides]);
+  const currentWaitingSlide = waitingSlides[waitingSlideIndex % Math.max(1, waitingSlides.length)];
+  const progressLabel = progress >= 95 ? "Quase pronto" : `${progress}%`;
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -267,6 +299,19 @@ export default function KioskPage() {
       window.location.replace("/kiosk");
     }, 50);
   }, [resetFlow]);
+
+  useEffect(() => {
+    if (step !== "generating" || waitingSlides.length <= 1) {
+      setWaitingSlideIndex(0);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setWaitingSlideIndex((current) => (current + 1) % waitingSlides.length);
+    }, 4500);
+
+    return () => window.clearInterval(interval);
+  }, [step, waitingSlides.length]);
 
   const applyRemoteState = useCallback(async (state: {
     device?: { teamSlug?: string | null; configVersion?: number | null } | null;
@@ -1234,9 +1279,18 @@ export default function KioskPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground overflow-hidden" style={shellStyle}>
+    <main className="relative min-h-screen overflow-hidden bg-background text-foreground" style={shellStyle}>
       {renderTechnicalHotspot()}
-      <div className="min-h-screen h-screen px-12 py-10 flex flex-col gap-8">
+      <div className="pointer-events-none fixed inset-0">
+        {tutorialAssets.kioskBackground && (
+          <img src={tutorialAssets.kioskBackground} alt="" className="h-full w-full object-cover opacity-[0.24]" />
+        )}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(0_0_0_/_0.72),rgb(0_0_0_/_0.9))]" />
+        {team?.logo_url && (
+          <img src={team.logo_url} alt="" className="absolute right-[-7%] top-[18%] h-[52vh] max-h-[520px] w-auto object-contain opacity-[0.07]" />
+        )}
+      </div>
+      <div className="relative z-10 min-h-screen h-screen px-12 py-10 flex flex-col gap-8">
         <header className="shrink-0 flex items-center justify-between border-b border-border pb-6">
           <div className="min-w-0 flex items-center gap-5">
             {team?.logo_url && <img src={team.logo_url} alt={team.name} className="w-20 h-20 object-contain shrink-0" />}
@@ -1263,15 +1317,31 @@ export default function KioskPage() {
         )}
 
         {step === "home" && (
-          <section className="flex-1 min-h-0 flex flex-col justify-center text-center">
-            <div className="max-w-3xl mx-auto">
-              <p className="text-xl uppercase text-muted-foreground font-black mb-5">{copy("kiosk_home_eyebrow", "Experiencia interativa")}</p>
-              <h2 className="text-8xl font-black uppercase leading-[0.92] mb-10">{copy("kiosk_home_title", "Vista o manto", "welcome_title")}</h2>
-              <p className="text-3xl leading-relaxed text-muted-foreground mb-14">
+          <section className="grid flex-1 min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-8 text-center">
+            <div className="mx-auto max-w-4xl">
+              <p className="mb-4 text-xl font-black uppercase text-muted-foreground">{copy("kiosk_home_eyebrow", "Experiencia interativa")}</p>
+              <h2 className="mb-6 text-7xl font-black uppercase leading-[0.92]">{copy("kiosk_home_title", "Vista o manto", "welcome_title")}</h2>
+              <p className="mx-auto max-w-3xl text-2xl leading-snug text-muted-foreground">
                 {copy("kiosk_home_subtitle", "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", "welcome_subtitle")}
               </p>
-              <KioskButton onClick={startSelection} className="w-full">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>
             </div>
+            <div className="mx-auto grid h-full min-h-0 w-full max-w-4xl grid-cols-2 gap-5">
+              <div className="min-h-0 rounded-lg border border-border bg-card/78 p-4 shadow-[0_18px_42px_rgb(0_0_0_/_0.26)] backdrop-blur">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm font-black uppercase text-muted-foreground">Antes</span>
+                  <span className="h-2 w-12 rounded-full bg-muted" />
+                </div>
+                <img src={homeBeforeImage} alt="Exemplo antes" className="h-[calc(100%-34px)] w-full rounded-md object-cover" />
+              </div>
+              <div className="min-h-0 rounded-lg border-2 border-primary bg-card/86 p-4 shadow-[0_18px_42px_rgb(0_0_0_/_0.34)] backdrop-blur">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm font-black uppercase text-muted-foreground">Depois</span>
+                  <span className="h-2 w-12 rounded-full bg-primary" />
+                </div>
+                <img src={homeAfterImage} alt="Exemplo depois" className="h-[calc(100%-34px)] w-full rounded-md object-cover" />
+              </div>
+            </div>
+            <KioskButton onClick={startSelection} className="mx-auto w-full max-w-4xl">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>
           </section>
         )}
 
@@ -1490,17 +1560,30 @@ export default function KioskPage() {
         )}
 
         {step === "generating" && (
-          <section className="relative flex-1 min-h-0">
-            <div className="absolute inset-x-0 bottom-6 mx-auto w-full max-w-2xl rounded-lg border border-border bg-background/78 p-6 text-center shadow-[0_18px_54px_rgb(0_0_0_/_0.38)] backdrop-blur">
-              <div className="mb-4 flex items-center justify-center gap-4">
-                <Loader2 className="h-9 w-9 animate-spin shrink-0" />
-                <div className="text-left">
-                  <h2 className="text-3xl font-black uppercase leading-none">{copy("kiosk_generating_title", "Gerando imagem")}</h2>
-                  <p className="mt-2 text-lg leading-snug text-muted-foreground">{copy("kiosk_generating_subtitle", "Nao feche nem desligue o totem.")}</p>
-                </div>
-                <p className="ml-auto min-w-[88px] text-right text-3xl font-black">{progress}%</p>
+          <section className="relative flex-1 min-h-0 overflow-hidden rounded-lg border border-border bg-card/28">
+            {currentWaitingSlide?.imageUrl ? (
+              <img src={currentWaitingSlide.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-72" />
+            ) : team?.logo_url ? (
+              <div className="absolute inset-0 grid place-items-center">
+                <img src={team.logo_url} alt="" className="max-h-[38vh] max-w-[70%] object-contain opacity-40" />
               </div>
-              <Progress value={progress} className="h-4" />
+            ) : null}
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(0_0_0_/_0.18),rgb(0_0_0_/_0.72))]" />
+            <div className="absolute inset-x-10 top-10 max-w-3xl text-left">
+              <p className="mb-3 text-lg font-black uppercase text-muted-foreground">{team?.name}</p>
+              <h2 className="text-6xl font-black uppercase leading-none">{currentWaitingSlide?.title || "Sua foto esta ficando pronta"}</h2>
+              {currentWaitingSlide?.subtitle && <p className="mt-5 text-2xl leading-snug text-muted-foreground">{currentWaitingSlide.subtitle}</p>}
+            </div>
+            <div className="absolute inset-x-0 bottom-7 mx-auto w-full max-w-2xl rounded-lg border border-border bg-background/82 p-5 text-center shadow-[0_18px_54px_rgb(0_0_0_/_0.38)] backdrop-blur">
+              <div className="mb-4 flex items-center justify-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin shrink-0" />
+                <div className="text-left">
+                  <h3 className="text-2xl font-black uppercase leading-none">{copy("kiosk_generating_title", "Gerando imagem")}</h3>
+                  <p className="mt-1 text-base leading-snug text-muted-foreground">{copy("kiosk_generating_subtitle", "Nao feche nem desligue o totem.")}</p>
+                </div>
+                <p className="ml-auto min-w-[124px] text-right text-2xl font-black">{progressLabel}</p>
+              </div>
+              <Progress value={progress} className="h-3" />
             </div>
           </section>
         )}

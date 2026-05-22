@@ -34,6 +34,69 @@ function createToken() {
   return crypto.randomUUID().replaceAll("-", "");
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function deliveryPage(imageUrl: string) {
+  const safeImageUrl = escapeHtml(imageUrl);
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sua foto FanFrame</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #050505; color: #fff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 18px; background: #050505; }
+    main { width: min(100%, 520px); display: grid; gap: 18px; }
+    header { display: grid; gap: 6px; text-align: center; }
+    p, h1 { margin: 0; }
+    h1 { font-size: clamp(28px, 8vw, 42px); line-height: .95; text-transform: uppercase; }
+    p { color: #a3a3a3; font-size: 15px; line-height: 1.45; }
+    img { width: 100%; max-height: 68vh; object-fit: contain; border-radius: 18px; background: #151515; border: 1px solid #2c2c2c; }
+    .actions { display: grid; gap: 10px; }
+    a, button { min-height: 56px; border: 0; border-radius: 12px; display: grid; place-items: center; font: inherit; font-weight: 900; text-transform: uppercase; text-decoration: none; }
+    a { background: #fff; color: #050505; }
+    button { background: #151515; color: #fff; border: 1px solid #333; }
+    small { color: #737373; text-align: center; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Sua foto esta pronta</h1>
+      <p>Baixe no celular e compartilhe quando quiser.</p>
+    </header>
+    <img src="${safeImageUrl}" alt="Foto gerada pelo FanFrame" />
+    <div class="actions">
+      <a href="${safeImageUrl}" download="fanframe-foto.jpg">Baixar imagem</a>
+      <button type="button" id="shareButton">Compartilhar</button>
+    </div>
+    <small>Esta pagina e temporaria. Salve a imagem antes que o link expire.</small>
+  </main>
+  <script>
+    const imageUrl = ${JSON.stringify(imageUrl)};
+    const button = document.getElementById("shareButton");
+    button?.addEventListener("click", async () => {
+      if (!navigator.share) {
+        await navigator.clipboard?.writeText(imageUrl).catch(() => undefined);
+        button.textContent = "Link copiado";
+        return;
+      }
+      await navigator.share({ title: "Minha foto FanFrame", text: "Olha minha foto gerada no totem FanFrame", url: imageUrl }).catch(() => undefined);
+    });
+  </script>
+</body>
+</html>`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -60,10 +123,7 @@ serve(async (req) => {
       .update({ download_count: (link.download_count || 0) + 1 })
       .eq("id", link.id);
 
-    return new Response(null, {
-      status: 302,
-      headers: { ...corsHeaders, Location: link.result_image_url },
-    });
+    return htmlResponse(deliveryPage(link.result_image_url));
   }
 
   try {
