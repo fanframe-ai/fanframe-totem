@@ -43,9 +43,67 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function deliveryPage(imageUrl: string, token: string) {
+type DeliveryTeam = {
+  name?: string | null;
+  logo_url?: string | null;
+  tutorial_assets?: {
+    deliveryLogo?: string;
+    deliveryMessage?: string;
+    deliveryWhatsApp?: string;
+    deliveryInstagram?: string;
+    [key: string]: unknown;
+  } | null;
+} | null;
+
+function firstTeam(value: DeliveryTeam | DeliveryTeam[] | undefined): DeliveryTeam {
+  return Array.isArray(value) ? value[0] || null : value || null;
+}
+
+function isHttpUrl(value: unknown): value is string {
+  return typeof value === "string" && /^https?:\/\//i.test(value);
+}
+
+function buildWhatsAppUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const digits = value.replace(/\D/g, "");
+  return digits ? `https://wa.me/${digits}` : "";
+}
+
+function buildInstagramUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const handle = value.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/$/, "");
+  return handle ? `https://instagram.com/${encodeURIComponent(handle)}` : "";
+}
+
+function formatExpiration(value: string) {
+  return new Date(value).toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function deliveryPage(imageUrl: string, token: string, expiresAt: string, teamValue?: DeliveryTeam | DeliveryTeam[]) {
+  const team = firstTeam(teamValue);
+  const tutorialAssets = team?.tutorial_assets || {};
+  const logoUrl = isHttpUrl(tutorialAssets.deliveryLogo) ? tutorialAssets.deliveryLogo : isHttpUrl(team?.logo_url) ? team?.logo_url : "";
+  const message = typeof tutorialAssets.deliveryMessage === "string" && tutorialAssets.deliveryMessage.trim()
+    ? tutorialAssets.deliveryMessage.trim()
+    : "Baixe no celular e compartilhe quando quiser.";
+  const whatsAppUrl = buildWhatsAppUrl(tutorialAssets.deliveryWhatsApp);
+  const instagramUrl = buildInstagramUrl(tutorialAssets.deliveryInstagram);
   const safeImageUrl = escapeHtml(imageUrl);
-  const safeToken = escapeHtml(token);
+  const safeLogoUrl = logoUrl ? escapeHtml(logoUrl) : "";
+  const safeTeamName = escapeHtml(team?.name || "FanFrame");
+  const safeMessage = escapeHtml(message);
+  const safeExpiration = escapeHtml(formatExpiration(expiresAt));
+  const supportLinks = [
+    whatsAppUrl ? `<a class="support-link" href="${escapeHtml(whatsAppUrl)}" target="_blank" rel="noopener">WhatsApp</a>` : "",
+    instagramUrl ? `<a class="support-link" href="${escapeHtml(instagramUrl)}" target="_blank" rel="noopener">Instagram</a>` : "",
+  ].filter(Boolean).join("");
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -55,12 +113,14 @@ function deliveryPage(imageUrl: string, token: string) {
   <style>
     :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #050505; color: #fff; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 18px; background: #050505; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 18px; background: radial-gradient(circle at top, #1f2937 0, #050505 46%); }
     main { width: min(100%, 520px); display: grid; gap: 18px; }
-    header { display: grid; gap: 6px; text-align: center; }
+    header { display: grid; gap: 10px; text-align: center; justify-items: center; }
     p, h1 { margin: 0; }
     h1 { font-size: clamp(28px, 8vw, 42px); line-height: .95; text-transform: uppercase; }
     p { color: #a3a3a3; font-size: 15px; line-height: 1.45; }
+    .brand-logo { width: 92px; height: 92px; object-fit: contain; border-radius: 24px; background: #fff; padding: 10px; border: 1px solid #262626; }
+    .team-name { color: #d4d4d4; font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
     img { width: 100%; max-height: 68vh; object-fit: contain; border-radius: 18px; background: #151515; border: 1px solid #2c2c2c; }
     .actions { display: grid; gap: 10px; }
     a, button { min-height: 56px; border: 0; border-radius: 12px; display: grid; place-items: center; font: inherit; font-weight: 900; text-transform: uppercase; text-decoration: none; }
@@ -70,14 +130,18 @@ function deliveryPage(imageUrl: string, token: string) {
     .consent { border: 1px solid #2c2c2c; border-radius: 16px; background: #101010; padding: 16px; display: grid; gap: 10px; }
     .consent strong { font-size: 16px; text-transform: uppercase; }
     .consent button { min-height: 48px; font-size: 13px; }
+    .support { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .support-link { min-height: 40px; padding: 0 14px; border-radius: 999px; background: #151515; color: #fff; border: 1px solid #333; font-size: 12px; }
     small { color: #737373; text-align: center; line-height: 1.4; }
   </style>
 </head>
 <body>
   <main>
     <header>
+      ${safeLogoUrl ? `<img class="brand-logo" src="${safeLogoUrl}" alt="Logo ${safeTeamName}" />` : ""}
+      <span class="team-name">${safeTeamName}</span>
       <h1>Sua foto esta pronta</h1>
-      <p>Baixe no celular e compartilhe quando quiser.</p>
+      <p>${safeMessage}</p>
     </header>
     <img src="${safeImageUrl}" alt="Foto gerada pelo FanFrame" />
     <div class="actions">
@@ -89,7 +153,8 @@ function deliveryPage(imageUrl: string, token: string) {
       <p>Opcional: permita que a equipe FanFrame selecione esta foto para posts, stories ou materiais de divulgacao. A publicacao nao e automatica.</p>
       <button type="button" id="consentButton">Autorizo usar minha foto</button>
     </section>
-    <small>Esta pagina e temporaria. Salve a imagem antes que o link expire.</small>
+    ${supportLinks ? `<nav class="support" aria-label="Canais de suporte">${supportLinks}</nav>` : ""}
+    <small>Link valido ate ${safeExpiration}, horario de Brasil/Sao Paulo.</small>
   </main>
   <script>
     const imageUrl = ${JSON.stringify(imageUrl)};
@@ -175,7 +240,7 @@ serve(async (req) => {
 
     const { data: link, error } = await supabase
       .from("kiosk_delivery_links")
-      .select("*")
+      .select("*, teams(name, logo_url, tutorial_assets)")
       .eq("token", token)
       .maybeSingle();
 
@@ -189,7 +254,7 @@ serve(async (req) => {
       .update({ download_count: (link.download_count || 0) + 1 })
       .eq("id", link.id);
 
-    return htmlResponse(deliveryPage(link.result_image_url, token));
+    return htmlResponse(deliveryPage(link.result_image_url, token, link.expires_at, link.teams));
   }
 
   try {

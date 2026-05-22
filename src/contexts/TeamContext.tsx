@@ -74,6 +74,10 @@ export interface TeamTutorialAssets {
   kioskBackground?: string;
   waitingVideo?: string;
   waitingSlides?: TeamWaitingSlide[];
+  deliveryLogo?: string;
+  deliveryMessage?: string;
+  deliveryWhatsApp?: string;
+  deliveryInstagram?: string;
 }
 
 export interface TeamConfig {
@@ -147,6 +151,10 @@ function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
     kioskBackground: typeof value.kioskBackground === "string" ? value.kioskBackground : "",
     waitingVideo: typeof value.waitingVideo === "string" ? value.waitingVideo : "",
     waitingSlides,
+    deliveryLogo: typeof value.deliveryLogo === "string" ? value.deliveryLogo : "",
+    deliveryMessage: typeof value.deliveryMessage === "string" ? value.deliveryMessage : "",
+    deliveryWhatsApp: typeof value.deliveryWhatsApp === "string" ? value.deliveryWhatsApp : "",
+    deliveryInstagram: typeof value.deliveryInstagram === "string" ? value.deliveryInstagram : "",
   };
 }
 

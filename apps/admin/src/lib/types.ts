@@ -26,6 +26,10 @@ export interface TeamTutorialAssets {
   kioskBackground?: string;
   waitingVideo?: string;
   waitingSlides?: TeamWaitingSlide[];
+  deliveryLogo?: string;
+  deliveryMessage?: string;
+  deliveryWhatsApp?: string;
+  deliveryInstagram?: string;
   [key: string]: unknown;
 }
 

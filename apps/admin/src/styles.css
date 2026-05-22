@@ -208,6 +208,8 @@ tbody tr:hover { background: #f9fafb; }
 .inspector-image-preview { width: 100%; max-height: 190px; object-fit: contain; border: 1px solid var(--border); border-radius: 12px; background: #f8fafc; padding: 10px; }
 .inspector-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .experience-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.experience-grid > .wide-field { grid-column: span 2; align-content: start; }
+.experience-grid > .two-fields.wide-field { align-items: end; }
 .experience-card { border: 1px solid var(--border); border-radius: 16px; background: #f8fafc; padding: 14px; display: grid; gap: 10px; align-content: start; }
 .experience-card strong, .experience-card span { display: block; }
 .experience-card span { color: var(--muted); font-size: 13px; line-height: 1.4; }
@@ -352,6 +354,7 @@ tbody tr:hover { background: #f9fafb; }
   .sidebar-footer { display: none; }
   .content { padding: 18px; }
   .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .experience-grid, .waiting-slide-card, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card, .list-toolbar, .list-toolbar.embedded { grid-template-columns: 1fr; }
+  .experience-grid > .wide-field { grid-column: 1 / -1; }
   .waiting-slide-preview { width: 100%; }
   .device-hero-panel { min-width: 0; }
   .issue-card, .sales-main, .compact-row, .authorized-photo-card { display: grid; grid-template-columns: 1fr; }

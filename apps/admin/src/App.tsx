@@ -1253,7 +1253,7 @@ function TeamForm() {
   const setTutorialAssets = (patch: Partial<TeamTutorialAssets>) => {
     set("tutorial_assets", { ...tutorialAssets, ...patch });
   };
-  const uploadExperienceImage = async (file: File, key: "before" | "after" | "kioskBackground" | "waitingVideo") => {
+  const uploadExperienceImage = async (file: File, key: "before" | "after" | "kioskBackground" | "waitingVideo" | "deliveryLogo") => {
     const extension = file.name.split(".").pop() || (key === "waitingVideo" ? "mp4" : "png");
     const url = await uploadAsset(file, `${team.slug || "novo"}/experience/${key}.${extension}`);
     setTutorialAssets({ [key]: url });
@@ -1303,6 +1303,7 @@ function TeamForm() {
       slug: finalSlug,
       subdomain: team.subdomain || finalSlug,
       is_active: team.is_active !== false,
+      tutorial_assets: normalizedTeam.tutorial_assets || emptyTeam.tutorial_assets,
       draft_config: draftConfig,
     };
     const payload = {
@@ -1463,6 +1464,26 @@ function TeamForm() {
                   <label className="file-input">Enviar video<input type="file" accept="video/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "waitingVideo"); }} /></label>
                 </div>
               </section>
+
+              <div className="section-heading">
+                <div>
+                  <h2>Pagina de download</h2>
+                  <p>Personalize o que o cliente ve quando abre o QR no celular.</p>
+                </div>
+              </div>
+              <div className="experience-grid">
+                <div className="experience-card">
+                  <strong>Logo da pagina de download</strong>
+                  <span>Use o logo do time ou uma marca especial para a entrega da foto.</span>
+                  {tutorialAssets.deliveryLogo ? <img src={publicAssetUrl(String(tutorialAssets.deliveryLogo))} alt="" /> : <div className="experience-placeholder">Sem logo</div>}
+                  <label className="file-input">Trocar logo<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "deliveryLogo"); }} /></label>
+                </div>
+                <label className="wide-field">Mensagem da pagina de download<textarea rows={4} value={String(tutorialAssets.deliveryMessage || "")} onChange={(event) => setTutorialAssets({ deliveryMessage: event.target.value })} placeholder="Ex: Obrigado por participar. Salve sua foto e marque o time nas redes." /></label>
+                <div className="two-fields wide-field">
+                  <label>WhatsApp de suporte<input value={String(tutorialAssets.deliveryWhatsApp || "")} onChange={(event) => setTutorialAssets({ deliveryWhatsApp: event.target.value })} placeholder="Ex: 5511999999999" /></label>
+                  <label>Instagram<input value={String(tutorialAssets.deliveryInstagram || "")} onChange={(event) => setTutorialAssets({ deliveryInstagram: event.target.value })} placeholder="Ex: @fanframe.ai" /></label>
+                </div>
+              </div>
 
               <div className="section-heading">
                 <div>
