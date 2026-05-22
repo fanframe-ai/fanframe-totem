@@ -65,6 +65,17 @@ describe("operational health", () => {
     ]);
   });
 
+  it("flags a device without install status as not installed", () => {
+    const issues = getOperationalIssues({
+      ...baseDevice,
+      install_status: undefined,
+    }, new Date("2026-05-10T12:00:00.000Z").getTime());
+
+    expect(issues).toMatchObject([
+      { type: "pairing", severity: "warning" },
+    ]);
+  });
+
   it("does not flag a healthy online device", () => {
     const issues = getOperationalIssues(baseDevice, new Date("2026-05-10T12:00:00.000Z").getTime());
 

@@ -109,7 +109,7 @@ export function getOperationalIssues(device: KioskDevice, now = Date.now()): Ope
     });
   }
 
-  if (device.install_status && device.install_status !== "paired") {
+  if ((device.install_status || "not_paired") !== "paired") {
     issues.push({
       type: "pairing",
       severity: "warning",
