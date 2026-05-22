@@ -60,15 +60,6 @@ function normalizeUpdateConfig(config, options = {}) {
 function getUpdateReadiness(config, options = {}) {
   const updates = normalizeUpdateConfig(config, options);
 
-  if (updates.updateCommand) {
-    return {
-      ready: true,
-      mode: "command",
-      message: "Comando de atualizacao configurado neste PC.",
-      ...updates,
-    };
-  }
-
   if (updates.installerUrl.startsWith("https://")) {
     return {
       ready: true,
@@ -76,6 +67,15 @@ function getUpdateReadiness(config, options = {}) {
       message: "Atualizacao pronta para baixar e instalar.",
       ...updates,
       installerPath: "",
+    };
+  }
+
+  if (updates.updateCommand) {
+    return {
+      ready: true,
+      mode: "command",
+      message: "Comando de atualizacao configurado neste PC.",
+      ...updates,
     };
   }
 

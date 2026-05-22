@@ -16,19 +16,24 @@ const { findLatestLocalInstaller, getUpdateReadiness } = require("./kiosk-update
 };
 
 describe("kiosk update readiness", () => {
-  it("uses a local update command first", () => {
-    expect(getUpdateReadiness({
+  it("prefers a remote installer url over a local update command", () => {
+    const readiness = getUpdateReadiness({
       updates: {
         installerUrl: "https://example.com/FanFrame-Kiosk-Setup.exe",
+        installerPath: "C:\\FanFrame\\FanFrame-Kiosk-Setup.exe",
         updateCommand: "C:\\FanFrame\\update.bat",
         updateArgs: ["/S"],
       },
-    })).toMatchObject({
+    });
+
+    expect(readiness).toMatchObject({
       ready: true,
-      mode: "command",
+      mode: "remote_installer",
+      installerUrl: "https://example.com/FanFrame-Kiosk-Setup.exe",
       updateCommand: "C:\\FanFrame\\update.bat",
       updateArgs: ["/S"],
     });
+    expect(readiness.installerPath).toBe("");
   });
 
   it("accepts a local installer path", () => {
