@@ -16,6 +16,7 @@ function findLatestLocalInstaller(searchDirs = [], options = {}) {
   const candidates = [];
   const installerPattern = /^FanFrame Kiosk Setup .+\.exe$/i;
   const fileExists = typeof options.fileExists === "function" ? options.fileExists : fs.existsSync;
+  const knownInstallerNames = new Set(knownInstallerFileNames.map((name) => name.toLowerCase()));
 
   for (const dir of searchDirs) {
     if (!hasText(dir)) continue;
@@ -27,7 +28,7 @@ function findLatestLocalInstaller(searchDirs = [], options = {}) {
       continue;
     }
     for (const fileName of fs.readdirSync(dir)) {
-      if (!installerPattern.test(fileName)) continue;
+      if (!installerPattern.test(fileName) && !knownInstallerNames.has(fileName.toLowerCase())) continue;
       const filePath = path.join(dir, fileName);
       try {
         const stat = fs.statSync(filePath);

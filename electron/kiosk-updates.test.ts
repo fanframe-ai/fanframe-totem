@@ -111,4 +111,18 @@ describe("kiosk update readiness", () => {
       installerPath: newInstaller,
     });
   });
+
+  it("finds known installer names in existing directories and keeps the newest mtime", async () => {
+    const fs = await import("node:fs/promises");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "fanframe-known-update-"));
+    const oldInstaller = path.join(dir, "FanFrame Kiosk Setup.exe");
+    const newInstaller = path.join(dir, "FanFrame-Kiosk-Setup.exe");
+    await fs.writeFile(oldInstaller, "");
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await fs.writeFile(newInstaller, "");
+
+    expect(findLatestLocalInstaller([dir])).toBe(newInstaller);
+  });
 });

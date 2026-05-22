@@ -12,6 +12,7 @@ const {
   shouldEnableAutoLaunch,
 } = require("./kiosk-hardening.cjs");
 const { getPaymentReadiness } = require("./kiosk-payments.cjs");
+const { isObjectRecord, mergeKioskConfig } = require("./kiosk-config.cjs");
 const { getUpdateReadiness } = require("./kiosk-updates.cjs");
 
 let staticServer;
@@ -20,6 +21,10 @@ let shortcutStatus = [];
 
 function identityPath() {
   return path.join(app.getPath("userData"), "device-identity.json");
+}
+
+function remoteConfigPath() {
+  return path.join(app.getPath("userData"), "kiosk.remote-config.json");
 }
 
 async function readIdentity() {
@@ -39,8 +44,19 @@ async function clearIdentity() {
   try {
     await fs.promises.unlink(identityPath());
   } catch {
+    // Identity may already be absent.
+  }
+  try {
+    await fs.promises.unlink(remoteConfigPath());
+  } catch {
     return;
   }
+}
+
+async function writeRemoteConfig(config) {
+  const safeConfig = isObjectRecord(config) ? config : {};
+  await fs.promises.mkdir(path.dirname(remoteConfigPath()), { recursive: true });
+  await fs.promises.writeFile(remoteConfigPath(), JSON.stringify(safeConfig, null, 2), "utf8");
 }
 
 function resolveDistDir() {
@@ -76,27 +92,30 @@ function loadKioskConfig() {
     readJson(localConfig) ||
     readJson(userDataConfig) ||
     {};
+  const remoteConfig = readJson(remoteConfigPath()) || {};
+  const mergedConfig = mergeKioskConfig(fileConfig, remoteConfig, process.env);
+  const updates = isObjectRecord(mergedConfig.updates) ? mergedConfig.updates : {};
 
   return {
-    teamSlug: process.env.FANFRAME_TEAM_SLUG || fileConfig.teamSlug || "",
-    deviceCode: process.env.FANFRAME_DEVICE_CODE || fileConfig.deviceCode || os.hostname(),
-    deviceSecret: process.env.FANFRAME_DEVICE_SECRET || fileConfig.deviceSecret || "",
+    teamSlug: process.env.FANFRAME_TEAM_SLUG || mergedConfig.teamSlug || "",
+    deviceCode: process.env.FANFRAME_DEVICE_CODE || mergedConfig.deviceCode || os.hostname(),
+    deviceSecret: process.env.FANFRAME_DEVICE_SECRET || mergedConfig.deviceSecret || "",
     appVersion: app.getVersion(),
-    kiosk: fileConfig.kiosk !== false,
-    fullscreen: fileConfig.fullscreen !== false,
-    autoLaunch: fileConfig.autoLaunch !== false,
-    blockShortcuts: fileConfig.blockShortcuts !== false,
+    kiosk: mergedConfig.kiosk !== false,
+    fullscreen: mergedConfig.fullscreen !== false,
+    autoLaunch: mergedConfig.autoLaunch !== false,
+    blockShortcuts: mergedConfig.blockShortcuts !== false,
     simulatePayments:
       process.env.FANFRAME_SIMULATE_PAYMENTS === "true" ||
-      fileConfig.simulatePayments === true ||
-      fileConfig.payments?.simulate === true,
-    payments: fileConfig.payments || {},
+      mergedConfig.simulatePayments === true ||
+      mergedConfig.payments?.simulate === true,
+    payments: mergedConfig.payments || {},
     updates: {
-      ...(fileConfig.updates || {}),
-      installerUrl: process.env.FANFRAME_UPDATE_URL || fileConfig.updates?.installerUrl || "",
-      installerPath: process.env.FANFRAME_UPDATE_PATH || fileConfig.updates?.installerPath || "",
-      updateCommand: process.env.FANFRAME_UPDATE_COMMAND || fileConfig.updates?.updateCommand || "",
-      updateArgs: Array.isArray(fileConfig.updates?.updateArgs) ? fileConfig.updates.updateArgs : [],
+      ...updates,
+      installerUrl: typeof updates.installerUrl === "string" ? updates.installerUrl : "",
+      installerPath: typeof updates.installerPath === "string" ? updates.installerPath : "",
+      updateCommand: typeof updates.updateCommand === "string" ? updates.updateCommand : "",
+      updateArgs: Array.isArray(updates.updateArgs) ? updates.updateArgs : [],
     },
   };
 }
@@ -442,6 +461,7 @@ app.whenReady().then(() => {
   ipcMain.handle("kiosk:load-device-identity", readIdentity);
   ipcMain.handle("kiosk:save-device-identity", (_event, identity) => writeIdentity(identity));
   ipcMain.handle("kiosk:clear-device-identity", clearIdentity);
+  ipcMain.handle("kiosk:save-device-config", (_event, config) => writeRemoteConfig(config));
   ipcMain.handle("kiosk:get-technical-status", async () => ({
     online: net.isOnline(),
     appVersion: app.getVersion(),

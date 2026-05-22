@@ -8,7 +8,15 @@ export interface KioskRuntimeConfig {
   autoLaunch?: boolean;
   blockShortcuts?: boolean;
   simulatePayments?: boolean;
+  updates?: {
+    installerUrl?: string;
+    installerPath?: string;
+    updateCommand?: string;
+    updateArgs?: string[];
+  };
 }
+
+export type KioskDeviceConfig = Record<string, unknown>;
 
 export interface StoredDeviceIdentity {
   deviceCode: string;
@@ -89,6 +97,7 @@ declare global {
       loadDeviceIdentity: () => Promise<StoredDeviceIdentity | null>;
       saveDeviceIdentity: (identity: StoredDeviceIdentity) => Promise<void>;
       clearDeviceIdentity: () => Promise<void>;
+      saveDeviceConfig: (config: KioskDeviceConfig) => Promise<void>;
       getTechnicalStatus: () => Promise<KioskTechnicalStatus>;
       getPaymentStatus: () => Promise<KioskPaymentStatus>;
       getUpdateStatus: () => Promise<KioskUpdateStatus>;

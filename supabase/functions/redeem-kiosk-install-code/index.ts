@@ -51,6 +51,7 @@ serve(async (req) => {
           label,
           location,
           status,
+          config,
           support_pin_hash,
           config_version,
           teams(
@@ -137,6 +138,7 @@ serve(async (req) => {
         deviceCode: rawDevice.device_code,
         label: rawDevice.label,
         location: rawDevice.location,
+        config: rawDevice.config && typeof rawDevice.config === "object" && !Array.isArray(rawDevice.config) ? rawDevice.config : {},
         supportPinHash: rawDevice.support_pin_hash || null,
         configVersion: rawDevice.config_version,
         publishedConfigVersion: rawTeam?.published_config_version || 1,

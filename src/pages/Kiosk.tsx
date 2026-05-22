@@ -110,6 +110,22 @@ const initialTechnicalChecks: TechnicalChecks = {
 const paymentTestModeStorageKey = "fanframe:kiosk-payment-test-mode";
 const cameraMirrorStorageKey = "fanframe:kiosk-camera-mirror";
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function mergeRuntimeConfig(current: KioskRuntimeConfig | null, remoteConfig: Record<string, unknown>) {
+  const currentUpdates = isObjectRecord(current?.updates) ? current.updates : {};
+  const remoteUpdates = isObjectRecord(remoteConfig.updates) ? remoteConfig.updates : {};
+  return {
+    ...(current || browserPreviewConfig),
+    updates: {
+      ...currentUpdates,
+      ...remoteUpdates,
+    },
+  } as KioskRuntimeConfig;
+}
+
 function KioskButton({
   children,
   onClick,
@@ -314,10 +330,16 @@ export default function KioskPage() {
   }, [step, waitingSlides.length]);
 
   const applyRemoteState = useCallback(async (state: {
-    device?: { teamSlug?: string | null; configVersion?: number | null } | null;
+    device?: {
+      teamSlug?: string | null;
+      config?: Record<string, unknown> | null;
+      configVersion?: number | null;
+      supportPinHash?: string | null;
+    } | null;
   } | null, commandType?: string) => {
     const remoteDevice = state?.device || null;
     const remoteTeamSlug = remoteDevice?.teamSlug || undefined;
+    const remoteConfig = isObjectRecord(remoteDevice?.config) ? remoteDevice.config : null;
     const remoteConfigVersion = Number(remoteDevice?.configVersion || 0);
     const remoteSupportPinHash = remoteDevice?.supportPinHash || undefined;
     const shouldReload = commandType === "sync_config" || shouldReloadForRemoteKioskState(
@@ -325,6 +347,11 @@ export default function KioskPage() {
       identity?.configVersion || 0,
       remoteDevice,
     );
+
+    if (remoteConfig) {
+      await window.fanframeKiosk?.saveDeviceConfig?.(remoteConfig);
+      setConfig((current) => mergeRuntimeConfig(current, remoteConfig));
+    }
 
     if (remoteTeamSlug || remoteConfigVersion || remoteSupportPinHash) {
       const updatedIdentity = identity ? {
@@ -871,6 +898,7 @@ export default function KioskPage() {
     try {
       const status = await window.fanframeKiosk?.getTechnicalStatus?.();
       const paired = await redeemInstallCode(pairingCode, navigator.userAgent, status?.appVersion || config?.appVersion || "browser");
+      const pairedConfig = isObjectRecord(paired.device?.config) ? paired.device.config : null;
       const stored: StoredDeviceIdentity = {
         deviceId: paired.device.id,
         deviceCode: paired.device.deviceCode,
@@ -881,9 +909,10 @@ export default function KioskPage() {
         pairedAt: new Date().toISOString(),
       };
       await window.fanframeKiosk?.saveDeviceIdentity?.(stored);
+      if (pairedConfig) await window.fanframeKiosk?.saveDeviceConfig?.(pairedConfig);
       setIdentity(stored);
       setConfig((current) => ({
-        ...(current || browserPreviewConfig),
+        ...mergeRuntimeConfig(current, pairedConfig || {}),
         teamSlug: stored.teamSlug || current?.teamSlug || "",
         deviceCode: stored.deviceCode,
         deviceSecret: stored.deviceSecret,

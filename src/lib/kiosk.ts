@@ -30,6 +30,7 @@ export type DeviceIdentity = {
 
 export type RemoteKioskDeviceState = {
   teamSlug?: string | null;
+  config?: Record<string, unknown> | null;
   configVersion?: number | null;
   supportPinHash?: string | null;
 };
