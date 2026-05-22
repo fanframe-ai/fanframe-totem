@@ -207,6 +207,7 @@ export default function KioskPage() {
   const shirtRailRef = useRef<HTMLDivElement | null>(null);
   const backgroundRailRef = useRef<HTMLDivElement | null>(null);
   const technicalHoldTimerRef = useRef<number | null>(null);
+  const generationSettledRef = useRef(false);
   const { progress, complete } = useProgress(step === "generating");
 
   const timeoutSeconds = normalizeKioskTimeout(team?.kiosk_timeout_seconds);
@@ -252,6 +253,7 @@ export default function KioskPage() {
     setPixPayment(null);
     setUserImage(null);
     setQueueId(null);
+    generationSettledRef.current = false;
     setGeneratedImage(null);
     setDeliveryUrl(null);
     setDeliveryQrImage(null);
@@ -598,6 +600,8 @@ export default function KioskPage() {
 
   const completeGeneration = useCallback(async (imageUrl: string) => {
     if (!sessionId || !queueId) return;
+    if (generationSettledRef.current) return;
+    generationSettledRef.current = true;
     complete();
     setGeneratedImage(imageUrl);
 
@@ -615,10 +619,14 @@ export default function KioskPage() {
     }
 
     setDeliveryUrl(data.deliveryUrl || buildDeliveryUrl(SUPABASE_URL, data.token));
+    setQueueId(null);
     setStep("result");
   }, [complete, queueId, sessionId]);
 
   const failGeneration = useCallback((message: string) => {
+    if (generationSettledRef.current) return;
+    generationSettledRef.current = true;
+    setQueueId(null);
     setError(message);
     setStep("maintenance");
   }, []);
@@ -785,6 +793,7 @@ export default function KioskPage() {
 
   const startGeneration = async () => {
     if (!team || !selectedShirt || !selectedBackground || !userImage || !sessionId || !paymentId) return;
+    generationSettledRef.current = false;
     setStep("generating");
     setError(null);
 
