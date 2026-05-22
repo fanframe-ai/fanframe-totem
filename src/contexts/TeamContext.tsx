@@ -72,6 +72,7 @@ export interface TeamTutorialAssets {
   before?: string;
   after?: string;
   kioskBackground?: string;
+  waitingVideo?: string;
   waitingSlides?: TeamWaitingSlide[];
 }
 
@@ -144,6 +145,7 @@ function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
     before: typeof value.before === "string" ? value.before : "",
     after: typeof value.after === "string" ? value.after : "",
     kioskBackground: typeof value.kioskBackground === "string" ? value.kioskBackground : "",
+    waitingVideo: typeof value.waitingVideo === "string" ? value.waitingVideo : "",
     waitingSlides,
   };
 }

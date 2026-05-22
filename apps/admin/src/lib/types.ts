@@ -24,6 +24,7 @@ export interface TeamTutorialAssets {
   before?: string;
   after?: string;
   kioskBackground?: string;
+  waitingVideo?: string;
   waitingSlides?: TeamWaitingSlide[];
   [key: string]: unknown;
 }

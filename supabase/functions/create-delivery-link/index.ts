@@ -43,8 +43,9 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-function deliveryPage(imageUrl: string) {
+function deliveryPage(imageUrl: string, token: string) {
   const safeImageUrl = escapeHtml(imageUrl);
+  const safeToken = escapeHtml(token);
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -65,6 +66,10 @@ function deliveryPage(imageUrl: string) {
     a, button { min-height: 56px; border: 0; border-radius: 12px; display: grid; place-items: center; font: inherit; font-weight: 900; text-transform: uppercase; text-decoration: none; }
     a { background: #fff; color: #050505; }
     button { background: #151515; color: #fff; border: 1px solid #333; }
+    button:disabled { opacity: .72; }
+    .consent { border: 1px solid #2c2c2c; border-radius: 16px; background: #101010; padding: 16px; display: grid; gap: 10px; }
+    .consent strong { font-size: 16px; text-transform: uppercase; }
+    .consent button { min-height: 48px; font-size: 13px; }
     small { color: #737373; text-align: center; line-height: 1.4; }
   </style>
 </head>
@@ -79,10 +84,16 @@ function deliveryPage(imageUrl: string) {
       <a href="${safeImageUrl}" download="fanframe-foto.jpg">Baixar imagem</a>
       <button type="button" id="shareButton">Compartilhar</button>
     </div>
+    <section class="consent">
+      <strong>Autorizar uso nas redes</strong>
+      <p>Opcional: permita que a equipe FanFrame selecione esta foto para posts, stories ou materiais de divulgacao. A publicacao nao e automatica.</p>
+      <button type="button" id="consentButton">Autorizo usar minha foto</button>
+    </section>
     <small>Esta pagina e temporaria. Salve a imagem antes que o link expire.</small>
   </main>
   <script>
     const imageUrl = ${JSON.stringify(imageUrl)};
+    const token = ${JSON.stringify(token)};
     const button = document.getElementById("shareButton");
     button?.addEventListener("click", async () => {
       if (!navigator.share) {
@@ -91,6 +102,18 @@ function deliveryPage(imageUrl: string) {
         return;
       }
       await navigator.share({ title: "Minha foto FanFrame", text: "Olha minha foto gerada no totem FanFrame", url: imageUrl }).catch(() => undefined);
+    });
+    const consentButton = document.getElementById("consentButton");
+    consentButton?.addEventListener("click", async () => {
+      consentButton.setAttribute("disabled", "true");
+      consentButton.textContent = "Enviando...";
+      const response = await fetch(location.href, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "share_consent", token })
+      }).catch(() => null);
+      consentButton.textContent = response?.ok ? "Autorizacao registrada" : "Nao foi possivel registrar";
+      if (!response?.ok) consentButton.removeAttribute("disabled");
     });
   </script>
 </body>
@@ -101,6 +124,49 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const supabase = getSupabaseClient();
+
+  if (req.method === "POST") {
+    try {
+      const body = await req.json();
+      if (body?.action === "share_consent") {
+        const token = String(body.token || "");
+        if (!token) return jsonResponse({ error: "Missing token" }, 400);
+
+        const { data: link, error } = await supabase
+          .from("kiosk_delivery_links")
+          .select("*")
+          .eq("token", token)
+          .maybeSingle();
+
+        if (error || !link) return jsonResponse({ error: "Link not found" }, 404);
+        if (new Date(link.expires_at).getTime() < Date.now()) {
+          return jsonResponse({ error: "Link expired" }, 410);
+        }
+
+        const consentText = JSON.stringify({
+          text: "Cliente autorizou o uso da foto gerada em posts, stories ou materiais de divulgacao FanFrame. Publicacao depende de revisao humana.",
+          delivery_link_id: link.id,
+          session_id: link.session_id,
+          result_image_url: link.result_image_url,
+        });
+
+        const { error: consentError } = await supabase.from("consent_logs").insert({
+          team_id: link.team_id,
+          user_id: `kiosk_delivery:${link.id}`,
+          consent_type: "kiosk_social_share",
+          consent_text: consentText,
+          ip_address: req.headers.get("x-forwarded-for") || null,
+          user_agent: req.headers.get("user-agent") || null,
+        });
+        if (consentError) throw consentError;
+
+        return jsonResponse({ ok: true });
+      }
+    } catch (error) {
+      console.error("[create-delivery-link:consent]", error);
+      return jsonResponse({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+    }
+  }
 
   if (req.method === "GET") {
     const url = new URL(req.url);
@@ -123,7 +189,7 @@ serve(async (req) => {
       .update({ download_count: (link.download_count || 0) + 1 })
       .eq("id", link.id);
 
-    return htmlResponse(deliveryPage(link.result_image_url));
+    return htmlResponse(deliveryPage(link.result_image_url, token));
   }
 
   try {

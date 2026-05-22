@@ -68,6 +68,16 @@ type AdminAuditEvent = {
   created_at: string;
 };
 
+type ConsentLogRow = {
+  id: string;
+  team_id: string | null;
+  user_id: string;
+  consent_type: string;
+  consent_text: string;
+  accepted_at: string;
+  teams?: { name: string; slug: string } | null;
+};
+
 type GenerationQueueRow = {
   id: string;
   source: string | null;
@@ -390,6 +400,15 @@ function mergeKioskDraft(team: Partial<TeamRow>, config: unknown) {
     return next;
   }, {});
   return { ...team, ...allowed };
+}
+
+function readConsentPayload(consentText: string) {
+  try {
+    const parsed = JSON.parse(consentText);
+    return isObjectRecord(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 function hasUnpublishedDraft(team: Partial<TeamRow>) {
@@ -1234,8 +1253,8 @@ function TeamForm() {
   const setTutorialAssets = (patch: Partial<TeamTutorialAssets>) => {
     set("tutorial_assets", { ...tutorialAssets, ...patch });
   };
-  const uploadExperienceImage = async (file: File, key: "before" | "after" | "kioskBackground") => {
-    const extension = file.name.split(".").pop() || "png";
+  const uploadExperienceImage = async (file: File, key: "before" | "after" | "kioskBackground" | "waitingVideo") => {
+    const extension = file.name.split(".").pop() || (key === "waitingVideo" ? "mp4" : "png");
     const url = await uploadAsset(file, `${team.slug || "novo"}/experience/${key}.${extension}`);
     setTutorialAssets({ [key]: url });
   };
@@ -1432,6 +1451,16 @@ function TeamForm() {
                   <span>Imagem sutil no fundo das telas do totem.</span>
                   {tutorialAssets.kioskBackground ? <img src={publicAssetUrl(String(tutorialAssets.kioskBackground))} alt="" /> : <div className="experience-placeholder">Sem imagem</div>}
                   <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "kioskBackground"); }} /></label>
+                </div>
+                <div className="experience-card">
+                  <strong>Video da espera</strong>
+                  <span>Video sem som para distrair o cliente enquanto a IA trabalha.</span>
+                  {tutorialAssets.waitingVideo ? (
+                    <video src={publicAssetUrl(String(tutorialAssets.waitingVideo))} muted playsInline controls />
+                  ) : (
+                    <div className="experience-placeholder">Sem video</div>
+                  )}
+                  <label className="file-input">Enviar video<input type="file" accept="video/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "waitingVideo"); }} /></label>
                 </div>
               </section>
 
@@ -2292,6 +2321,7 @@ function Sessions() {
   const [rows, setRows] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [generations, setGenerations] = useState<GenerationQueueRow[]>([]);
+  const [consentLogs, setConsentLogs] = useState<ConsentLogRow[]>([]);
 
   const load = useCallback(async () => {
     const since = new Date(Date.now() - filters.days * 86400000).toISOString();
@@ -2313,11 +2343,19 @@ function Sessions() {
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(300);
+    let consentQuery = supabase
+      .from("consent_logs")
+      .select("*, teams(name, slug)")
+      .eq("consent_type", "kiosk_social_share")
+      .gte("accepted_at", since)
+      .order("accepted_at", { ascending: false })
+      .limit(120);
 
     if (filters.teamId) {
       sessionQuery = sessionQuery.eq("team_id", filters.teamId);
       paymentQuery = paymentQuery.eq("team_id", filters.teamId);
       generationQuery = generationQuery.eq("team_id", filters.teamId);
+      consentQuery = consentQuery.eq("team_id", filters.teamId);
     }
     if (filters.status) {
       sessionQuery = sessionQuery.eq("status", filters.status);
@@ -2325,10 +2363,11 @@ function Sessions() {
       generationQuery = generationQuery.eq("status", filters.status);
     }
 
-    const [sessionRes, paymentRes, generationRes] = await Promise.all([sessionQuery, paymentQuery, generationQuery]);
+    const [sessionRes, paymentRes, generationRes, consentRes] = await Promise.all([sessionQuery, paymentQuery, generationQuery, consentQuery]);
     setRows((sessionRes.data || []) as KioskSession[]);
     setPayments((paymentRes.data || []) as KioskPayment[]);
     setGenerations((generationRes.data || []) as GenerationQueueRow[]);
+    setConsentLogs((consentRes.data || []) as ConsentLogRow[]);
   }, [filters.days, filters.status, filters.teamId]);
   useEffect(() => { load(); }, [load]);
 
@@ -2389,6 +2428,32 @@ function Sessions() {
             );
           })}
           {rows.length === 0 && <div className="empty-state">Nenhum atendimento neste filtro.</div>}
+        </div>
+      </div>
+      <div className="panel">
+        <div className="section-heading table-heading">
+          <div>
+            <h2>Fotos autorizadas para redes</h2>
+            <p>Clientes que autorizaram uso da foto pelo link do QR Code. A publicacao continua sendo manual e revisada.</p>
+          </div>
+        </div>
+        <div className="authorized-photo-list">
+          {consentLogs.map((log) => {
+            const payload = readConsentPayload(log.consent_text);
+            const imageUrl = typeof payload.result_image_url === "string" ? payload.result_image_url : "";
+            return (
+              <article className="authorized-photo-card" key={log.id}>
+                {imageUrl ? <img src={imageUrl} alt="" /> : <div className="authorized-photo-placeholder">Sem foto</div>}
+                <div>
+                  <strong>{log.teams?.name || "Time nao informado"}</strong>
+                  <span>Autorizado em {dateTime(log.accepted_at)}</span>
+                  <span>{String(payload.session_id || log.user_id)}</span>
+                </div>
+                {imageUrl && <a className="secondary link-button" href={imageUrl} target="_blank">Abrir foto</a>}
+              </article>
+            );
+          })}
+          {consentLogs.length === 0 && <div className="empty-state">Nenhuma foto autorizada neste filtro.</div>}
         </div>
       </div>
       <details className="panel advanced-box">

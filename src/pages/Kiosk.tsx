@@ -1285,6 +1285,16 @@ export default function KioskPage() {
         {tutorialAssets.kioskBackground && (
           <img src={tutorialAssets.kioskBackground} alt="" className="h-full w-full object-cover opacity-[0.24]" />
         )}
+        {tutorialAssets.waitingVideo && step === "generating" && (
+          <video
+            src={tutorialAssets.waitingVideo}
+            className="h-full w-full object-cover opacity-[0.34]"
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
+        )}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(0_0_0_/_0.72),rgb(0_0_0_/_0.9))]" />
         {team?.logo_url && (
           <img src={team.logo_url} alt="" className="absolute right-[-7%] top-[18%] h-[52vh] max-h-[520px] w-auto object-contain opacity-[0.07]" />
@@ -1562,7 +1572,7 @@ export default function KioskPage() {
         {step === "generating" && (
           <section className="relative flex-1 min-h-0 overflow-hidden rounded-lg border border-border bg-card/28">
             {currentWaitingSlide?.imageUrl ? (
-              <img src={currentWaitingSlide.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-72" />
+              <img src={currentWaitingSlide.imageUrl} alt="" className={`absolute inset-0 h-full w-full object-cover ${tutorialAssets.waitingVideo ? "opacity-[0.38]" : "opacity-[0.72]"}`} />
             ) : team?.logo_url ? (
               <div className="absolute inset-0 grid place-items-center">
                 <img src={team.logo_url} alt="" className="max-h-[38vh] max-w-[70%] object-contain opacity-40" />
