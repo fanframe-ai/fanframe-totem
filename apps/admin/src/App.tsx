@@ -142,6 +142,14 @@ const assetLimits = {
   videoRecommendedRatio: "9:16",
 };
 
+const kioskPreviewBaseUrl = (import.meta.env.VITE_KIOSK_PREVIEW_URL || "https://fanframe-totem.vercel.app/kiosk").replace(/\/+$/, "");
+
+function getKioskPreviewUrl(teamSlug?: string | null) {
+  const url = new URL(kioskPreviewBaseUrl);
+  if (teamSlug) url.searchParams.set("team_slug", teamSlug);
+  return url.toString();
+}
+
 function getDeviceInstallerUrl(device?: Pick<KioskDevice, "config"> | null) {
   if (!device?.config) return "";
   if (typeof device.config.updates?.installerUrl === "string") return device.config.updates.installerUrl;
@@ -824,7 +832,10 @@ function Teams() {
             </div>
             <div className="team-card-footer">
               <span>{team.slug ? `/${team.slug}` : "Sem codigo"}</span>
-              <Link className="primary link-button" to={`/times/${team.slug}`}>Editar time</Link>
+              <div className="team-card-actions">
+                <a className="secondary link-button" href={getKioskPreviewUrl(team.slug)} target="_blank" rel="noreferrer">Ver kiosk online</a>
+                <Link className="primary link-button" to={`/times/${team.slug}`}>Editar time</Link>
+              </div>
             </div>
           </article>
         ))}

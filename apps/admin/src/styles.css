@@ -134,6 +134,8 @@ tbody tr:hover { background: #f9fafb; }
 .team-card-summary strong, .preview-list strong { font-size: 18px; letter-spacing: -.02em; }
 .team-card-footer { display: flex; justify-content: space-between; gap: 12px; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; }
 .team-card-footer span { color: var(--muted); font-size: 13px; font-weight: 800; }
+.team-card-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.team-card-actions .link-button { min-height: 38px; font-size: 13px; padding: 0 12px; }
 .team-editor-shell { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .team-editor-main { padding: 0; overflow: hidden; }
 .editor-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 10px; border-bottom: 1px solid var(--border); background: #f8fafc; }

@@ -495,7 +495,8 @@ export default function KioskPage() {
   useEffect(() => {
     const init = async () => {
       const params = new URLSearchParams(window.location.search);
-      const urlTeam = params.get("team") || localStorage.getItem("fanframe:kiosk-team") || "";
+      const previewTeam = params.get("team_slug") || params.get("team") || "";
+      const urlTeam = previewTeam || localStorage.getItem("fanframe:kiosk-team") || "";
       const runtimeConfig = window.fanframeKiosk
         ? await window.fanframeKiosk.getConfig()
         : { ...browserPreviewConfig, teamSlug: urlTeam };
