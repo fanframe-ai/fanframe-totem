@@ -1356,7 +1356,7 @@ export default function KioskPage() {
         )}
 
         {step === "home" && (
-          <section className="grid flex-1 min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-8 text-center">
+          <section className="grid flex-1 min-h-0 grid-rows-[auto_auto_auto] content-center gap-8 text-center">
             <div className="mx-auto max-w-4xl">
               <p className="mb-4 text-xl font-black uppercase text-muted-foreground">{copy("kiosk_home_eyebrow", "Experiencia interativa")}</p>
               <h2 className="mb-6 text-7xl font-black uppercase leading-[0.92]">{copy("kiosk_home_title", "Vista o manto", "welcome_title")}</h2>
@@ -1364,20 +1364,20 @@ export default function KioskPage() {
                 {copy("kiosk_home_subtitle", "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", "welcome_subtitle")}
               </p>
             </div>
-            <div className="mx-auto grid h-full min-h-0 w-full max-w-4xl grid-cols-2 gap-5">
-              <div className="min-h-0 rounded-lg border border-border bg-card/78 p-4 shadow-[0_18px_42px_rgb(0_0_0_/_0.26)] backdrop-blur">
+            <div className="mx-auto grid w-full max-w-4xl grid-cols-2 items-start gap-5">
+              <div className="rounded-lg border border-border bg-card/78 p-4 shadow-[0_18px_42px_rgb(0_0_0_/_0.26)] backdrop-blur">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-sm font-black uppercase text-muted-foreground">Antes</span>
                   <span className="h-2 w-12 rounded-full bg-muted" />
                 </div>
-                <img src={homeBeforeImage} alt="Exemplo antes" className="h-[calc(100%-34px)] w-full rounded-md object-cover" />
+                <img src={homeBeforeImage} alt="Exemplo antes" className="aspect-[3/4] w-full rounded-md bg-black/30 object-cover object-center" />
               </div>
-              <div className="min-h-0 rounded-lg border-2 border-primary bg-card/86 p-4 shadow-[0_18px_42px_rgb(0_0_0_/_0.34)] backdrop-blur">
+              <div className="rounded-lg border-2 border-primary bg-card/86 p-4 shadow-[0_18px_42px_rgb(0_0_0_/_0.34)] backdrop-blur">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-sm font-black uppercase text-muted-foreground">Depois</span>
                   <span className="h-2 w-12 rounded-full bg-primary" />
                 </div>
-                <img src={homeAfterImage} alt="Exemplo depois" className="h-[calc(100%-34px)] w-full rounded-md object-cover" />
+                <img src={homeAfterImage} alt="Exemplo depois" className="aspect-[3/4] w-full rounded-md bg-black/30 object-cover object-center" />
               </div>
             </div>
             <KioskButton onClick={startSelection} className="mx-auto w-full max-w-4xl">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>
