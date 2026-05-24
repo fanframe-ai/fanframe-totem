@@ -142,12 +142,8 @@ const assetLimits = {
   videoRecommendedRatio: "9:16",
 };
 
-const kioskPreviewBaseUrl = (import.meta.env.VITE_KIOSK_PREVIEW_URL || "https://fanframe-totem.vercel.app/kiosk").replace(/\/+$/, "");
-
 function getKioskPreviewUrl(teamSlug?: string | null) {
-  const url = new URL(kioskPreviewBaseUrl);
-  if (teamSlug) url.searchParams.set("team_slug", teamSlug);
-  return url.toString();
+  return teamSlug ? `/kiosk?team_slug=${encodeURIComponent(teamSlug)}` : "/kiosk";
 }
 
 function getDeviceInstallerUrl(device?: Pick<KioskDevice, "config"> | null) {
@@ -833,7 +829,7 @@ function Teams() {
             <div className="team-card-footer">
               <span>{team.slug ? `/${team.slug}` : "Sem codigo"}</span>
               <div className="team-card-actions">
-                <a className="secondary link-button" href={getKioskPreviewUrl(team.slug)} target="_blank" rel="noreferrer">Ver kiosk online</a>
+                <Link className="secondary link-button" to={getKioskPreviewUrl(team.slug)}>Ver kiosk online</Link>
                 <Link className="primary link-button" to={`/times/${team.slug}`}>Editar time</Link>
               </div>
             </div>
@@ -843,6 +839,111 @@ function Teams() {
           <div className="panel empty-state">{teams.length === 0 ? "Nenhum time cadastrado ainda." : "Nenhum time encontrado com esses filtros."}</div>
         )}
       </section>
+    </>
+  );
+}
+
+function KioskOnlinePreview() {
+  const [team, setTeam] = useState<TeamRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const teamSlug = new URLSearchParams(window.location.search).get("team_slug") || "";
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setMessage("");
+
+    if (!teamSlug) {
+      setTeam(null);
+      setMessage("Escolha um time no painel para abrir a previa do kiosk.");
+      setLoading(false);
+      return;
+    }
+
+    supabase
+      .from("teams")
+      .select("*")
+      .eq("slug", teamSlug)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) setMessage(error.message);
+        setTeam((data || null) as TeamRow | null);
+        if (!data && !error) setMessage("Time nao encontrado.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [teamSlug]);
+
+  const text = team?.text_overrides || {};
+  const tutorialAssets = team?.tutorial_assets || {};
+  const beforeImage = publicAssetUrl(tutorialAssets.before || "");
+  const afterImage = publicAssetUrl(tutorialAssets.after || "");
+  const logoUrl = publicAssetUrl(team?.logo_url || "");
+  const previewUrl = `${window.location.origin}${getKioskPreviewUrl(teamSlug)}`;
+
+  return (
+    <>
+      <PageHeader
+        title="Preview do kiosk"
+        subtitle="Veja como a tela inicial aparece para esse time."
+        action={
+          <div className="page-actions">
+            <Link className="secondary link-button" to="/times">Voltar aos times</Link>
+            <button className="secondary" type="button" onClick={() => navigator.clipboard.writeText(previewUrl)}>Copiar link</button>
+          </div>
+        }
+      />
+
+      {loading && <section className="panel empty-state">Carregando preview...</section>}
+      {!loading && message && <section className="panel empty-state">{message}</section>}
+      {!loading && team && (
+        <section className="kiosk-online-preview-shell">
+          <div
+            className="kiosk-online-preview"
+            style={{
+              fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
+              borderColor: team.primary_color || "#ffffff",
+            }}
+          >
+            <header className="kiosk-online-header">
+              <div>
+                <span>{text.kiosk_brand_label || "FanFrame Totem"}</span>
+                <strong>{team.name}</strong>
+              </div>
+              {logoUrl && <img src={logoUrl} alt="" />}
+              <div className="kiosk-online-price">
+                <span>{text.kiosk_total_label || "Total"}</span>
+                <strong>{money(team.kiosk_price_cents, team.kiosk_currency)}</strong>
+              </div>
+            </header>
+            <main className="kiosk-online-home">
+              <div className="kiosk-online-copy">
+                <span>{text.kiosk_home_eyebrow || "Experiencia interativa"}</span>
+                <h2>{text.kiosk_home_title || "Vista o manto"}</h2>
+                <p>{text.kiosk_home_subtitle || "Escolha sua camisa, pague no totem e receba sua foto por QR Code."}</p>
+              </div>
+              <div className="kiosk-online-before-after">
+                <article>
+                  <span>Antes</span>
+                  {beforeImage ? <img src={beforeImage} alt="Antes" /> : <div>Sem imagem</div>}
+                </article>
+                <article className="highlight">
+                  <span>Depois</span>
+                  {afterImage ? <img src={afterImage} alt="Depois" /> : <div>Sem imagem</div>}
+                </article>
+              </div>
+              <button type="button">{text.kiosk_home_cta || "Comecar"}</button>
+            </main>
+          </div>
+        </section>
+      )}
     </>
   );
 }
@@ -2904,6 +3005,7 @@ function App() {
           <Layout auth={auth}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/kiosk" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><KioskOnlinePreview /></RoleGate>} />
               <Route path="/times" element={<RoleGate role={auth.role} allowed={["super_admin", "admin"]}><Teams /></RoleGate>} />
               <Route path="/times/:slug" element={<RoleGate role={auth.role} allowed={["super_admin", "admin"]}><TeamForm /></RoleGate>} />
               <Route path="/totens" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><Devices role={auth.role} /></RoleGate>} />
