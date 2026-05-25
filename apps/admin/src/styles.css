@@ -255,6 +255,8 @@ tbody tr:hover { background: #f9fafb; }
 .preview-editable.hero-title { font-size: 68px; font-weight: 950; line-height: .95; text-transform: uppercase; letter-spacing: 0; }
 .preview-editable.section-title { font-size: 56px; font-weight: 950; line-height: 1; text-transform: uppercase; letter-spacing: 0; }
 .preview-editable.subtitle { color: rgba(255,255,255,.64); font-size: 22px; line-height: 1.25; max-width: 520px; font-weight: 850; }
+.preview-editable.inline-muted { color: rgba(255,255,255,.64); font: inherit; line-height: inherit; }
+.preview-editable.button-copy { color: inherit; font: inherit; line-height: inherit; text-transform: inherit; }
 .preview-editable.cta { min-height: 72px; border-radius: 8px; padding: 0 24px; display: inline-grid; place-items: center; background: #ffffff; color: #050505; font-size: 20px; font-weight: 950; text-transform: uppercase; width: min(520px, 100%); text-align: center; }
 .preview-editable.cta.compact { min-height: 48px; width: 100%; }
 .preview-editable.ghost-action { color: rgba(255,255,255,.88); font-weight: 950; text-transform: uppercase; text-align: center; }

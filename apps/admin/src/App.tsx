@@ -28,7 +28,15 @@ import { supabase, publicAssetUrl } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, logAdminAudit, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
 import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
-import { KioskHomeVisual, KioskSelectionVisual, KioskVisualShell } from "../../../src/shared/kiosk-ui/KioskVisual";
+import {
+  KioskCameraVisual,
+  KioskGeneratingVisual,
+  KioskHomeVisual,
+  KioskPaymentVisual,
+  KioskResultVisual,
+  KioskSelectionVisual,
+  KioskVisualShell,
+} from "../../../src/shared/kiosk-ui/KioskVisual";
 import {
   buildDeviceLocationLabel,
   getDeviceVersionStatus,
@@ -1064,7 +1072,7 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
   );
 }
 
-type BuilderScreen = "home" | "shirts" | "backgrounds" | "pix" | "result";
+type BuilderScreen = "home" | "shirts" | "backgrounds" | "pix" | "camera" | "generating" | "result";
 type BuilderSelection =
   | { type: "text"; key: string; label: string; fallback: string; long?: boolean }
   | { type: "theme" }
@@ -1080,6 +1088,8 @@ const builderScreens: Array<{ id: BuilderScreen; label: string }> = [
   { id: "shirts", label: "Camisas" },
   { id: "backgrounds", label: "Cenarios" },
   { id: "pix", label: "PIX" },
+  { id: "camera", label: "Camera" },
+  { id: "generating", label: "Gerando" },
   { id: "result", label: "Entrega" },
 ];
 
@@ -1109,6 +1119,14 @@ const builderTextFields: Record<string, Omit<Extract<BuilderSelection, { type: "
   kiosk_payment_title: { key: "kiosk_payment_title", label: "Titulo do pagamento", fallback: "Pagamento PIX" },
   kiosk_payment_pix_hint: { key: "kiosk_payment_pix_hint", label: "Ajuda do PIX", fallback: "Aponte a camera do celular para o QR Code.", long: true },
   kiosk_payment_waiting: { key: "kiosk_payment_waiting", label: "Texto aguardando pagamento", fallback: "Aguardando pagamento" },
+  kiosk_payment_pix_cta: { key: "kiosk_payment_pix_cta", label: "Botao PIX", fallback: "Pagar com PIX" },
+  kiosk_payment_qr_hint: { key: "kiosk_payment_qr_hint", label: "Ajuda abaixo do QR Code", fallback: "Aponte a camera do celular para pagar com PIX.", long: true },
+  kiosk_camera_title: { key: "kiosk_camera_title", label: "Titulo da camera", fallback: "Sua foto" },
+  kiosk_camera_capture: { key: "kiosk_camera_capture", label: "Botao capturar", fallback: "Capturar" },
+  kiosk_camera_retake: { key: "kiosk_camera_retake", label: "Botao refazer", fallback: "Refazer" },
+  kiosk_camera_use: { key: "kiosk_camera_use", label: "Botao usar foto", fallback: "Usar foto" },
+  kiosk_generating_title: { key: "kiosk_generating_title", label: "Titulo enquanto gera", fallback: "Gerando imagem" },
+  kiosk_generating_subtitle: { key: "kiosk_generating_subtitle", label: "Frase enquanto gera", fallback: "Nao feche nem desligue o totem.", long: true },
   kiosk_result_title: { key: "kiosk_result_title", label: "Titulo da entrega", fallback: "Imagem pronta" },
   kiosk_result_hint: { key: "kiosk_result_hint", label: "Texto do QR final", fallback: "Escaneie para baixar no celular", long: true },
   kiosk_result_finish: { key: "kiosk_result_finish", label: "Botao finalizar", fallback: "Finalizar" },
@@ -1238,6 +1256,8 @@ function TeamVisualBuilder({
       shirts: "kiosk_shirt_title",
       backgrounds: "kiosk_background_title",
       pix: "kiosk_payment_title",
+      camera: "kiosk_camera_title",
+      generating: "kiosk_generating_title",
       result: "kiosk_result_title",
     };
     selectText(defaultTextByScreen[nextScreen]);
@@ -1364,22 +1384,56 @@ function TeamVisualBuilder({
     }
     if (screen === "pix") {
       return (
-        <div className="builder-preview-body centered">
-          <EditablePreviewText fieldKey="kiosk_payment_step" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_step"} variant="eyebrow" onSelect={() => selectText("kiosk_payment_step")} onChange={setTextOverride} />
-          <EditablePreviewText fieldKey="kiosk_payment_title" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_title"} variant="section-title" onSelect={() => selectText("kiosk_payment_title")} onChange={setTextOverride} />
-          <div className="fake-qr">PIX</div>
-          <EditablePreviewText fieldKey="kiosk_payment_pix_hint" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_pix_hint"} variant="subtitle" onSelect={() => selectText("kiosk_payment_pix_hint")} onChange={setTextOverride} />
-          <EditablePreviewText fieldKey="kiosk_payment_waiting" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_waiting"} variant="status-pill" onSelect={() => selectText("kiosk_payment_waiting")} onChange={setTextOverride} />
-        </div>
+        <KioskPaymentVisual
+          stepLabel={<EditablePreviewText fieldKey="kiosk_payment_step" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_step"} variant="eyebrow" onSelect={() => selectText("kiosk_payment_step")} onChange={setTextOverride} />}
+          title={<EditablePreviewText fieldKey="kiosk_payment_title" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_title"} variant="section-title" onSelect={() => selectText("kiosk_payment_title")} onChange={setTextOverride} />}
+          priceLabel={money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}
+          pixCta={<EditablePreviewText fieldKey="kiosk_payment_pix_cta" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_pix_cta"} variant="button-copy" onSelect={() => selectText("kiosk_payment_pix_cta")} onChange={setTextOverride} />}
+          pixHint={<EditablePreviewText fieldKey="kiosk_payment_pix_hint" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_pix_hint"} variant="inline-muted" onSelect={() => selectText("kiosk_payment_pix_hint")} onChange={setTextOverride} />}
+          waitingLabel={<EditablePreviewText fieldKey="kiosk_payment_waiting" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_waiting"} variant="section-title" onSelect={() => selectText("kiosk_payment_waiting")} onChange={setTextOverride} />}
+          qrHint={<EditablePreviewText fieldKey="kiosk_payment_qr_hint" texts={textOverrides} selected={selectedTextKey === "kiosk_payment_qr_hint"} variant="subtitle" onSelect={() => selectText("kiosk_payment_qr_hint")} onChange={setTextOverride} />}
+          cancelLabel={<EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />}
+          status="choose"
+        />
+      );
+    }
+    if (screen === "camera") {
+      return (
+        <KioskCameraVisual
+          title={<EditablePreviewText fieldKey="kiosk_camera_title" texts={textOverrides} selected={selectedTextKey === "kiosk_camera_title"} variant="section-title" onSelect={() => selectText("kiosk_camera_title")} onChange={setTextOverride} />}
+          hasPhoto={false}
+          countdown={team.kiosk_camera_countdown_seconds ?? 5}
+          captureLabel={<EditablePreviewText fieldKey="kiosk_camera_capture" texts={textOverrides} selected={selectedTextKey === "kiosk_camera_capture"} variant="button-copy" onSelect={() => selectText("kiosk_camera_capture")} onChange={setTextOverride} />}
+          retakeLabel={<EditablePreviewText fieldKey="kiosk_camera_retake" texts={textOverrides} selected={selectedTextKey === "kiosk_camera_retake"} variant="button-copy" onSelect={() => selectText("kiosk_camera_retake")} onChange={setTextOverride} />}
+          usePhotoLabel={<EditablePreviewText fieldKey="kiosk_camera_use" texts={textOverrides} selected={selectedTextKey === "kiosk_camera_use"} variant="button-copy" onSelect={() => selectText("kiosk_camera_use")} onChange={setTextOverride} />}
+          media={<div className="ff-kiosk-camera-placeholder">Camera</div>}
+        />
+      );
+    }
+    if (screen === "generating") {
+      const firstWaitingSlide = Array.isArray(tutorialAssets.waitingSlides) ? tutorialAssets.waitingSlides[0] as TeamWaitingSlide | undefined : undefined;
+      return (
+        <KioskGeneratingVisual
+          teamName={team.name || "Nome do time"}
+          slideImage={publicAssetUrl(firstWaitingSlide?.imageUrl || "")}
+          logoUrl={publicAssetUrl(team.logo_url || "")}
+          slideTitle={firstWaitingSlide?.title}
+          slideSubtitle={firstWaitingSlide?.subtitle}
+          title={<EditablePreviewText fieldKey="kiosk_generating_title" texts={textOverrides} selected={selectedTextKey === "kiosk_generating_title"} variant="button-copy" onSelect={() => selectText("kiosk_generating_title")} onChange={setTextOverride} />}
+          subtitle={<EditablePreviewText fieldKey="kiosk_generating_subtitle" texts={textOverrides} selected={selectedTextKey === "kiosk_generating_subtitle"} variant="inline-muted" onSelect={() => selectText("kiosk_generating_subtitle")} onChange={setTextOverride} />}
+          progress={65}
+          progressLabel="65%"
+          hasWaitingVideo={Boolean(tutorialAssets.waitingVideo)}
+        />
       );
     }
     return (
-      <div className="builder-preview-body centered">
-        <EditablePreviewText fieldKey="kiosk_result_title" texts={textOverrides} selected={selectedTextKey === "kiosk_result_title"} variant="section-title" onSelect={() => selectText("kiosk_result_title")} onChange={setTextOverride} />
-        <div className="fake-photo">Foto IA</div>
-        <EditablePreviewText fieldKey="kiosk_result_hint" texts={textOverrides} selected={selectedTextKey === "kiosk_result_hint"} variant="subtitle" onSelect={() => selectText("kiosk_result_hint")} onChange={setTextOverride} />
-        <EditablePreviewText fieldKey="kiosk_result_finish" texts={textOverrides} selected={selectedTextKey === "kiosk_result_finish"} variant="cta compact" onSelect={() => selectText("kiosk_result_finish")} onChange={setTextOverride} />
-      </div>
+      <KioskResultVisual
+        title={<EditablePreviewText fieldKey="kiosk_result_title" texts={textOverrides} selected={selectedTextKey === "kiosk_result_title"} variant="section-title" onSelect={() => selectText("kiosk_result_title")} onChange={setTextOverride} />}
+        image={homeAfterImage}
+        hint={<EditablePreviewText fieldKey="kiosk_result_hint" texts={textOverrides} selected={selectedTextKey === "kiosk_result_hint"} variant="subtitle" onSelect={() => selectText("kiosk_result_hint")} onChange={setTextOverride} />}
+        finishLabel={<EditablePreviewText fieldKey="kiosk_result_finish" texts={textOverrides} selected={selectedTextKey === "kiosk_result_finish"} variant="button-copy" onSelect={() => selectText("kiosk_result_finish")} onChange={setTextOverride} />}
+      />
     );
   };
   const selectedAsset = selection.type === "shirt" ? shirts[selection.index] : selection.type === "background" ? backgrounds[selection.index] : null;

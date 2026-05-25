@@ -1,15 +1,22 @@
 import { type Dispatch, type FormEvent, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { ArrowLeft, Camera, CheckCircle2, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowLeft, Loader2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
 import { useTeam, type TeamBackground, type TeamShirt, type TeamTextOverrides, type TeamWaitingSlide } from "@/contexts/TeamContext";
 import { getAssetFullUrl } from "@/config/fanframe";
 import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
 import beforeExampleImage from "@/assets/before-example.jpg";
 import afterExampleImage from "@/assets/after-example.png";
-import { KioskHomeVisual, KioskSelectionVisual, KioskVisualShell } from "@/shared/kiosk-ui/KioskVisual";
+import {
+  KioskCameraVisual,
+  KioskGeneratingVisual,
+  KioskHomeVisual,
+  KioskPaymentVisual,
+  KioskResultVisual,
+  KioskSelectionVisual,
+  KioskVisualShell,
+} from "@/shared/kiosk-ui/KioskVisual";
 import {
   buildDeliveryUrl,
   classifyKioskError,
@@ -1468,137 +1475,66 @@ export default function KioskPage() {
         )}
 
         {step === "payment" && (
-          <section className="flex-1 min-h-0 flex flex-col justify-center">
-            <div className="w-full text-center">
-              <p className="text-lg uppercase text-muted-foreground font-black">{copy("kiosk_payment_step", "Passo 3 de 3")}</p>
-              <h2 className="text-6xl font-black uppercase mb-5">{copy("kiosk_payment_title", "Pagamento")}</h2>
-              <p className="text-4xl font-black mb-12">{priceLabel}</p>
-
-              {!paymentMethod && (
-                <div className="grid grid-cols-1 gap-5 max-w-3xl mx-auto">
-                  <button className="min-h-[190px] rounded-lg bg-card border-2 border-border p-8 flex items-center gap-8 text-left active:scale-[0.99] transition" onClick={() => startPayment("pix")}>
-                    <QrCode className="w-20 h-20 shrink-0" />
-                    <span>
-                      <span className="block text-4xl font-black uppercase">{copy("kiosk_payment_pix_cta", "Pagar com PIX")}</span>
-                      <span className="block text-xl text-muted-foreground mt-3">{copy("kiosk_payment_pix_hint", "Aponte a camera do celular para o QR Code.")}</span>
-                    </span>
-                  </button>
-                </div>
-              )}
-
-              {paymentBusy && (
-                <div className="py-20">
-                  <Loader2 className="w-24 h-24 animate-spin mx-auto mb-8" />
-                  <p className="text-4xl font-black uppercase">{copy("kiosk_payment_waiting", "Aguardando pagamento")}</p>
-                </div>
-              )}
-
-              {paymentMethod === "pix" && pixPayment && (
-                <div className="flex flex-col items-center">
-                  {pixQrImage ? (
-                    <img src={pixQrImage} alt="QR Code PIX" className="w-[520px] h-[520px] bg-white p-4 rounded-lg mb-8" />
-                  ) : (
-                    <Loader2 className="w-24 h-24 animate-spin mb-8" />
-                  )}
-                  <p className="text-3xl leading-relaxed text-muted-foreground mb-8">{copy("kiosk_payment_qr_hint", "Aponte a camera do celular para pagar com PIX.")}</p>
-                  <KioskButton variant="ghost" onClick={resetFlow} className="w-full">{copy("kiosk_cancel", "Cancelar")}</KioskButton>
-                </div>
-              )}
-
-              {error && <p className="mt-8 text-destructive text-2xl font-bold leading-relaxed">{error}</p>}
-            </div>
-          </section>
+          <KioskPaymentVisual
+            stepLabel={copy("kiosk_payment_step", "Passo 3 de 3")}
+            title={copy("kiosk_payment_title", "Pagamento")}
+            priceLabel={priceLabel}
+            pixCta={copy("kiosk_payment_pix_cta", "Pagar com PIX")}
+            pixHint={copy("kiosk_payment_pix_hint", "Aponte a camera do celular para o QR Code.")}
+            waitingLabel={copy("kiosk_payment_waiting", "Aguardando pagamento")}
+            qrHint={copy("kiosk_payment_qr_hint", "Aponte a camera do celular para pagar com PIX.")}
+            cancelLabel={copy("kiosk_cancel", "Cancelar")}
+            status={paymentBusy ? "busy" : paymentMethod === "pix" && pixPayment ? "qr" : "choose"}
+            qrImage={pixQrImage}
+            error={error}
+            onStartPix={() => startPayment("pix")}
+            onCancel={resetFlow}
+          />
         )}
 
         {step === "camera" && (
-          <section className="flex-1 min-h-0 flex flex-col items-center">
-            <h2 className="shrink-0 text-6xl font-black uppercase mb-7">{copy("kiosk_camera_title", "Sua foto")}</h2>
-            <div className="relative w-full flex-1 min-h-0 rounded-lg overflow-hidden bg-card border-2 border-border mb-7">
-              {userImage ? (
-                <img src={userImage} alt="Foto capturada" className="w-full h-full object-cover" />
-              ) : (
-                <video
-                  ref={videoRef}
-                  className={`w-full h-full object-cover ${mirrorCamera ? "-scale-x-100" : ""}`}
-                  playsInline
-                  muted
-                />
-              )}
-              {cameraCountdown !== null && !userImage && (
-                <div className="absolute inset-0 grid place-items-center bg-black/35">
-                  <div className="grid place-items-center w-56 h-56 rounded-full border-8 border-white bg-black/70 text-white text-8xl font-black">
-                    {cameraCountdown}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="shrink-0 w-full grid grid-cols-2 gap-5">
-              {userImage ? (
-                <>
-                  <KioskButton variant="secondary" onClick={retakePhoto} className="w-full">
-                    <RefreshCw className="w-5 h-5 mr-2" />
-                    {copy("kiosk_camera_retake", "Refazer")}
-                  </KioskButton>
-                  <KioskButton onClick={startGeneration} className="w-full">{copy("kiosk_camera_use", "Usar foto")}</KioskButton>
-                </>
-              ) : (
-                <>
-                  <KioskButton onClick={startCaptureCountdown} disabled={cameraCountdown !== null} className="w-full col-span-2">
-                    <Camera className="w-6 h-6 mr-3" />
-                    {cameraCountdown !== null ? `${copy("kiosk_camera_capture", "Capturar")} ${cameraCountdown}` : copy("kiosk_camera_capture", "Capturar")}
-                  </KioskButton>
-                </>
-              )}
-            </div>
-          </section>
+          <KioskCameraVisual
+            title={copy("kiosk_camera_title", "Sua foto")}
+            hasPhoto={Boolean(userImage)}
+            countdown={cameraCountdown}
+            captureLabel={copy("kiosk_camera_capture", "Capturar")}
+            retakeLabel={copy("kiosk_camera_retake", "Refazer")}
+            usePhotoLabel={copy("kiosk_camera_use", "Usar foto")}
+            onCapture={startCaptureCountdown}
+            onRetake={retakePhoto}
+            onUsePhoto={startGeneration}
+            media={userImage ? (
+              <img src={userImage} alt="Foto capturada" />
+            ) : (
+              <video ref={videoRef} className={mirrorCamera ? "-scale-x-100" : ""} playsInline muted />
+            )}
+          />
         )}
 
         {step === "generating" && (
-          <section className="relative flex-1 min-h-0 overflow-hidden rounded-lg border border-border bg-card/28">
-            {currentWaitingSlide?.imageUrl ? (
-              <img src={currentWaitingSlide.imageUrl} alt="" className={`absolute inset-0 h-full w-full object-cover ${tutorialAssets.waitingVideo ? "opacity-[0.38]" : "opacity-[0.72]"}`} />
-            ) : team?.logo_url ? (
-              <div className="absolute inset-0 grid place-items-center">
-                <img src={team.logo_url} alt="" className="max-h-[38vh] max-w-[70%] object-contain opacity-40" />
-              </div>
-            ) : null}
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(0_0_0_/_0.18),rgb(0_0_0_/_0.72))]" />
-            <div className="absolute inset-x-10 top-10 max-w-3xl text-left">
-              <p className="mb-3 text-lg font-black uppercase text-muted-foreground">{team?.name}</p>
-              <h2 className="text-6xl font-black uppercase leading-none">{currentWaitingSlide?.title || "Sua foto esta ficando pronta"}</h2>
-              {currentWaitingSlide?.subtitle && <p className="mt-5 text-2xl leading-snug text-muted-foreground">{currentWaitingSlide.subtitle}</p>}
-            </div>
-            <div className="absolute inset-x-0 bottom-7 mx-auto w-full max-w-2xl rounded-lg border border-border bg-background/82 p-5 text-center shadow-[0_18px_54px_rgb(0_0_0_/_0.38)] backdrop-blur">
-              <div className="mb-4 flex items-center justify-center gap-4">
-                <Loader2 className="h-8 w-8 animate-spin shrink-0" />
-                <div className="text-left">
-                  <h3 className="text-2xl font-black uppercase leading-none">{copy("kiosk_generating_title", "Gerando imagem")}</h3>
-                  <p className="mt-1 text-base leading-snug text-muted-foreground">{copy("kiosk_generating_subtitle", "Nao feche nem desligue o totem.")}</p>
-                </div>
-                <p className="ml-auto min-w-[124px] text-right text-2xl font-black">{progressLabel}</p>
-              </div>
-              <Progress value={progress} className="h-3" />
-            </div>
-          </section>
+          <KioskGeneratingVisual
+            teamName={team?.name}
+            slideImage={currentWaitingSlide?.imageUrl}
+            logoUrl={team?.logo_url}
+            slideTitle={currentWaitingSlide?.title}
+            slideSubtitle={currentWaitingSlide?.subtitle}
+            title={copy("kiosk_generating_title", "Gerando imagem")}
+            subtitle={copy("kiosk_generating_subtitle", "Nao feche nem desligue o totem.")}
+            progress={progress}
+            progressLabel={progressLabel}
+            hasWaitingVideo={Boolean(tutorialAssets.waitingVideo)}
+          />
         )}
 
         {step === "result" && (
-          <section className="flex-1 min-h-0 flex flex-col text-center">
-            <div className="shrink-0">
-              <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-success" />
-              <h2 className="text-6xl font-black uppercase leading-none mb-6">{copy("kiosk_result_title", "Imagem pronta")}</h2>
-            </div>
-            <div className="flex-1 min-h-0 rounded-lg bg-card border-2 border-border overflow-hidden mb-7">
-              {generatedImage && <img src={generatedImage} alt="Imagem gerada" className="w-full h-full object-contain" />}
-            </div>
-            <div className="shrink-0 grid grid-cols-[320px_1fr] gap-7 items-center text-left">
-              {deliveryQrImage && <img src={deliveryQrImage} alt="QR Code de download" className="w-80 h-80 bg-white p-3 rounded-lg" />}
-              <div>
-                <p className="text-3xl font-black uppercase leading-tight mb-5">{copy("kiosk_result_hint", "Escaneie para baixar no celular")}</p>
-                <KioskButton variant="secondary" onClick={finishResult} onPointerUp={finishResult} className="w-full">{copy("kiosk_result_finish", "Finalizar")}</KioskButton>
-              </div>
-            </div>
-          </section>
+          <KioskResultVisual
+            title={copy("kiosk_result_title", "Imagem pronta")}
+            image={generatedImage}
+            qrImage={deliveryQrImage}
+            hint={copy("kiosk_result_hint", "Escaneie para baixar no celular")}
+            finishLabel={copy("kiosk_result_finish", "Finalizar")}
+            onFinish={finishResult}
+          />
         )}
     </KioskVisualShell>
   );

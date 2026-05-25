@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw } from "lucide-react";
 import "./kioskVisual.css";
 
 type KioskVisualShellProps = {
@@ -57,6 +57,57 @@ type KioskSelectionVisualProps = {
   onPrev?: () => void;
   onNext?: () => void;
   onSelect?: (item: KioskSelectionVisualItem, index: number) => void;
+};
+
+type KioskPaymentVisualProps = {
+  stepLabel: ReactNode;
+  title: ReactNode;
+  priceLabel: ReactNode;
+  pixCta: ReactNode;
+  pixHint: ReactNode;
+  waitingLabel: ReactNode;
+  qrHint: ReactNode;
+  cancelLabel: ReactNode;
+  status: "choose" | "busy" | "qr";
+  qrImage?: string;
+  error?: ReactNode;
+  onStartPix?: () => void;
+  onCancel?: () => void;
+};
+
+type KioskCameraVisualProps = {
+  title: ReactNode;
+  media: ReactNode;
+  hasPhoto: boolean;
+  countdown?: number | null;
+  captureLabel: ReactNode;
+  retakeLabel: ReactNode;
+  usePhotoLabel: ReactNode;
+  onCapture?: () => void;
+  onRetake?: () => void;
+  onUsePhoto?: () => void;
+};
+
+type KioskGeneratingVisualProps = {
+  teamName?: ReactNode;
+  slideImage?: string;
+  logoUrl?: string;
+  slideTitle?: ReactNode;
+  slideSubtitle?: ReactNode;
+  title: ReactNode;
+  subtitle: ReactNode;
+  progress: number;
+  progressLabel: ReactNode;
+  hasWaitingVideo?: boolean;
+};
+
+type KioskResultVisualProps = {
+  title: ReactNode;
+  image?: string;
+  qrImage?: string;
+  hint: ReactNode;
+  finishLabel: ReactNode;
+  onFinish?: () => void;
 };
 
 export function KioskVisualShell({
@@ -220,6 +271,170 @@ export function KioskSelectionVisual({
         )}
       </div>
       <footer className="ff-kiosk-selection-footer">{cta}</footer>
+    </section>
+  );
+}
+
+export function KioskPaymentVisual({
+  stepLabel,
+  title,
+  priceLabel,
+  pixCta,
+  pixHint,
+  waitingLabel,
+  qrHint,
+  cancelLabel,
+  status,
+  qrImage,
+  error,
+  onStartPix,
+  onCancel,
+}: KioskPaymentVisualProps) {
+  return (
+    <section className="ff-kiosk-payment">
+      <div className="ff-kiosk-payment-inner">
+        <div className="ff-kiosk-selection-step">{stepLabel}</div>
+        <h2 className="ff-kiosk-payment-title">{title}</h2>
+        <div className="ff-kiosk-payment-price">{priceLabel}</div>
+
+        {status === "choose" && (
+          <button type="button" className="ff-kiosk-pix-card" onClick={onStartPix}>
+            <QrCode />
+            <span>
+              <strong>{pixCta}</strong>
+              <small>{pixHint}</small>
+            </span>
+          </button>
+        )}
+
+        {status === "busy" && (
+          <div className="ff-kiosk-payment-busy">
+            <Loader2 />
+            <p>{waitingLabel}</p>
+          </div>
+        )}
+
+        {status === "qr" && (
+          <div className="ff-kiosk-payment-qr">
+            {qrImage ? <img src={qrImage} alt="QR Code PIX" /> : <Loader2 />}
+            <p>{qrHint}</p>
+            <button type="button" className="ff-kiosk-ghost-action" onClick={onCancel}>{cancelLabel}</button>
+          </div>
+        )}
+
+        {error && <p className="ff-kiosk-error">{error}</p>}
+      </div>
+    </section>
+  );
+}
+
+export function KioskCameraVisual({
+  title,
+  media,
+  hasPhoto,
+  countdown,
+  captureLabel,
+  retakeLabel,
+  usePhotoLabel,
+  onCapture,
+  onRetake,
+  onUsePhoto,
+}: KioskCameraVisualProps) {
+  return (
+    <section className="ff-kiosk-camera">
+      <h2>{title}</h2>
+      <div className="ff-kiosk-camera-frame">
+        {media}
+        {countdown !== null && countdown !== undefined && !hasPhoto && (
+          <div className="ff-kiosk-camera-countdown">
+            <div>{countdown}</div>
+          </div>
+        )}
+      </div>
+      <div className="ff-kiosk-camera-actions">
+        {hasPhoto ? (
+          <>
+            <button type="button" className="ff-kiosk-secondary-action" onClick={onRetake}>
+              <RefreshCw />
+              {retakeLabel}
+            </button>
+            <button type="button" className="ff-kiosk-primary-action" onClick={onUsePhoto}>{usePhotoLabel}</button>
+          </>
+        ) : (
+          <button type="button" className="ff-kiosk-primary-action is-wide" disabled={countdown !== null && countdown !== undefined} onClick={onCapture}>
+            <Camera />
+            {countdown !== null && countdown !== undefined ? `${captureLabel} ${countdown}` : captureLabel}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function KioskGeneratingVisual({
+  teamName,
+  slideImage,
+  logoUrl,
+  slideTitle,
+  slideSubtitle,
+  title,
+  subtitle,
+  progress,
+  progressLabel,
+  hasWaitingVideo,
+}: KioskGeneratingVisualProps) {
+  return (
+    <section className="ff-kiosk-generating">
+      {slideImage ? (
+        <img src={slideImage} alt="" className={`ff-kiosk-generating-media ${hasWaitingVideo ? "is-muted" : ""}`} />
+      ) : logoUrl ? (
+        <div className="ff-kiosk-generating-logo"><img src={logoUrl} alt="" /></div>
+      ) : null}
+      <div className="ff-kiosk-generating-scrim" />
+      <div className="ff-kiosk-generating-copy">
+        {teamName && <p>{teamName}</p>}
+        <h2>{slideTitle || "Sua foto esta ficando pronta"}</h2>
+        {slideSubtitle && <span>{slideSubtitle}</span>}
+      </div>
+      <div className="ff-kiosk-generating-progress">
+        <div className="ff-kiosk-generating-status">
+          <Loader2 />
+          <div>
+            <h3>{title}</h3>
+            <p>{subtitle}</p>
+          </div>
+          <strong>{progressLabel}</strong>
+        </div>
+        <div className="ff-kiosk-progress-track"><i style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} /></div>
+      </div>
+    </section>
+  );
+}
+
+export function KioskResultVisual({
+  title,
+  image,
+  qrImage,
+  hint,
+  finishLabel,
+  onFinish,
+}: KioskResultVisualProps) {
+  return (
+    <section className="ff-kiosk-result">
+      <div className="ff-kiosk-result-heading">
+        <CheckCircle2 />
+        <h2>{title}</h2>
+      </div>
+      <div className="ff-kiosk-result-image">
+        {image ? <img src={image} alt="Imagem gerada" /> : <strong>Foto IA</strong>}
+      </div>
+      <div className="ff-kiosk-result-delivery">
+        {qrImage ? <img src={qrImage} alt="QR Code de download" /> : <div className="ff-kiosk-result-fake-qr">QR</div>}
+        <div>
+          <p>{hint}</p>
+          <button type="button" className="ff-kiosk-secondary-action" onClick={onFinish} onPointerUp={onFinish}>{finishLabel}</button>
+        </div>
+      </div>
     </section>
   );
 }

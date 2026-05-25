@@ -50,4 +50,14 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("KioskSelectionVisual");
     expect(kioskSource).toContain("KioskSelectionVisual");
   });
+
+  it("shares payment, camera, generation and result visuals between the Windows app and admin preview", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
+
+    for (const componentName of ["KioskPaymentVisual", "KioskCameraVisual", "KioskGeneratingVisual", "KioskResultVisual"]) {
+      expect(adminSource).toContain(componentName);
+      expect(kioskSource).toContain(componentName);
+    }
+  });
 });
