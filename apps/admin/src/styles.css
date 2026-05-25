@@ -216,7 +216,7 @@ tbody tr:hover { background: #f9fafb; }
 .inline-kiosk-bg, .inline-kiosk-scrim { position: absolute; inset: 0; width: 100%; height: 100%; }
 .inline-kiosk-bg { object-fit: cover; opacity: .42; }
 .inline-kiosk-scrim { background: linear-gradient(180deg, rgba(0,0,0,.72), rgba(0,0,0,.9)); }
-.inline-kiosk-content { position: relative; z-index: 1; min-height: 100%; padding: 24px 22px; display: grid; grid-template-rows: auto 1fr; gap: 24px; }
+.inline-kiosk-content { position: relative; z-index: 1; min-height: 100%; padding: 24px 22px; display: grid; grid-template-rows: auto 1fr; gap: 34px; }
 .inline-kiosk-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,.18); padding-bottom: 18px; }
 .inline-kiosk-brand { min-width: 0; display: flex; align-items: center; gap: 10px; }
 .inline-kiosk-brand img { width: 36px; height: 36px; object-fit: contain; flex: none; }
@@ -235,11 +235,12 @@ tbody tr:hover { background: #f9fafb; }
 .inline-kiosk-before-after i { width: 28px; height: 4px; border-radius: 999px; background: currentColor; opacity: .7; }
 .inline-kiosk-before-after img, .inline-kiosk-before-after article > strong { width: 100%; aspect-ratio: 3 / 4; border-radius: 7px; object-fit: cover; background: rgba(255,255,255,.08); display: grid; place-items: center; color: rgba(255,255,255,.56); font-size: 11px; font-weight: 950; }
 .inline-kiosk-home > button { min-height: 54px; border: 0; border-radius: 8px; background: #ffffff; color: #050505; font-size: 15px; font-weight: 950; text-transform: uppercase; }
-.kiosk-preview-header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.16); }
-.preview-team-name, .preview-price { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 4px; border-radius: 10px; padding: 6px; }
+.kiosk-preview-header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; padding-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,.16); }
+.preview-team-name, .preview-price { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 4px; border-radius: 10px; padding: 6px; color: #ffffff; }
 .preview-team-name:hover, .preview-price:hover, .preview-team-name.selected { outline: 2px solid #60a5fa; outline-offset: 2px; }
-.preview-team-name img { width: 42px; height: 42px; object-fit: contain; background: rgba(255,255,255,.9); border-radius: 8px; padding: 4px; margin-bottom: 3px; }
-.preview-team-name span { font-weight: 950; font-size: 18px; line-height: 1; text-transform: uppercase; }
+.preview-team-name { display: flex; align-items: center; gap: 10px; }
+.preview-team-name img { width: 34px; height: 34px; object-fit: contain; border-radius: 6px; margin: 0; }
+.preview-team-name span { font-weight: 950; font-size: 20px; line-height: 1; text-transform: uppercase; }
 .preview-price { text-align: right; justify-items: end; }
 .preview-price strong { font-size: 20px; line-height: 1; }
 .builder-preview-body { min-width: 0; display: grid; gap: 16px; align-content: start; }
@@ -249,14 +250,22 @@ tbody tr:hover { background: #f9fafb; }
 .preview-inline-field { border: 0; color: inherit; font: inherit; resize: none; width: 100%; min-width: 0; padding: 4px; text-align: inherit; }
 .preview-editable.micro { color: rgba(255,255,255,.6); font-size: 11px; font-weight: 950; text-transform: uppercase; letter-spacing: 0; }
 .preview-editable.eyebrow { color: rgba(255,255,255,.62); font-size: 13px; font-weight: 950; text-transform: uppercase; }
-.preview-editable.hero-title { font-size: clamp(42px, 6vw, 58px); font-weight: 950; line-height: .95; text-transform: uppercase; letter-spacing: 0; }
+.preview-editable.hero-title { font-size: 46px; font-weight: 950; line-height: .95; text-transform: uppercase; letter-spacing: 0; }
 .preview-editable.section-title { font-size: 40px; font-weight: 950; line-height: 1; text-transform: uppercase; letter-spacing: 0; }
-.preview-editable.subtitle { color: rgba(255,255,255,.64); font-size: 18px; line-height: 1.35; max-width: 360px; }
+.preview-editable.subtitle { color: rgba(255,255,255,.64); font-size: 15px; line-height: 1.25; max-width: 350px; font-weight: 850; }
 .preview-editable.cta { min-height: 58px; border-radius: 8px; padding: 0 24px; display: inline-grid; place-items: center; background: #ffffff; color: #050505; font-size: 16px; font-weight: 950; text-transform: uppercase; width: min(320px, 100%); text-align: center; }
 .preview-editable.cta.compact { min-height: 48px; width: 100%; }
 .preview-editable.ghost-action { color: rgba(255,255,255,.88); font-weight: 950; text-transform: uppercase; text-align: center; }
 .preview-editable.status-pill { padding: 8px 14px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: rgba(255,255,255,.8); font-weight: 900; }
 .builder-asset-preview-row { display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 14px; overflow: hidden; }
+.builder-home-before-after { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin: 2px 0; }
+.builder-home-before-after button { all: unset; box-sizing: border-box; cursor: pointer; min-width: 0; border: 1px solid rgba(255,255,255,.18); border-radius: 10px; background: rgba(255,255,255,.06); padding: 9px; display: grid; gap: 8px; text-align: left; color: inherit; }
+.builder-home-before-after button:hover { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.builder-home-before-after button.highlight { border: 2px solid currentColor; }
+.builder-home-before-after div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.builder-home-before-after span { color: rgba(255,255,255,.58); font-size: 9px; font-weight: 950; text-transform: uppercase; }
+.builder-home-before-after i { width: 28px; height: 4px; border-radius: 999px; background: currentColor; opacity: .7; }
+.builder-home-before-after img, .builder-home-before-after strong { width: 100%; aspect-ratio: 3 / 4; border-radius: 7px; object-fit: cover; background: rgba(255,255,255,.08); display: grid; place-items: center; color: rgba(255,255,255,.56); font-size: 11px; font-weight: 950; }
 .builder-asset-preview-card { border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: inherit; min-height: 260px; border-radius: 12px; padding: 12px; display: grid; gap: 9px; align-content: start; text-align: left; box-shadow: none; }
 .builder-asset-preview-card:hover, .builder-asset-preview-card.selected { border-color: #fbbf24; outline: 2px solid #fbbf24; outline-offset: 2px; }
 .asset-preview-image { aspect-ratio: 1 / 1; border-radius: 8px; background: rgba(255,255,255,.92); display: grid; place-items: center; overflow: hidden; color: #64748b; }

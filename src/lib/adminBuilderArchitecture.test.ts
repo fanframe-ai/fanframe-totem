@@ -17,4 +17,12 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("function InlineKioskPreview");
     expect(adminSource).not.toContain("Configure a URL do kiosk");
   });
+
+  it("keeps the editable home preview structurally close to the kiosk home", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+
+    expect(adminSource).toContain("builder-home-before-after");
+    expect(adminSource).toContain("homeBeforeImage");
+    expect(adminSource).toContain("homeAfterImage");
+  });
 });

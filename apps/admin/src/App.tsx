@@ -1205,6 +1205,9 @@ function TeamVisualBuilder({
   const visibleShirts = shirts.filter((asset) => asset.visible !== false);
   const visibleBackgrounds = backgrounds.filter((asset) => asset.visible !== false);
   const runtimePreviewUrl = getKioskRuntimePreviewUrl(team.slug || "");
+  const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
+  const homeBeforeImage = publicAssetUrl(typeof tutorialAssets.before === "string" ? tutorialAssets.before : "");
+  const homeAfterImage = publicAssetUrl(typeof tutorialAssets.after === "string" ? tutorialAssets.after : "");
 
   const selectText = (key: string) => setSelection({ type: "text", ...builderTextFields[key] });
   const openBuilderScreen = (nextScreen: BuilderScreen) => {
@@ -1312,6 +1315,16 @@ function TeamVisualBuilder({
           <EditablePreviewText fieldKey="kiosk_home_eyebrow" texts={textOverrides} selected={selectedTextKey === "kiosk_home_eyebrow"} variant="eyebrow" onSelect={() => selectText("kiosk_home_eyebrow")} onChange={setTextOverride} />
           <EditablePreviewText fieldKey="kiosk_home_title" texts={textOverrides} selected={selectedTextKey === "kiosk_home_title"} variant="hero-title" onSelect={() => selectText("kiosk_home_title")} onChange={setTextOverride} />
           <EditablePreviewText fieldKey="kiosk_home_subtitle" texts={textOverrides} selected={selectedTextKey === "kiosk_home_subtitle"} variant="subtitle" onSelect={() => selectText("kiosk_home_subtitle")} onChange={setTextOverride} />
+          <div className="builder-home-before-after">
+            <button type="button" onClick={(event) => { event.stopPropagation(); setSelection({ type: "theme" }); }}>
+              <div><span>Antes</span><i /></div>
+              {homeBeforeImage ? <img src={homeBeforeImage} alt="" /> : <strong>Antes</strong>}
+            </button>
+            <button type="button" className="highlight" onClick={(event) => { event.stopPropagation(); setSelection({ type: "theme" }); }}>
+              <div><span>Depois</span><i /></div>
+              {homeAfterImage ? <img src={homeAfterImage} alt="" /> : <strong>Depois</strong>}
+            </button>
+          </div>
           <EditablePreviewText fieldKey="kiosk_home_cta" texts={textOverrides} selected={selectedTextKey === "kiosk_home_cta"} variant="cta" onSelect={() => selectText("kiosk_home_cta")} onChange={setTextOverride} />
         </div>
       );
