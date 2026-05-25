@@ -126,6 +126,18 @@ function mergeRuntimeConfig(current: KioskRuntimeConfig | null, remoteConfig: Re
   } as KioskRuntimeConfig;
 }
 
+function isRevokedDeviceError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("unknown device") ||
+    normalized.includes("invalid device secret") ||
+    normalized.includes("device disabled") ||
+    normalized.includes("totem nao encontrado") ||
+    normalized.includes("chave local do totem invalida")
+  );
+}
+
 function KioskButton({
   children,
   onClick,
@@ -286,6 +298,36 @@ export default function KioskPage() {
     setCameraCountdown(null);
   }, []);
 
+  const clearLocalPairing = useCallback(async (message?: string) => {
+    stopCameraCountdown();
+    stopCamera();
+    await window.fanframeKiosk?.clearDeviceIdentity?.().catch(() => undefined);
+    localStorage.removeItem("fanframe:kiosk-team");
+    setIdentity(null);
+    setConfig((current) => current ? { ...current, teamSlug: "", deviceSecret: "", deviceCode: "" } : current);
+    setSlug("");
+    setSelectedShirt(null);
+    setSelectedBackground(null);
+    setPaymentMethod(null);
+    setSessionId(null);
+    setPaymentId(null);
+    setPixQrImage(null);
+    setPixPayment(null);
+    setUserImage(null);
+    setQueueId(null);
+    setGeneratedImage(null);
+    setDeliveryUrl(null);
+    setDeliveryQrImage(null);
+    setPairingCode("");
+    setPairingError("");
+    setTechnicalOpen(false);
+    setTechnicalUnlocked(false);
+    setPinInput("");
+    setTechnicalPinError("");
+    setError(message || null);
+    setStep("pairing");
+  }, [setSlug, stopCamera, stopCameraCountdown]);
+
   const resetFlow = useCallback(() => {
     stopCameraCountdown();
     stopCamera();
@@ -378,21 +420,31 @@ export default function KioskPage() {
 
   const syncRemoteKioskState = useCallback(async (commandType?: string) => {
     if (!hasDeviceAuth) return null;
-    const state = await pollKioskState(activeDevice).catch(() => null);
+    const state = await pollKioskState(activeDevice).catch(async (err) => {
+      if (isRevokedDeviceError(err)) {
+        await clearLocalPairing("Este totem foi removido ou desativado no painel. Digite um novo codigo de instalacao.");
+      }
+      return null;
+    });
     await applyRemoteState(state, commandType);
     return state;
-  }, [activeDevice, applyRemoteState, hasDeviceAuth]);
+  }, [activeDevice, applyRemoteState, clearLocalPairing, hasDeviceAuth]);
 
   const refreshTechnicalPinHash = useCallback(async () => {
     if (!hasDeviceAuth || !identity) return identity?.supportPinHash || null;
-    const state = await pollKioskState(activeDevice).catch(() => null);
+    const state = await pollKioskState(activeDevice).catch(async (err) => {
+      if (isRevokedDeviceError(err)) {
+        await clearLocalPairing("Este totem foi removido ou desativado no painel. Digite um novo codigo de instalacao.");
+      }
+      return null;
+    });
     const supportPinHash = state?.device?.supportPinHash || null;
     if (!supportPinHash) return identity.supportPinHash || null;
     const updatedIdentity = { ...identity, supportPinHash };
     await window.fanframeKiosk?.saveDeviceIdentity?.(updatedIdentity).catch(() => undefined);
     setIdentity(updatedIdentity);
     return supportPinHash;
-  }, [activeDevice, hasDeviceAuth, identity]);
+  }, [activeDevice, clearLocalPairing, hasDeviceAuth, identity]);
 
   const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
     const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
@@ -509,6 +561,18 @@ export default function KioskPage() {
 
       setConfig(effectiveConfig);
       if (storedIdentity) {
+        try {
+          await pollKioskState({
+            deviceCode: storedIdentity.deviceCode,
+            deviceSecret: storedIdentity.deviceSecret,
+          });
+        } catch (err) {
+          if (isRevokedDeviceError(err)) {
+            await clearLocalPairing("Este totem foi removido ou desativado no painel. Digite um novo codigo de instalacao.");
+            return;
+          }
+        }
+
         setIdentity(storedIdentity);
         const pairedTeam = storedIdentity.teamSlug || effectiveConfig.teamSlug;
         if (!pairedTeam) {
@@ -536,7 +600,7 @@ export default function KioskPage() {
       setError(err instanceof Error ? err.message : "Erro ao carregar configuracao do totem.");
       setStep("maintenance");
     });
-  }, [setSlug]);
+  }, [clearLocalPairing, setSlug]);
 
   useEffect(() => {
     return window.fanframeKiosk?.onOpenTechnicalMode?.(() => {
@@ -555,10 +619,14 @@ export default function KioskPage() {
       await reportKioskHealth(activeDevice, {
         health,
         event: { eventType: "health_reported", severity: "info", payload: { step, paymentStatus: health.paymentStatus } },
-      }).catch(() => undefined);
+      }).catch(async (err) => {
+        if (isRevokedDeviceError(err)) {
+          await clearLocalPairing("Este totem foi removido ou desativado no painel. Digite um novo codigo de instalacao.");
+        }
+      });
     }, 10_000);
     return () => window.clearInterval(interval);
-  }, [activeDevice, collectHealthPayload, hasDeviceAuth, step]);
+  }, [activeDevice, clearLocalPairing, collectHealthPayload, hasDeviceAuth, step]);
 
   useEffect(() => {
     if (!hasDeviceAuth) return;
@@ -1111,20 +1179,7 @@ export default function KioskPage() {
     const confirmed = window.confirm("Resetar este totem? Ele vai perder o pareamento atual e voltar para a tela do codigo de instalacao.");
     if (!confirmed) return;
 
-    stopCamera();
-    await window.fanframeKiosk?.clearDeviceIdentity?.().catch(() => undefined);
-    localStorage.removeItem("fanframe:kiosk-team");
-    setIdentity(null);
-    setConfig((current) => current ? { ...current, teamSlug: "", deviceSecret: "" } : current);
-    setSlug("");
-    setError(null);
-    setPairingCode("");
-    setPairingError("");
-    setTechnicalOpen(false);
-    setTechnicalUnlocked(false);
-    setPinInput("");
-    setTechnicalPinError("");
-    setStep("pairing");
+    await clearLocalPairing();
   };
 
   const runAllTechnicalTests = async () => {
