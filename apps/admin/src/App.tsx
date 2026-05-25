@@ -1158,56 +1158,23 @@ function EditablePreviewText({
   );
 }
 
-function InlineKioskPreview({ team, textOverrides }: { team: Partial<TeamRow>; textOverrides: Record<string, string> }) {
+function InlineKioskPreview({ team, children }: { team: Partial<TeamRow>; children: React.ReactNode }) {
   const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
-  const beforeImage = publicAssetUrl(typeof tutorialAssets.before === "string" ? tutorialAssets.before : "");
-  const afterImage = publicAssetUrl(typeof tutorialAssets.after === "string" ? tutorialAssets.after : "");
   const backgroundImage = publicAssetUrl(typeof tutorialAssets.kioskBackground === "string" ? tutorialAssets.kioskBackground : "");
-  const logoUrl = publicAssetUrl(team.logo_url || "");
 
   return (
     <div
       className="inline-kiosk-preview"
       style={{
         backgroundColor: team.primary_color || "#000000",
-        color: team.secondary_color || "#ffffff",
+        color: "#ffffff",
         fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
       }}
     >
       {backgroundImage && <img className="inline-kiosk-bg" src={backgroundImage} alt="" />}
       <div className="inline-kiosk-scrim" />
       <div className="inline-kiosk-content">
-        <header className="inline-kiosk-header">
-          <div className="inline-kiosk-brand">
-            {logoUrl && <img src={logoUrl} alt="" />}
-            <div>
-              <span>{readBuilderText(textOverrides, "kiosk_brand_label")}</span>
-              <strong>{team.name || "Nome do time"}</strong>
-            </div>
-          </div>
-          <div className="inline-kiosk-price">
-            <span>{readBuilderText(textOverrides, "kiosk_total_label")}</span>
-            <strong>{money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}</strong>
-          </div>
-        </header>
-        <main className="inline-kiosk-home">
-          <div className="inline-kiosk-copy">
-            <span>{readBuilderText(textOverrides, "kiosk_home_eyebrow")}</span>
-            <h2>{readBuilderText(textOverrides, "kiosk_home_title")}</h2>
-            <p>{readBuilderText(textOverrides, "kiosk_home_subtitle")}</p>
-          </div>
-          <div className="inline-kiosk-before-after">
-            <article>
-              <div><span>Antes</span><i /></div>
-              {beforeImage ? <img src={beforeImage} alt="" /> : <strong>Antes</strong>}
-            </article>
-            <article className="highlight">
-              <div><span>Depois</span><i /></div>
-              {afterImage ? <img src={afterImage} alt="" /> : <strong>Depois</strong>}
-            </article>
-          </div>
-          <button type="button">{readBuilderText(textOverrides, "kiosk_home_cta")}</button>
-        </main>
+        {children}
       </div>
     </div>
   );
@@ -1240,6 +1207,17 @@ function TeamVisualBuilder({
   const runtimePreviewUrl = getKioskRuntimePreviewUrl(team.slug || "");
 
   const selectText = (key: string) => setSelection({ type: "text", ...builderTextFields[key] });
+  const openBuilderScreen = (nextScreen: BuilderScreen) => {
+    setScreen(nextScreen);
+    const defaultTextByScreen: Record<BuilderScreen, string> = {
+      home: "kiosk_home_title",
+      shirts: "kiosk_shirt_title",
+      backgrounds: "kiosk_background_title",
+      pix: "kiosk_payment_title",
+      result: "kiosk_result_title",
+    };
+    selectText(defaultTextByScreen[nextScreen]);
+  };
   const updateAsset = (kind: "shirt" | "background", index: number, patch: Partial<TeamAsset>) => {
     const current = kind === "shirt" ? shirts : backgrounds;
     const next = [...current];
@@ -1403,7 +1381,7 @@ function TeamVisualBuilder({
         </div>
         <div className="builder-screen-list">
           {builderScreens.map((item) => (
-            <button type="button" key={item.id} className={screen === item.id ? "active" : ""} onClick={() => setScreen(item.id)}>
+            <button type="button" key={item.id} className={screen === item.id ? "active" : ""} onClick={() => openBuilderScreen(item.id)}>
               {item.label}
             </button>
           ))}
@@ -1424,20 +1402,14 @@ function TeamVisualBuilder({
           <div className="runtime-preview-toolbar">
             <div>
               <strong>Preview real do app</strong>
-              <span>Esta area carrega a mesma rota `/kiosk` usada no totem. Publique as mudancas para ver exatamente o que chega no app.</span>
+              <span>Edite clicando nos textos e cards. Publique as mudancas para enviar ao app do totem.</span>
             </div>
             {runtimePreviewUrl && <a className="secondary link-button" href={runtimePreviewUrl} target="_blank" rel="noopener noreferrer">Abrir grande</a>}
           </div>
-          {runtimePreviewUrl ? (
-            <iframe
-              title="Preview real do kiosk"
-              src={runtimePreviewUrl}
-              className="runtime-preview-iframe"
-              loading="lazy"
-            />
-          ) : (
-            <InlineKioskPreview team={team} textOverrides={textOverrides} />
-          )}
+          <InlineKioskPreview team={team}>
+            {renderHeader()}
+            {renderPreviewScreen()}
+          </InlineKioskPreview>
         </div>
       </section>
 

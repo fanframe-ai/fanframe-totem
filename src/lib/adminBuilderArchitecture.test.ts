@@ -6,7 +6,8 @@ describe("admin visual builder architecture", () => {
     const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
 
     expect(adminSource).toContain("function getKioskRuntimePreviewUrl");
-    expect(adminSource).toContain('title="Preview real do kiosk"');
+    expect(adminSource).toContain("function InlineKioskPreview");
+    expect(adminSource).toContain("renderPreviewScreen()");
     expect(adminSource).not.toContain('className="builder-phone"');
   });
 
