@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const DELIVERY_PUBLIC_ORIGIN = (Deno.env.get("KIOSK_DELIVERY_PUBLIC_ORIGIN") || "").replace(/\/$/, "");
 
 function getSupabaseClient() {
   return createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -32,6 +33,13 @@ function addHours(date: Date, hours: number) {
 
 function createToken() {
   return crypto.randomUUID().replaceAll("-", "");
+}
+
+function buildPublicDeliveryUrl(token: string) {
+  const encodedToken = encodeURIComponent(token);
+  return DELIVERY_PUBLIC_ORIGIN
+    ? `${DELIVERY_PUBLIC_ORIGIN}/foto/${encodedToken}`
+    : `${SUPABASE_URL}/functions/v1/create-delivery-link?token=${encodedToken}`;
 }
 
 function escapeHtml(value: string) {
@@ -223,6 +231,34 @@ serve(async (req) => {
   if (req.method === "POST") {
     try {
       const body = await req.json().catch(() => ({}));
+      if (body?.action === "get_delivery") {
+        const token = String(body.token || "");
+        if (!token) return jsonResponse({ error: "Missing token" }, 400);
+
+        const { data: link, error } = await supabase
+          .from("kiosk_delivery_links")
+          .select("*, teams(name, logo_url, tutorial_assets)")
+          .eq("token", token)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!link) return jsonResponse({ error: "Link not found" }, 404);
+        if (new Date(link.expires_at).getTime() < Date.now()) {
+          return jsonResponse({ error: "Link expired" }, 410);
+        }
+
+        await supabase
+          .from("kiosk_delivery_links")
+          .update({ download_count: (link.download_count || 0) + 1 })
+          .eq("id", link.id);
+
+        return jsonResponse({
+          imageUrl: link.result_image_url,
+          expiresAt: link.expires_at,
+          team: firstTeam(link.teams),
+        });
+      }
+
       if (body?.action === "share_consent") {
         const token = String(body.token || "");
         if (!token) return jsonResponse({ error: "Missing token" }, 400);
@@ -311,7 +347,7 @@ serve(async (req) => {
       return jsonResponse({
         token,
         expiresAt,
-        deliveryUrl: `${SUPABASE_URL}/functions/v1/create-delivery-link?token=${encodeURIComponent(token)}`,
+        deliveryUrl: buildPublicDeliveryUrl(token),
       });
     } catch (error) {
       console.error("[create-delivery-link]", error);

@@ -104,4 +104,18 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("resolveTeamFontFamily");
     expect(kioskSource).toContain("resolveTeamFontFamily");
   });
+
+  it("serves the QR Code delivery experience from the public admin domain route", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const cssSource = readFileSync("apps/admin/src/styles.css", "utf8");
+
+    expect(adminSource).toContain('path="/foto/:token"');
+    expect(adminSource).toContain("function DeliveryPage");
+    expect(adminSource).toContain('action: "get_delivery"');
+    expect(adminSource).toContain("Baixar foto");
+    expect(adminSource).toContain("Compartilhar");
+    expect(adminSource).toContain("Abrir Instagram");
+    expect(cssSource).toContain(".delivery-page");
+    expect(cssSource).toContain(".delivery-photo-card");
+  });
 });

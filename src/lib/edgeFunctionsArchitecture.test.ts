@@ -5,7 +5,9 @@ describe("edge functions architecture", () => {
   it("allows create-delivery-link POST requests from the kiosk flow", () => {
     const source = readFileSync("supabase/functions/create-delivery-link/index.ts", "utf8");
 
+    expect(source).toContain("KIOSK_DELIVERY_PUBLIC_ORIGIN");
     expect(source).toContain('if (req.method === "POST")');
+    expect(source).toContain('if (body?.action === "get_delivery")');
     expect(source).toContain('if (body?.action === "share_consent")');
     expect(source).toContain('const sessionId = body.session_id as string | undefined');
     expect(source).not.toContain('if (body?.action !== "share_consent")');

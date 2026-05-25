@@ -24,7 +24,7 @@ import {
   Type,
   Users,
 } from "lucide-react";
-import { supabase, publicAssetUrl } from "./lib/supabase";
+import { supabase, publicAssetUrl, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, logAdminAudit, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
 import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
@@ -3273,11 +3273,191 @@ function SettingsPage() {
   );
 }
 
+type DeliveryPayload = {
+  imageUrl?: string;
+  expiresAt?: string;
+  team?: {
+    name?: string | null;
+    logo_url?: string | null;
+    tutorial_assets?: TeamTutorialAssets | null;
+  } | null;
+  error?: string;
+};
+
+function normalizeInstagramUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const input = value.trim();
+  try {
+    const url = new URL(input);
+    const handle = url.pathname.split("/").filter(Boolean)[0] || "";
+    return handle ? `https://instagram.com/${encodeURIComponent(handle)}` : "";
+  } catch {
+    const handle = input.replace(/^@/, "");
+    return /^[A-Za-z0-9._]{1,30}$/.test(handle) ? `https://instagram.com/${encodeURIComponent(handle)}` : "";
+  }
+}
+
+function normalizeWhatsAppUrl(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const input = value.trim();
+  try {
+    const url = new URL(input);
+    const phone = url.hostname.toLowerCase() === "wa.me"
+      ? url.pathname.split("/").filter(Boolean)[0] || ""
+      : url.searchParams.get("phone") || "";
+    const digits = phone.replace(/\D/g, "");
+    return digits ? `https://wa.me/${digits}` : "";
+  } catch {
+    const digits = input.replace(/\D/g, "");
+    return digits ? `https://wa.me/${digits}` : "";
+  }
+}
+
+function DeliveryPage() {
+  const { token = "" } = useParams();
+  const [payload, setPayload] = useState<DeliveryPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    async function loadDelivery() {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/create-delivery-link`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ action: "get_delivery", token }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data?.error || "Nao foi possivel carregar sua foto.");
+        if (alive) setPayload(data);
+      } catch (deliveryError) {
+        if (alive) setError(deliveryError instanceof Error ? deliveryError.message : "Nao foi possivel carregar sua foto.");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+    loadDelivery();
+    return () => { alive = false; };
+  }, [token]);
+
+  const tutorialAssets = payload?.team?.tutorial_assets || {};
+  const logoUrl = publicAssetUrl(String(tutorialAssets.deliveryLogo || payload?.team?.logo_url || ""));
+  const teamName = payload?.team?.name || "FanFrame";
+  const imageUrl = payload?.imageUrl || "";
+  const instagramUrl = normalizeInstagramUrl(tutorialAssets.deliveryInstagram);
+  const whatsAppUrl = normalizeWhatsAppUrl(tutorialAssets.deliveryWhatsApp);
+  const customMessage = typeof tutorialAssets.deliveryMessage === "string" && tutorialAssets.deliveryMessage.trim()
+    ? tutorialAssets.deliveryMessage.trim()
+    : "Sua foto ficou pronta. Baixe no celular e compartilhe com quem vive essa experiencia com voce.";
+
+  async function sharePhoto() {
+    if (!imageUrl) return;
+    if (navigator.share) {
+      await navigator.share({
+        title: "Minha foto FanFrame",
+        text: "Olha minha foto gerada no totem FanFrame.",
+        url: imageUrl,
+      }).catch(() => undefined);
+      return;
+    }
+    await navigator.clipboard?.writeText(imageUrl).catch(() => undefined);
+    setMessage("Link copiado para a area de transferencia.");
+  }
+
+  async function registerConsent() {
+    setMessage("");
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-delivery-link`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ action: "share_consent", token }),
+      });
+      if (!response.ok) throw new Error("Nao foi possivel registrar agora.");
+      setMessage("Autorizacao registrada. Obrigado!");
+    } catch (consentError) {
+      setMessage(consentError instanceof Error ? consentError.message : "Nao foi possivel registrar agora.");
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="delivery-page">
+        <section className="delivery-shell compact">
+          <span className="delivery-kicker">FanFrame</span>
+          <h1>Carregando sua foto</h1>
+          <p>Aguarde so um instante.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (error || !imageUrl) {
+    return (
+      <main className="delivery-page">
+        <section className="delivery-shell compact">
+          <span className="delivery-kicker">FanFrame</span>
+          <h1>Link indisponivel</h1>
+          <p>{error || "Nao encontramos a foto deste QR Code."}</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="delivery-page">
+      <section className="delivery-shell">
+        <header className="delivery-header">
+          {logoUrl ? <img src={logoUrl} alt={`Logo ${teamName}`} /> : <div className="delivery-logo-fallback">FF</div>}
+          <div>
+            <span className="delivery-kicker">{teamName}</span>
+            <h1>Foto pronta</h1>
+          </div>
+        </header>
+
+        <p className="delivery-message">{customMessage}</p>
+
+        <figure className="delivery-photo-card">
+          <img src={imageUrl} alt="Foto gerada pelo FanFrame" />
+        </figure>
+
+        <div className="delivery-actions">
+          <a className="delivery-primary" href={imageUrl} download="fanframe-foto.jpg">Baixar foto</a>
+          <button type="button" className="delivery-secondary" onClick={sharePhoto}>Compartilhar</button>
+          {instagramUrl && <a className="delivery-secondary" href={instagramUrl} target="_blank" rel="noreferrer">Abrir Instagram</a>}
+        </div>
+
+        <section className="delivery-consent">
+          <strong>Quer aparecer nas redes?</strong>
+          <p>Autorize o FanFrame a avaliar esta foto para posts e stories. A publicacao continua sendo revisada manualmente.</p>
+          <button type="button" onClick={registerConsent}>Autorizo usar minha foto</button>
+        </section>
+
+        {whatsAppUrl && <a className="delivery-support" href={whatsAppUrl} target="_blank" rel="noreferrer">Falar com suporte</a>}
+        {payload?.expiresAt && <small>Link valido ate {dateTime(payload.expiresAt)}.</small>}
+        {message && <p className="delivery-feedback">{message}</p>}
+      </section>
+    </main>
+  );
+}
+
 function App() {
   const auth = useAuth();
 
   return (
     <Routes>
+      <Route path="/foto/:token" element={<DeliveryPage />} />
       <Route path="/login" element={auth.user && auth.role ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/*" element={
         <Protected auth={auth}>
