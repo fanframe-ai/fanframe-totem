@@ -109,6 +109,7 @@ const initialTechnicalChecks: TechnicalChecks = {
 
 const paymentTestModeStorageKey = "fanframe:kiosk-payment-test-mode";
 const cameraMirrorStorageKey = "fanframe:kiosk-camera-mirror";
+const pairingTechnicalPin = "0000";
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -1207,8 +1208,14 @@ export default function KioskPage() {
           {!technicalUnlocked ? (
             <form onSubmit={async (event) => {
               event.preventDefault();
-              if (!identity?.supportPinHash) {
+              const isPairingTechnicalPin = step === "pairing" && pinInput.trim() === pairingTechnicalPin;
+              if (!identity?.supportPinHash && !isPairingTechnicalPin) {
                 setTechnicalPinError("PIN tecnico nao configurado neste totem. Peca um novo codigo de instalacao ao administrador.");
+                return;
+              }
+              if (isPairingTechnicalPin) {
+                setTechnicalUnlocked(true);
+                setTechnicalPinError("");
                 return;
               }
               let supportPinHash = identity?.supportPinHash;
