@@ -1,0 +1,11 @@
+.git
+.vercel
+node_modules
+apps/*/node_modules
+dist
+apps/*/dist
+release
+*.log
+.env
+.env.*
+kiosk.config.json
