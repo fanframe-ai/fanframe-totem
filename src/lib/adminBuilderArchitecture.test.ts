@@ -91,4 +91,17 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).not.toContain('`${team.slug || "novo"}/branding/${name}.${extension}`');
     expect(adminSource).not.toContain('`${team.slug || "novo"}/experience/${target}.${extension}`');
   });
+
+  it("includes the official Flamengo toolkit font fallback in admin and kiosk", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const adminMain = readFileSync("apps/admin/src/main.tsx", "utf8");
+    const kioskMain = readFileSync("src/main.tsx", "utf8");
+    const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
+
+    expect(adminMain).toContain("@fontsource-variable/zalando-sans-expanded");
+    expect(kioskMain).toContain("@fontsource-variable/zalando-sans-expanded");
+    expect(adminSource).toContain("Zalando Sans Expanded");
+    expect(adminSource).toContain("resolveTeamFontFamily");
+    expect(kioskSource).toContain("resolveTeamFontFamily");
+  });
 });

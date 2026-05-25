@@ -275,6 +275,17 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
+const flamengoToolkitFontFamily = '"Zalando Sans Expanded", Arial, sans-serif';
+
+function isFlamengoTeam(team: Partial<Pick<TeamRow, "name" | "slug">>) {
+  return [team.slug, team.name].some((value) => slugify(String(value || "")).includes("flamengo"));
+}
+
+function resolveTeamFontFamily(team: Partial<Pick<TeamRow, "name" | "slug" | "kiosk_font_family">>) {
+  if (isFlamengoTeam(team)) return flamengoToolkitFontFamily;
+  return team.kiosk_font_family || "Inter, system-ui, sans-serif";
+}
+
 function isOffline(lastSeen: string | null | undefined) {
   return isDeviceOffline(lastSeen);
 }
@@ -977,7 +988,7 @@ function KioskOnlinePreview() {
           <div
             className="kiosk-online-preview"
             style={{
-              fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
+              fontFamily: resolveTeamFontFamily(team),
               borderColor: team.primary_color || "#ffffff",
             }}
           >
@@ -1103,6 +1114,7 @@ const builderScreens: Array<{ id: BuilderScreen; label: string }> = [
 
 const fontOptions = [
   { label: "Padrao limpo", value: "Inter, system-ui, sans-serif" },
+  { label: "Flamengo oficial - toolkit", value: flamengoToolkitFontFamily },
   { label: "Esportivo forte", value: "Arial Black, Impact, system-ui, sans-serif" },
   { label: "Classico editorial", value: "Georgia, Times New Roman, serif" },
   { label: "Moderno tecnico", value: "Segoe UI, system-ui, sans-serif" },
@@ -1211,7 +1223,7 @@ function InlineKioskPreview({
       shellStyle={{
         backgroundColor: team.primary_color || "#000000",
         color: "#ffffff",
-        fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
+        fontFamily: resolveTeamFontFamily(team),
       }}
       backgroundImage={backgroundImage}
       ghostLogoUrl={publicAssetUrl(team.logo_url || "")}
@@ -1530,10 +1542,15 @@ function TeamVisualBuilder({
               <label>Texto<input type="color" value={team.secondary_color || "#ffffff"} onChange={(event) => set("secondary_color", event.target.value)} /></label>
             </div>
             <label>Fonte do time
-              <select value={team.kiosk_font_family || "Inter, system-ui, sans-serif"} onChange={(event) => set("kiosk_font_family", event.target.value)}>
+              <select
+                value={resolveTeamFontFamily(team)}
+                onChange={(event) => set("kiosk_font_family", event.target.value)}
+                disabled={isFlamengoTeam(team)}
+              >
                 {fontOptions.map((font) => <option key={font.value} value={font.value}>{font.label}</option>)}
               </select>
             </label>
+            {isFlamengoTeam(team) && <p className="hint">Obrigatorio para Flamengo: fonte oficial secundaria do toolkit, Zalando Sans Expanded.</p>}
             <label>Preco da foto (R$)<input type="number" min="0" step="0.01" value={centsToReais(team.kiosk_price_cents)} onChange={(event) => set("kiosk_price_cents", reaisToCents(event.target.value))} /></label>
             <label>Contagem da foto (s)<input type="number" min="0" max="10" value={team.kiosk_camera_countdown_seconds ?? 5} onChange={(event) => set("kiosk_camera_countdown_seconds", Number(event.target.value))} /></label>
             <label className="inline-check"><input type="checkbox" checked={team.kiosk_enabled !== false} onChange={(event) => set("kiosk_enabled", event.target.checked)} /> Permitir vendas desse time</label>
@@ -1694,6 +1711,7 @@ function TeamForm() {
     const finalSlug = team.slug || slugify(team.name || `time-${Date.now()}`);
     const normalizedTeam = {
       ...team,
+      kiosk_font_family: isFlamengoTeam({ ...team, slug: finalSlug }) ? flamengoToolkitFontFamily : team.kiosk_font_family,
       kiosk_price_cents: Number(team.kiosk_price_cents || 0),
       kiosk_timeout_seconds: Math.min(180, Math.max(15, Number(team.kiosk_timeout_seconds || 60))),
       kiosk_camera_countdown_seconds: Math.min(10, Math.max(0, Number(team.kiosk_camera_countdown_seconds ?? 5))),

@@ -35,6 +35,23 @@ import {
 } from "@/lib/kiosk";
 import type { KioskRuntimeConfig, KioskTechnicalStatus, KioskUpdateStatus, StoredDeviceIdentity } from "@/types/kiosk";
 
+const flamengoToolkitFontFamily = '"Zalando Sans Expanded", Arial, sans-serif';
+
+function slugifyTeamName(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function resolveTeamFontFamily(team: { name?: string | null; slug?: string | null; kiosk_font_family?: string | null }) {
+  const isFlamengo = [team.slug, team.name].some((value) => slugifyTeamName(String(value || "")).includes("flamengo"));
+  if (isFlamengo) return flamengoToolkitFontFamily;
+  return team.kiosk_font_family || "Inter, system-ui, sans-serif";
+}
+
 type KioskStep =
   | "boot"
   | "pairing"
@@ -1312,7 +1329,7 @@ export default function KioskPage() {
   const shellStyle = team ? ({
     "--team-primary": team.primary_color,
     "--team-secondary": team.secondary_color,
-    fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
+    fontFamily: resolveTeamFontFamily(team),
   } as React.CSSProperties) : undefined;
   const maintenanceError = error ? classifyKioskError(error) : null;
   const backAction = getBackAction();
