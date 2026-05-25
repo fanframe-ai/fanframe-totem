@@ -243,6 +243,8 @@ tbody tr:hover { background: #f9fafb; }
 .preview-team-name span { font-weight: 950; font-size: 30px; line-height: 1; text-transform: uppercase; }
 .preview-price { text-align: right; justify-items: end; }
 .preview-price strong { font-size: 30px; line-height: 1; }
+.ff-kiosk-price-value .preview-price-value { all: unset; box-sizing: border-box; cursor: pointer; color: inherit; border-radius: 10px; padding: 4px; font: inherit; }
+.ff-kiosk-price-value .preview-price-value:hover { outline: 2px solid #60a5fa; outline-offset: 2px; }
 .builder-preview-body { min-width: 0; display: grid; gap: 16px; align-content: start; }
 .builder-preview-body.centered { align-content: center; justify-items: center; text-align: center; }
 .preview-editable { all: unset; box-sizing: border-box; cursor: text; border-radius: 10px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

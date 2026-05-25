@@ -21,7 +21,7 @@ describe("admin visual builder architecture", () => {
   it("keeps the editable home preview structurally close to the kiosk home", () => {
     const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
 
-    expect(adminSource).toContain("builder-home-before-after");
+    expect(adminSource).toContain("KioskHomeVisual");
     expect(adminSource).toContain("homeBeforeImage");
     expect(adminSource).toContain("homeAfterImage");
   });
@@ -31,5 +31,15 @@ describe("admin visual builder architecture", () => {
 
     expect(cssSource).toContain("width: min(620px, 100%)");
     expect(cssSource).toContain("min-height: 980px");
+  });
+
+  it("shares kiosk visual components between the Windows app and admin preview", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
+
+    expect(adminSource).toContain("KioskVisualShell");
+    expect(kioskSource).toContain("KioskVisualShell");
+    expect(adminSource).toContain("KioskHomeVisual");
+    expect(kioskSource).toContain("KioskHomeVisual");
   });
 });

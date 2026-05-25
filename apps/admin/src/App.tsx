@@ -28,6 +28,7 @@ import { supabase, publicAssetUrl } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, logAdminAudit, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
 import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
+import { KioskHomeVisual, KioskVisualShell } from "../../../src/shared/kiosk-ui/KioskVisual";
 import {
   buildDeviceLocationLabel,
   getDeviceVersionStatus,
@@ -1158,25 +1159,45 @@ function EditablePreviewText({
   );
 }
 
-function InlineKioskPreview({ team, children }: { team: Partial<TeamRow>; children: React.ReactNode }) {
+function InlineKioskPreview({
+  team,
+  brandLabel,
+  teamName,
+  totalLabel,
+  priceLabel,
+  onThemeSelect,
+  children,
+}: {
+  team: Partial<TeamRow>;
+  brandLabel: React.ReactNode;
+  teamName: React.ReactNode;
+  totalLabel: React.ReactNode;
+  priceLabel: React.ReactNode;
+  onThemeSelect: () => void;
+  children: React.ReactNode;
+}) {
   const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
   const backgroundImage = publicAssetUrl(typeof tutorialAssets.kioskBackground === "string" ? tutorialAssets.kioskBackground : "");
 
   return (
-    <div
+    <KioskVisualShell
       className="inline-kiosk-preview"
-      style={{
+      shellStyle={{
         backgroundColor: team.primary_color || "#000000",
         color: "#ffffff",
         fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
       }}
+      backgroundImage={backgroundImage}
+      ghostLogoUrl={publicAssetUrl(team.logo_url || "")}
+      logoUrl={publicAssetUrl(team.logo_url || "")}
+      logoAlt={team.name || ""}
+      brandLabel={brandLabel}
+      teamName={teamName}
+      totalLabel={totalLabel}
+      priceLabel={<button type="button" className="preview-price-value" onClick={(event) => { event.stopPropagation(); onThemeSelect(); }}>{priceLabel}</button>}
     >
-      {backgroundImage && <img className="inline-kiosk-bg" src={backgroundImage} alt="" />}
-      <div className="inline-kiosk-scrim" />
-      <div className="inline-kiosk-content">
-        {children}
-      </div>
-    </div>
+      {children}
+    </KioskVisualShell>
   );
 }
 
@@ -1279,21 +1300,6 @@ function TeamVisualBuilder({
     applyTeamPatch(result.team);
     setRecipeMessage("Receita aplicada no rascunho. Publique para chegar no totem.");
   };
-  const renderHeader = () => (
-    <div className="kiosk-preview-header">
-      <div>
-        <EditablePreviewText fieldKey="kiosk_brand_label" texts={textOverrides} selected={selectedTextKey === "kiosk_brand_label"} variant="micro" onSelect={() => selectText("kiosk_brand_label")} onChange={setTextOverride} />
-        <button type="button" className={`preview-team-name ${selection.type === "logo" ? "selected" : ""}`} onClick={(event) => { event.stopPropagation(); setSelection({ type: "logo" }); }}>
-          {team.logo_url ? <img src={publicAssetUrl(team.logo_url)} alt="" /> : null}
-          <span>{team.name || "Nome do time"}</span>
-        </button>
-      </div>
-      <button type="button" className="preview-price" onClick={(event) => { event.stopPropagation(); setSelection({ type: "theme" }); }}>
-        <EditablePreviewText fieldKey="kiosk_total_label" texts={textOverrides} selected={selectedTextKey === "kiosk_total_label"} variant="micro" onSelect={() => selectText("kiosk_total_label")} onChange={setTextOverride} />
-        <strong>{money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}</strong>
-      </button>
-    </div>
-  );
   const renderAssetCard = (asset: TeamAsset, index: number, kind: "shirt" | "background") => (
     <button
       type="button"
@@ -1311,22 +1317,15 @@ function TeamVisualBuilder({
   const renderPreviewScreen = () => {
     if (screen === "home") {
       return (
-        <div className="builder-preview-body centered">
-          <EditablePreviewText fieldKey="kiosk_home_eyebrow" texts={textOverrides} selected={selectedTextKey === "kiosk_home_eyebrow"} variant="eyebrow" onSelect={() => selectText("kiosk_home_eyebrow")} onChange={setTextOverride} />
-          <EditablePreviewText fieldKey="kiosk_home_title" texts={textOverrides} selected={selectedTextKey === "kiosk_home_title"} variant="hero-title" onSelect={() => selectText("kiosk_home_title")} onChange={setTextOverride} />
-          <EditablePreviewText fieldKey="kiosk_home_subtitle" texts={textOverrides} selected={selectedTextKey === "kiosk_home_subtitle"} variant="subtitle" onSelect={() => selectText("kiosk_home_subtitle")} onChange={setTextOverride} />
-          <div className="builder-home-before-after">
-            <button type="button" onClick={(event) => { event.stopPropagation(); setSelection({ type: "theme" }); }}>
-              <div><span>Antes</span><i /></div>
-              {homeBeforeImage ? <img src={homeBeforeImage} alt="" /> : <strong>Antes</strong>}
-            </button>
-            <button type="button" className="highlight" onClick={(event) => { event.stopPropagation(); setSelection({ type: "theme" }); }}>
-              <div><span>Depois</span><i /></div>
-              {homeAfterImage ? <img src={homeAfterImage} alt="" /> : <strong>Depois</strong>}
-            </button>
-          </div>
-          <EditablePreviewText fieldKey="kiosk_home_cta" texts={textOverrides} selected={selectedTextKey === "kiosk_home_cta"} variant="cta" onSelect={() => selectText("kiosk_home_cta")} onChange={setTextOverride} />
-        </div>
+        <KioskHomeVisual
+          eyebrow={<EditablePreviewText fieldKey="kiosk_home_eyebrow" texts={textOverrides} selected={selectedTextKey === "kiosk_home_eyebrow"} variant="eyebrow" onSelect={() => selectText("kiosk_home_eyebrow")} onChange={setTextOverride} />}
+          title={<EditablePreviewText fieldKey="kiosk_home_title" texts={textOverrides} selected={selectedTextKey === "kiosk_home_title"} variant="hero-title" onSelect={() => selectText("kiosk_home_title")} onChange={setTextOverride} />}
+          subtitle={<EditablePreviewText fieldKey="kiosk_home_subtitle" texts={textOverrides} selected={selectedTextKey === "kiosk_home_subtitle"} variant="subtitle" onSelect={() => selectText("kiosk_home_subtitle")} onChange={setTextOverride} />}
+          beforeImage={homeBeforeImage}
+          afterImage={homeAfterImage}
+          onMediaSelect={() => setSelection({ type: "theme" })}
+          cta={<EditablePreviewText fieldKey="kiosk_home_cta" texts={textOverrides} selected={selectedTextKey === "kiosk_home_cta"} variant="cta" onSelect={() => selectText("kiosk_home_cta")} onChange={setTextOverride} />}
+        />
       );
     }
     if (screen === "shirts") {
@@ -1419,8 +1418,18 @@ function TeamVisualBuilder({
             </div>
             {runtimePreviewUrl && <a className="secondary link-button" href={runtimePreviewUrl} target="_blank" rel="noopener noreferrer">Abrir grande</a>}
           </div>
-          <InlineKioskPreview team={team}>
-            {renderHeader()}
+          <InlineKioskPreview
+            team={team}
+            brandLabel={<EditablePreviewText fieldKey="kiosk_brand_label" texts={textOverrides} selected={selectedTextKey === "kiosk_brand_label"} variant="micro" onSelect={() => selectText("kiosk_brand_label")} onChange={setTextOverride} />}
+            teamName={
+              <button type="button" className={`preview-team-name ${selection.type === "logo" ? "selected" : ""}`} onClick={(event) => { event.stopPropagation(); setSelection({ type: "logo" }); }}>
+                {team.name || "Nome do time"}
+              </button>
+            }
+            totalLabel={<EditablePreviewText fieldKey="kiosk_total_label" texts={textOverrides} selected={selectedTextKey === "kiosk_total_label"} variant="micro" onSelect={() => selectText("kiosk_total_label")} onChange={setTextOverride} />}
+            priceLabel={money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}
+            onThemeSelect={() => setSelection({ type: "theme" })}
+          >
             {renderPreviewScreen()}
           </InlineKioskPreview>
         </div>

@@ -9,6 +9,7 @@ import { getAssetFullUrl } from "@/config/fanframe";
 import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
 import beforeExampleImage from "@/assets/before-example.jpg";
 import afterExampleImage from "@/assets/after-example.png";
+import { KioskHomeVisual, KioskVisualShell } from "@/shared/kiosk-ui/KioskVisual";
 import {
   buildDeliveryUrl,
   classifyKioskError,
@@ -1373,80 +1374,33 @@ export default function KioskPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground" style={shellStyle}>
-      {renderTechnicalHotspot()}
-      <div className="pointer-events-none fixed inset-0">
-        {tutorialAssets.kioskBackground && (
-          <img src={tutorialAssets.kioskBackground} alt="" className="h-full w-full object-cover opacity-[0.24]" />
-        )}
-        {tutorialAssets.waitingVideo && step === "generating" && (
-          <video
-            src={tutorialAssets.waitingVideo}
-            className="h-full w-full object-cover opacity-[0.34]"
-            autoPlay
-            loop
-            muted
-            playsInline
-          />
-        )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(0_0_0_/_0.72),rgb(0_0_0_/_0.9))]" />
-        {team?.logo_url && (
-          <img src={team.logo_url} alt="" className="absolute right-[-7%] top-[18%] h-[52vh] max-h-[520px] w-auto object-contain opacity-[0.07]" />
-        )}
-      </div>
-      <div className="relative z-10 min-h-screen h-screen px-12 py-10 flex flex-col gap-8">
-        <header className="shrink-0 flex items-center justify-between border-b border-border pb-6">
-          <div className="min-w-0 flex items-center gap-5">
-            {team?.logo_url && <img src={team.logo_url} alt={team.name} className="w-20 h-20 object-contain shrink-0" />}
-            <div className="min-w-0">
-              <p className="text-base uppercase text-muted-foreground font-black tracking-wide">{copy("kiosk_brand_label", "FanFrame Totem")}</p>
-              <h1 className="text-4xl font-black uppercase leading-tight truncate">{team?.name}</h1>
-            </div>
-          </div>
-          <div className="text-right shrink-0 pl-6">
-            <p className="text-base text-muted-foreground uppercase font-black">{copy("kiosk_total_label", "Total")}</p>
-            <p className="text-4xl font-black">{priceLabel}</p>
-          </div>
-        </header>
-
-        {backAction && (
-          <button
-            type="button"
-            aria-label={copy("kiosk_back", "Voltar")}
-            onClick={backAction}
-            className="fixed left-12 top-36 z-40 grid h-20 w-20 place-items-center rounded-full border-2 border-border bg-card/90 text-foreground shadow-[0_18px_48px_rgb(0_0_0_/_0.35)] backdrop-blur active:scale-95"
-          >
-            <ArrowLeft className="h-10 w-10" strokeWidth={3} />
-          </button>
-        )}
+    <KioskVisualShell
+      shellStyle={shellStyle}
+      backgroundImage={tutorialAssets.kioskBackground}
+      waitingVideo={tutorialAssets.waitingVideo}
+      showWaitingVideo={step === "generating"}
+      ghostLogoUrl={team?.logo_url}
+      logoUrl={team?.logo_url}
+      logoAlt={team?.name}
+      brandLabel={copy("kiosk_brand_label", "FanFrame Totem")}
+      teamName={team?.name}
+      totalLabel={copy("kiosk_total_label", "Total")}
+      priceLabel={priceLabel}
+      backLabel={copy("kiosk_back", "Voltar")}
+      onBack={backAction || undefined}
+      technicalHotspot={renderTechnicalHotspot()}
+      technicalOverlay={renderTechnicalOverlay()}
+    >
 
         {step === "home" && (
-          <section className="grid flex-1 min-h-0 grid-rows-[auto_auto_auto] content-center gap-8 text-center">
-            <div className="mx-auto max-w-4xl">
-              <p className="mb-4 text-xl font-black uppercase text-muted-foreground">{copy("kiosk_home_eyebrow", "Experiencia interativa")}</p>
-              <h2 className="mb-6 text-7xl font-black uppercase leading-[0.92]">{copy("kiosk_home_title", "Vista o manto", "welcome_title")}</h2>
-              <p className="mx-auto max-w-3xl text-2xl leading-snug text-muted-foreground">
-                {copy("kiosk_home_subtitle", "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", "welcome_subtitle")}
-              </p>
-            </div>
-            <div className="mx-auto grid w-full max-w-4xl grid-cols-2 items-start gap-5">
-              <div className="rounded-lg border border-border bg-card/78 p-4 shadow-[0_18px_42px_rgb(0_0_0_/_0.26)] backdrop-blur">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-black uppercase text-muted-foreground">Antes</span>
-                  <span className="h-2 w-12 rounded-full bg-muted" />
-                </div>
-                <img src={homeBeforeImage} alt="Exemplo antes" className="aspect-[3/4] w-full rounded-md bg-black/30 object-cover object-center" />
-              </div>
-              <div className="rounded-lg border-2 border-primary bg-card/86 p-4 shadow-[0_18px_42px_rgb(0_0_0_/_0.34)] backdrop-blur">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-black uppercase text-muted-foreground">Depois</span>
-                  <span className="h-2 w-12 rounded-full bg-primary" />
-                </div>
-                <img src={homeAfterImage} alt="Exemplo depois" className="aspect-[3/4] w-full rounded-md bg-black/30 object-cover object-center" />
-              </div>
-            </div>
-            <KioskButton onClick={startSelection} className="mx-auto w-full max-w-4xl">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>
-          </section>
+          <KioskHomeVisual
+            eyebrow={copy("kiosk_home_eyebrow", "Experiencia interativa")}
+            title={copy("kiosk_home_title", "Vista o manto", "welcome_title")}
+            subtitle={copy("kiosk_home_subtitle", "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", "welcome_subtitle")}
+            beforeImage={homeBeforeImage}
+            afterImage={homeAfterImage}
+            cta={<KioskButton onClick={startSelection} className="mx-auto w-full max-w-4xl">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>}
+          />
         )}
 
         {step === "shirt" && (
@@ -1710,8 +1664,6 @@ export default function KioskPage() {
             </div>
           </section>
         )}
-      </div>
-      {renderTechnicalOverlay()}
-    </main>
+    </KioskVisualShell>
   );
 }
