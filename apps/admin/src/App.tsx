@@ -5,6 +5,7 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  Code2,
   Copy,
   Cpu,
   Image as ImageIcon,
@@ -26,6 +27,7 @@ import {
 import { supabase, publicAssetUrl } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, logAdminAudit, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
+import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
 import {
   buildDeviceLocationLabel,
   getDeviceVersionStatus,
@@ -1066,6 +1068,7 @@ type BuilderSelection =
   | { type: "text"; key: string; label: string; fallback: string; long?: boolean }
   | { type: "theme" }
   | { type: "logo" }
+  | { type: "recipe" }
   | { type: "shirt"; index: number }
   | { type: "background"; index: number };
 
@@ -1162,6 +1165,7 @@ function TeamVisualBuilder({
   backgrounds,
   set,
   setTextOverride,
+  applyTeamPatch,
 }: {
   team: Partial<TeamRow>;
   textOverrides: Record<string, string>;
@@ -1169,9 +1173,12 @@ function TeamVisualBuilder({
   backgrounds: TeamAsset[];
   set: TeamSetter;
   setTextOverride: (key: string, value: string) => void;
+  applyTeamPatch: (patch: Partial<TeamRow>) => void;
 }) {
   const [screen, setScreen] = useState<BuilderScreen>("home");
   const [selection, setSelection] = useState<BuilderSelection>({ type: "text", ...builderTextFields.kiosk_home_title });
+  const [recipeText, setRecipeText] = useState("");
+  const [recipeMessage, setRecipeMessage] = useState("");
   const selectedTextKey = selection.type === "text" ? selection.key : "";
   const visibleShirts = shirts.filter((asset) => asset.visible !== false);
   const visibleBackgrounds = backgrounds.filter((asset) => asset.visible !== false);
@@ -1220,6 +1227,21 @@ function TeamVisualBuilder({
     const extension = file.name.split(".").pop() || "png";
     const url = await uploadAsset(file, `${team.slug || "novo"}/${type}/${asset.id}.${extension}`);
     updateAsset(kind, index, { imageUrl: url, assetPath: url });
+  };
+  const copyCurrentRecipe = async () => {
+    const recipe = createDesignRecipeFromTeam(team);
+    setRecipeText(recipe);
+    setRecipeMessage("Receita atual carregada.");
+    await navigator.clipboard?.writeText(recipe);
+  };
+  const applyRecipe = () => {
+    const result = applyDesignRecipe(team, recipeText);
+    if (result.error) {
+      setRecipeMessage(result.error);
+      return;
+    }
+    applyTeamPatch(result.team);
+    setRecipeMessage("Receita aplicada no rascunho. Publique para chegar no totem.");
   };
   const renderHeader = () => (
     <div className="kiosk-preview-header">
@@ -1333,6 +1355,7 @@ function TeamVisualBuilder({
         </div>
         <button type="button" className="builder-tool-button" onClick={() => setSelection({ type: "theme" })}><Palette size={16} /> Cores e preco</button>
         <button type="button" className="builder-tool-button" onClick={() => setSelection({ type: "logo" })}><ImageIcon size={16} /> Logo do time</button>
+        <button type="button" className="builder-tool-button" onClick={() => { setSelection({ type: "recipe" }); if (!recipeText) setRecipeText(createDesignRecipeFromTeam(team)); }}><Code2 size={16} /> Receita JSON</button>
         <button type="button" className="builder-tool-button" onClick={() => addAsset("shirt")}><Plus size={16} /> Nova camisa</button>
         <button type="button" className="builder-tool-button" onClick={() => addAsset("background")}><Plus size={16} /> Novo cenario</button>
         <div className="builder-mini-list">
@@ -1404,6 +1427,24 @@ function TeamVisualBuilder({
             {team.logo_url && <img className="inspector-image-preview" src={publicAssetUrl(team.logo_url)} alt="" />}
             <label className="file-input">Trocar logo<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadTeamImage(file, "logo_url"); }} /></label>
             <label className="file-input">Marca d'agua da foto<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadTeamImage(file, "watermark_url"); }} /></label>
+          </>
+        )}
+        {selection.type === "recipe" && (
+          <>
+            <div className="inspector-heading"><Code2 size={17} /><strong>Receita JSON</strong></div>
+            <p className="hint">Cole aqui uma receita criada por mim ou copie a receita atual para reaproveitar em outro time. O painel aplica apenas campos seguros.</p>
+            <textarea
+              className="recipe-textarea"
+              rows={18}
+              value={recipeText}
+              onChange={(event) => setRecipeText(event.target.value)}
+              spellCheck={false}
+            />
+            {recipeMessage && <p className="hint">{recipeMessage}</p>}
+            <div className="inspector-actions">
+              <button type="button" className="secondary" onClick={copyCurrentRecipe}><Copy size={14} /> Copiar atual</button>
+              <button type="button" className="primary" onClick={applyRecipe}>Aplicar receita</button>
+            </div>
           </>
         )}
         {selectedAsset && selectedAssetKind && (
@@ -1653,6 +1694,7 @@ function TeamForm() {
                 backgrounds={backgrounds}
                 set={set}
                 setTextOverride={setTextOverride}
+                applyTeamPatch={(patch) => setTeam((current) => ({ ...current, ...patch }))}
               />
             </div>
           )}
