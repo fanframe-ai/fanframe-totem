@@ -472,6 +472,13 @@ async function uploadAsset(file: File, path: string) {
   return publicAssetUrl(path);
 }
 
+function uniqueAssetPath(teamSlug: string, folder: string, name: string, extension: string) {
+  const safeSlug = slugify(teamSlug) || "novo";
+  const safeName = slugify(name) || "asset";
+  const safeExtension = extension.replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
+  return `${safeSlug}/${folder}/${safeName}-${Date.now()}.${safeExtension}`;
+}
+
 function validateExperienceFile(file: File, kind: "image" | "video") {
   const limitMb = kind === "video" ? assetLimits.videoMaxMb : assetLimits.imageMaxMb;
   const sizeMb = file.size / 1024 / 1024;
@@ -1054,7 +1061,7 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
                   const file = event.target.files?.[0];
                   if (!file) return;
                   const extension = file.name.split(".").pop() || "png";
-                  const path = `${teamSlug || "novo"}/${type}/${asset.id}.${extension}`;
+                  const path = uniqueAssetPath(teamSlug || "novo", type, asset.id, extension);
                   const url = await uploadAsset(file, path);
                   update(index, { imageUrl: url, assetPath: url });
                 }}
@@ -1296,11 +1303,11 @@ function TeamVisualBuilder({
   const uploadTeamImage = async (file: File, target: "logo_url" | "watermark_url") => {
     const extension = file.name.split(".").pop() || "png";
     const name = target === "logo_url" ? "logo" : "watermark";
-    set(target, await uploadAsset(file, `${team.slug || "novo"}/branding/${name}.${extension}`));
+    set(target, await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "branding", name, extension)));
   };
   const uploadTutorialImage = async (file: File, target: "before" | "after") => {
     const extension = file.name.split(".").pop() || "png";
-    const url = await uploadAsset(file, `${team.slug || "novo"}/experience/${target}.${extension}`);
+    const url = await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "experience", target, extension));
     set("tutorial_assets", { ...tutorialAssets, [target]: url } as TeamRow["tutorial_assets"]);
   };
   const uploadAssetImage = async (file: File, kind: "shirt" | "background", index: number) => {
@@ -1308,7 +1315,7 @@ function TeamVisualBuilder({
     if (!asset) return;
     const type = kind === "shirt" ? "shirts" : "backgrounds";
     const extension = file.name.split(".").pop() || "png";
-    const url = await uploadAsset(file, `${team.slug || "novo"}/${type}/${asset.id}.${extension}`);
+    const url = await uploadAsset(file, uniqueAssetPath(team.slug || "novo", type, asset.id, extension));
     updateAsset(kind, index, { imageUrl: url, assetPath: url });
   };
   const copyCurrentRecipe = async () => {
@@ -1640,7 +1647,7 @@ function TeamForm() {
       setUploadError("");
       validateExperienceFile(file, key === "waitingVideo" ? "video" : "image");
       const extension = file.name.split(".").pop() || (key === "waitingVideo" ? "mp4" : "png");
-      const url = await uploadAsset(file, `${team.slug || "novo"}/experience/${key}.${extension}`);
+      const url = await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "experience", key, extension));
       setTutorialAssets({ [key]: url });
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Nao foi possivel enviar o arquivo.");
@@ -1674,7 +1681,7 @@ function TeamForm() {
       setUploadError("");
       validateExperienceFile(file, "image");
       const extension = file.name.split(".").pop() || "png";
-      const url = await uploadAsset(file, `${team.slug || "novo"}/experience/waiting-${slide.id}.${extension}`);
+      const url = await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "experience", `waiting-${slide.id}`, extension));
       updateWaitingSlide(index, { imageUrl: url });
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Nao foi possivel enviar o arquivo.");
@@ -1927,7 +1934,7 @@ function TeamForm() {
                   <input type="file" accept="image/*" onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    set("logo_url", await uploadAsset(file, `${team.slug || "novo"}/branding/logo.${file.name.split(".").pop() || "png"}`));
+                    set("logo_url", await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "branding", "logo", file.name.split(".").pop() || "png")));
                   }} />
                 </label>
                 <label>
@@ -1935,7 +1942,7 @@ function TeamForm() {
                   <input type="file" accept="image/*" onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
-                    set("watermark_url", await uploadAsset(file, `${team.slug || "novo"}/branding/watermark.${file.name.split(".").pop() || "png"}`));
+                    set("watermark_url", await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "branding", "watermark", file.name.split(".").pop() || "png")));
                   }} />
                 </label>
               </div>

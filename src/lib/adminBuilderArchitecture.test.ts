@@ -81,4 +81,14 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("Trocar foto do antes");
     expect(adminSource).toContain("Trocar foto do depois");
   });
+
+  it("uses fresh asset urls when replacing builder images", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+
+    expect(adminSource).toContain("uniqueAssetPath");
+    expect(adminSource).toContain('uniqueAssetPath(team.slug || "novo", "branding", name, extension)');
+    expect(adminSource).toContain('uniqueAssetPath(team.slug || "novo", "experience", target, extension)');
+    expect(adminSource).not.toContain('`${team.slug || "novo"}/branding/${name}.${extension}`');
+    expect(adminSource).not.toContain('`${team.slug || "novo"}/experience/${target}.${extension}`');
+  });
 });
