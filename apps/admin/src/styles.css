@@ -203,7 +203,15 @@ tbody tr:hover { background: #f9fafb; }
 .builder-mini-list strong { font-size: 13px; }
 .builder-mini-list span { color: var(--muted); font-size: 12px; line-height: 1.4; }
 .builder-stage { min-width: 0; padding: 24px; display: grid; place-items: center; overflow: auto; }
-.builder-phone { width: min(430px, 100%); min-height: 680px; aspect-ratio: 9 / 16; border-radius: 30px; padding: 22px; display: grid; grid-template-rows: auto 1fr; gap: 22px; box-shadow: 0 28px 80px rgba(15, 23, 42, .22); position: relative; overflow: hidden; outline: 10px solid rgba(15, 23, 42, .08); }
+.runtime-preview-frame { width: min(560px, 100%); display: grid; gap: 12px; }
+.runtime-preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--border); border-radius: 14px; background: #ffffff; padding: 12px 14px; box-shadow: var(--shadow); }
+.runtime-preview-toolbar div { display: grid; gap: 3px; }
+.runtime-preview-toolbar strong { font-size: 14px; color: #111827; }
+.runtime-preview-toolbar span { font-size: 12px; line-height: 1.35; color: var(--muted); }
+.runtime-preview-iframe { width: min(430px, 100%); aspect-ratio: 9 / 16; min-height: 760px; justify-self: center; border: 0; border-radius: 30px; background: #000000; box-shadow: 0 28px 80px rgba(15, 23, 42, .22); outline: 10px solid rgba(15, 23, 42, .08); }
+.runtime-preview-empty { width: min(430px, 100%); aspect-ratio: 9 / 16; min-height: 620px; justify-self: center; display: grid; place-content: center; gap: 10px; text-align: center; padding: 28px; border: 1px dashed #cbd5e1; border-radius: 30px; background: #f8fafc; color: #111827; box-shadow: 0 28px 80px rgba(15, 23, 42, .12); }
+.runtime-preview-empty strong { font-size: 20px; }
+.runtime-preview-empty span { color: var(--muted); line-height: 1.5; }
 .kiosk-preview-header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.16); }
 .preview-team-name, .preview-price { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 4px; border-radius: 10px; padding: 6px; }
 .preview-team-name:hover, .preview-price:hover, .preview-team-name.selected { outline: 2px solid #60a5fa; outline-offset: 2px; }
@@ -403,6 +411,6 @@ tbody tr:hover { background: #f9fafb; }
   .filters { flex-wrap: wrap; }
   .filters select { max-width: none; }
   .builder-stage { padding: 16px; }
-  .builder-phone { min-height: 620px; }
+  .runtime-preview-iframe { min-height: 620px; }
   .builder-asset-preview-row { grid-template-columns: 1fr; }
 }

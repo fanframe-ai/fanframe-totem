@@ -147,6 +147,18 @@ function getKioskPreviewUrl(teamSlug?: string | null) {
   return teamSlug ? `/kiosk?team_slug=${encodeURIComponent(teamSlug)}` : "/kiosk";
 }
 
+function getKioskRuntimePreviewUrl(teamSlug?: string | null) {
+  const configuredOrigin = String(import.meta.env.VITE_KIOSK_PREVIEW_ORIGIN || "").replace(/\/$/, "");
+  const localDevOrigin = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8080"
+    : "";
+  const origin = configuredOrigin || localDevOrigin;
+  if (!origin) return "";
+  const params = new URLSearchParams({ preview: "admin" });
+  if (teamSlug) params.set("team_slug", teamSlug);
+  return `${origin}/kiosk?${params.toString()}`;
+}
+
 function getDeviceInstallerUrl(device?: Pick<KioskDevice, "config"> | null) {
   if (!device?.config) return "";
   if (typeof device.config.updates?.installerUrl === "string") return device.config.updates.installerUrl;
@@ -1163,6 +1175,7 @@ function TeamVisualBuilder({
   const selectedTextKey = selection.type === "text" ? selection.key : "";
   const visibleShirts = shirts.filter((asset) => asset.visible !== false);
   const visibleBackgrounds = backgrounds.filter((asset) => asset.visible !== false);
+  const runtimePreviewUrl = getKioskRuntimePreviewUrl(team.slug || "");
 
   const selectText = (key: string) => setSelection({ type: "text", ...builderTextFields[key] });
   const updateAsset = (kind: "shirt" | "background", index: number, patch: Partial<TeamAsset>) => {
@@ -1328,18 +1341,28 @@ function TeamVisualBuilder({
         </div>
       </aside>
 
-      <section className="builder-stage" aria-label="Preview editavel do totem">
-        <div
-          className="builder-phone"
-          style={{
-            background: team.primary_color || "#050505",
-            color: team.secondary_color || "#ffffff",
-            fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
-          }}
-          onClick={() => setSelection({ type: "theme" })}
-        >
-          {renderHeader()}
-          {renderPreviewScreen()}
+      <section className="builder-stage" aria-label="Preview real do totem">
+        <div className="runtime-preview-frame">
+          <div className="runtime-preview-toolbar">
+            <div>
+              <strong>Preview real do app</strong>
+              <span>Esta area carrega a mesma rota `/kiosk` usada no totem. Publique as mudancas para ver exatamente o que chega no app.</span>
+            </div>
+            {runtimePreviewUrl && <a className="secondary link-button" href={runtimePreviewUrl} target="_blank" rel="noopener noreferrer">Abrir grande</a>}
+          </div>
+          {runtimePreviewUrl ? (
+            <iframe
+              title="Preview real do kiosk"
+              src={runtimePreviewUrl}
+              className="runtime-preview-iframe"
+              loading="lazy"
+            />
+          ) : (
+            <div className="runtime-preview-empty">
+              <strong>Configure a URL do kiosk</strong>
+              <span>Defina `VITE_KIOSK_PREVIEW_ORIGIN` no deploy do painel apontando para o app web do kiosk. Assim o preview fica igual ao Windows.</span>
+            </div>
+          )}
         </div>
       </section>
 
