@@ -9,4 +9,11 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain('title="Preview real do kiosk"');
     expect(adminSource).not.toContain('className="builder-phone"');
   });
+
+  it("does not block the builder behind a missing preview origin", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+
+    expect(adminSource).toContain("function InlineKioskPreview");
+    expect(adminSource).not.toContain("Configure a URL do kiosk");
+  });
 });

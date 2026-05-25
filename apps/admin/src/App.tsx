@@ -1158,6 +1158,61 @@ function EditablePreviewText({
   );
 }
 
+function InlineKioskPreview({ team, textOverrides }: { team: Partial<TeamRow>; textOverrides: Record<string, string> }) {
+  const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
+  const beforeImage = publicAssetUrl(typeof tutorialAssets.before === "string" ? tutorialAssets.before : "");
+  const afterImage = publicAssetUrl(typeof tutorialAssets.after === "string" ? tutorialAssets.after : "");
+  const backgroundImage = publicAssetUrl(typeof tutorialAssets.kioskBackground === "string" ? tutorialAssets.kioskBackground : "");
+  const logoUrl = publicAssetUrl(team.logo_url || "");
+
+  return (
+    <div
+      className="inline-kiosk-preview"
+      style={{
+        backgroundColor: team.primary_color || "#000000",
+        color: team.secondary_color || "#ffffff",
+        fontFamily: team.kiosk_font_family || "Inter, system-ui, sans-serif",
+      }}
+    >
+      {backgroundImage && <img className="inline-kiosk-bg" src={backgroundImage} alt="" />}
+      <div className="inline-kiosk-scrim" />
+      <div className="inline-kiosk-content">
+        <header className="inline-kiosk-header">
+          <div className="inline-kiosk-brand">
+            {logoUrl && <img src={logoUrl} alt="" />}
+            <div>
+              <span>{readBuilderText(textOverrides, "kiosk_brand_label")}</span>
+              <strong>{team.name || "Nome do time"}</strong>
+            </div>
+          </div>
+          <div className="inline-kiosk-price">
+            <span>{readBuilderText(textOverrides, "kiosk_total_label")}</span>
+            <strong>{money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}</strong>
+          </div>
+        </header>
+        <main className="inline-kiosk-home">
+          <div className="inline-kiosk-copy">
+            <span>{readBuilderText(textOverrides, "kiosk_home_eyebrow")}</span>
+            <h2>{readBuilderText(textOverrides, "kiosk_home_title")}</h2>
+            <p>{readBuilderText(textOverrides, "kiosk_home_subtitle")}</p>
+          </div>
+          <div className="inline-kiosk-before-after">
+            <article>
+              <div><span>Antes</span><i /></div>
+              {beforeImage ? <img src={beforeImage} alt="" /> : <strong>Antes</strong>}
+            </article>
+            <article className="highlight">
+              <div><span>Depois</span><i /></div>
+              {afterImage ? <img src={afterImage} alt="" /> : <strong>Depois</strong>}
+            </article>
+          </div>
+          <button type="button">{readBuilderText(textOverrides, "kiosk_home_cta")}</button>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 function TeamVisualBuilder({
   team,
   textOverrides,
@@ -1381,10 +1436,7 @@ function TeamVisualBuilder({
               loading="lazy"
             />
           ) : (
-            <div className="runtime-preview-empty">
-              <strong>Configure a URL do kiosk</strong>
-              <span>Defina `VITE_KIOSK_PREVIEW_ORIGIN` no deploy do painel apontando para o app web do kiosk. Assim o preview fica igual ao Windows.</span>
-            </div>
+            <InlineKioskPreview team={team} textOverrides={textOverrides} />
           )}
         </div>
       </section>
