@@ -25,4 +25,11 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("homeBeforeImage");
     expect(adminSource).toContain("homeAfterImage");
   });
+
+  it("uses a kiosk-sized portrait preview instead of a narrow phone preview", () => {
+    const cssSource = readFileSync("apps/admin/src/styles.css", "utf8");
+
+    expect(cssSource).toContain("width: min(620px, 100%)");
+    expect(cssSource).toContain("min-height: 980px");
+  });
 });
