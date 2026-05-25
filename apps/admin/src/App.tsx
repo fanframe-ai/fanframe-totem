@@ -3284,19 +3284,6 @@ type DeliveryPayload = {
   error?: string;
 };
 
-function normalizeInstagramUrl(value: unknown) {
-  if (typeof value !== "string" || !value.trim()) return "";
-  const input = value.trim();
-  try {
-    const url = new URL(input);
-    const handle = url.pathname.split("/").filter(Boolean)[0] || "";
-    return handle ? `https://instagram.com/${encodeURIComponent(handle)}` : "";
-  } catch {
-    const handle = input.replace(/^@/, "");
-    return /^[A-Za-z0-9._]{1,30}$/.test(handle) ? `https://instagram.com/${encodeURIComponent(handle)}` : "";
-  }
-}
-
 function normalizeWhatsAppUrl(value: unknown) {
   if (typeof value !== "string" || !value.trim()) return "";
   const input = value.trim();
@@ -3352,7 +3339,6 @@ function DeliveryPage() {
   const logoUrl = publicAssetUrl(String(tutorialAssets.deliveryLogo || payload?.team?.logo_url || ""));
   const teamName = payload?.team?.name || "FanFrame";
   const imageUrl = payload?.imageUrl || "";
-  const instagramUrl = normalizeInstagramUrl(tutorialAssets.deliveryInstagram);
   const whatsAppUrl = normalizeWhatsAppUrl(tutorialAssets.deliveryWhatsApp);
   const customMessage = typeof tutorialAssets.deliveryMessage === "string" && tutorialAssets.deliveryMessage.trim()
     ? tutorialAssets.deliveryMessage.trim()
@@ -3360,16 +3346,31 @@ function DeliveryPage() {
 
   async function sharePhoto() {
     if (!imageUrl) return;
-    if (navigator.share) {
-      await navigator.share({
+    setMessage("");
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const extension = blob.type.includes("png") ? "png" : "jpg";
+      const file = new File([blob], `fanframe-foto.${extension}`, { type: blob.type || "image/jpeg" });
+      const shareData = {
         title: "Minha foto FanFrame",
         text: "Olha minha foto gerada no totem FanFrame.",
-        url: imageUrl,
-      }).catch(() => undefined);
-      return;
+        files: [file],
+      };
+      if (navigator.canShare?.(shareData) && navigator.share) {
+        await navigator.share(shareData).catch(() => undefined);
+        return;
+      }
+    } catch {
+      // Some mobile browsers block file sharing from remote images. Fall back below.
     }
-    await navigator.clipboard?.writeText(imageUrl).catch(() => undefined);
-    setMessage("Link copiado para a area de transferencia.");
+
+    if (navigator.share) {
+      await navigator.share({ title: "Minha foto FanFrame", text: "Olha minha foto gerada no totem FanFrame.", url: imageUrl }).catch(() => undefined);
+    } else {
+      await navigator.clipboard?.writeText(imageUrl).catch(() => undefined);
+      setMessage("Link copiado. Se preferir, toque em Baixar foto.");
+    }
   }
 
   async function registerConsent() {
@@ -3435,7 +3436,6 @@ function DeliveryPage() {
         <div className="delivery-actions">
           <a className="delivery-primary" href={imageUrl} download="fanframe-foto.jpg">Baixar foto</a>
           <button type="button" className="delivery-secondary" onClick={sharePhoto}>Compartilhar</button>
-          {instagramUrl && <a className="delivery-secondary" href={instagramUrl} target="_blank" rel="noreferrer">Abrir Instagram</a>}
         </div>
 
         <section className="delivery-consent">

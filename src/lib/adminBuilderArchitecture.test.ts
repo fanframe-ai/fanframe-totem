@@ -114,7 +114,9 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain('action: "get_delivery"');
     expect(adminSource).toContain("Baixar foto");
     expect(adminSource).toContain("Compartilhar");
-    expect(adminSource).toContain("Abrir Instagram");
+    expect(adminSource).toContain("new File([blob]");
+    expect(adminSource).toContain("navigator.canShare");
+    expect(adminSource).not.toContain("Abrir Instagram");
     expect(cssSource).toContain(".delivery-page");
     expect(cssSource).toContain(".delivery-photo-card");
   });

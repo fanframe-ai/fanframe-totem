@@ -58,7 +58,6 @@ type DeliveryTeam = {
     deliveryLogo?: string;
     deliveryMessage?: string;
     deliveryWhatsApp?: string;
-    deliveryInstagram?: string;
     [key: string]: unknown;
   } | null;
 } | null;
@@ -96,23 +95,6 @@ function buildWhatsAppUrl(value: unknown) {
   return digits ? `https://wa.me/${digits}` : "";
 }
 
-function buildInstagramUrl(value: unknown) {
-  if (typeof value !== "string" || !value.trim()) return "";
-  const input = value.trim();
-  let handle = "";
-  try {
-    const url = new URL(input);
-    const host = url.hostname.toLowerCase();
-    if (host !== "instagram.com" && host !== "www.instagram.com") return "";
-    handle = url.pathname.split("/").filter(Boolean)[0] || "";
-  } catch {
-    handle = input.replace(/^@/, "");
-  }
-
-  if (!/^[A-Za-z0-9._]{1,30}$/.test(handle)) return "";
-  return handle ? `https://instagram.com/${encodeURIComponent(handle)}` : "";
-}
-
 function formatExpiration(value: string) {
   return new Date(value).toLocaleString("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -132,16 +114,12 @@ function deliveryPage(imageUrl: string, token: string, expiresAt: string, teamVa
     ? tutorialAssets.deliveryMessage.trim()
     : "Baixe no celular e compartilhe quando quiser.";
   const whatsAppUrl = buildWhatsAppUrl(tutorialAssets.deliveryWhatsApp);
-  const instagramUrl = buildInstagramUrl(tutorialAssets.deliveryInstagram);
   const safeImageUrl = escapeHtml(imageUrl);
   const safeLogoUrl = logoUrl ? escapeHtml(logoUrl) : "";
   const safeTeamName = escapeHtml(team?.name || "FanFrame");
   const safeMessage = escapeHtml(message);
   const safeExpiration = escapeHtml(formatExpiration(expiresAt));
-  const supportLinks = [
-    whatsAppUrl ? `<a class="support-link" href="${escapeHtml(whatsAppUrl)}" target="_blank" rel="noopener">WhatsApp</a>` : "",
-    instagramUrl ? `<a class="support-link" href="${escapeHtml(instagramUrl)}" target="_blank" rel="noopener">Instagram</a>` : "",
-  ].filter(Boolean).join("");
+  const supportLinks = whatsAppUrl ? `<a class="support-link" href="${escapeHtml(whatsAppUrl)}" target="_blank" rel="noopener">WhatsApp</a>` : "";
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -199,12 +177,24 @@ function deliveryPage(imageUrl: string, token: string, expiresAt: string, teamVa
     const token = ${JSON.stringify(token)};
     const button = document.getElementById("shareButton");
     button?.addEventListener("click", async () => {
-      if (!navigator.share) {
+      try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const extension = blob.type.includes("png") ? "png" : "jpg";
+        const file = new File([blob], "fanframe-foto." + extension, { type: blob.type || "image/jpeg" });
+        const shareData = { title: "Minha foto FanFrame", text: "Olha minha foto gerada no totem FanFrame", files: [file] };
+        if (navigator.canShare?.(shareData) && navigator.share) {
+          await navigator.share(shareData).catch(() => undefined);
+          return;
+        }
+      } catch (_) {
+        // Browser does not support file sharing for this image. Fall back below.
+      }
+      if (navigator.share) await navigator.share({ title: "Minha foto FanFrame", text: "Olha minha foto gerada no totem FanFrame", url: imageUrl }).catch(() => undefined);
+      else {
         await navigator.clipboard?.writeText(imageUrl).catch(() => undefined);
         button.textContent = "Link copiado";
-        return;
       }
-      await navigator.share({ title: "Minha foto FanFrame", text: "Olha minha foto gerada no totem FanFrame", url: imageUrl }).catch(() => undefined);
     });
     const consentButton = document.getElementById("consentButton");
     consentButton?.addEventListener("click", async () => {
