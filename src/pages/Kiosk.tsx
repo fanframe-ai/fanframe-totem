@@ -1,6 +1,6 @@
 import { type Dispatch, type FormEvent, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, Loader2, QrCode, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useQueueSubscription } from "@/hooks/useQueueSubscription";
@@ -9,7 +9,7 @@ import { getAssetFullUrl } from "@/config/fanframe";
 import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
 import beforeExampleImage from "@/assets/before-example.jpg";
 import afterExampleImage from "@/assets/after-example.png";
-import { KioskHomeVisual, KioskVisualShell } from "@/shared/kiosk-ui/KioskVisual";
+import { KioskHomeVisual, KioskSelectionVisual, KioskVisualShell } from "@/shared/kiosk-ui/KioskVisual";
 import {
   buildDeliveryUrl,
   classifyKioskError,
@@ -1404,70 +1404,56 @@ export default function KioskPage() {
         )}
 
         {step === "shirt" && (
-          <section className="flex-1 min-h-0 flex flex-col">
-            <div className="shrink-0">
-              <p className="text-lg uppercase text-muted-foreground font-black">{copy("kiosk_shirt_step", "Passo 1 de 3")}</p>
-              <h2 className="text-6xl font-black uppercase leading-none mb-8">{copy("kiosk_shirt_title", "Escolha a camisa", "shirt_title")}</h2>
-            </div>
-            <div className="relative flex-1 min-h-0">
-              <div
-                ref={shirtRailRef}
-                onScroll={() => updateRailScrollState(shirtRailRef.current, setShirtRailScroll)}
-                className="h-full flex items-center gap-6 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory px-24 py-8"
-              >
-                {visibleShirts.map((shirt) => (
-                  <button
-                    key={shirt.id}
-                    onClick={() => setSelectedShirt(shirt)}
-                    className={`snap-center shrink-0 w-[410px] h-[640px] rounded-lg border-2 p-5 bg-card text-left transition flex flex-col shadow-[0_18px_42px_rgb(0_0_0_/_0.28)] ${
-                      selectedShirt?.id === shirt.id ? "border-primary bg-accent scale-[1.015]" : "border-border"
-                    }`}
-                  >
-                    <div className="aspect-square rounded-md bg-secondary mb-6 overflow-hidden shrink-0">
-                      <img src={shirt.imageUrl} alt={shirt.name} className="w-full h-full object-contain" />
-                    </div>
-                    <h3 className="text-2xl font-black uppercase leading-tight">{shirt.name}</h3>
-                    <p className="text-lg text-muted-foreground leading-snug mt-3 line-clamp-3">{shirt.subtitle}</p>
-                  </button>
-                ))}
-              </div>
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-background via-background/80 to-transparent" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-background via-background/80 to-transparent" />
-              {visibleShirts.length > 2 && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Ver camisas anteriores"
-                    disabled={!shirtRailScroll.canPrev}
-                    onClick={() => scrollRail(shirtRailRef.current, "prev")}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-r-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center disabled:opacity-25 disabled:grayscale disabled:shadow-none disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-12 h-12" strokeWidth={3} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Ver mais camisas"
-                    disabled={!shirtRailScroll.canNext}
-                    onClick={() => scrollRail(shirtRailRef.current, "next")}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-l-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center disabled:opacity-25 disabled:grayscale disabled:shadow-none disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-12 h-12" strokeWidth={3} />
-                  </button>
-                </>
-              )}
-            </div>
-            <footer className="shrink-0 pt-7">
-              <KioskButton onClick={goAfterShirt} disabled={!selectedShirt} className="w-full">{copy("kiosk_continue", "Continuar")}</KioskButton>
-            </footer>
-          </section>
+          <KioskSelectionVisual
+            kind="shirt"
+            stepLabel={copy("kiosk_shirt_step", "Passo 1 de 3")}
+            title={copy("kiosk_shirt_title", "Escolha a camisa", "shirt_title")}
+            items={visibleShirts.map((shirt) => ({
+              id: shirt.id,
+              name: shirt.name,
+              subtitle: shirt.subtitle,
+              imageUrl: shirt.imageUrl,
+            }))}
+            selectedId={selectedShirt?.id}
+            emptyLabel="Adicionar camisa"
+            railRef={shirtRailRef}
+            onRailScroll={() => updateRailScrollState(shirtRailRef.current, setShirtRailScroll)}
+            canPrev={shirtRailScroll.canPrev}
+            canNext={shirtRailScroll.canNext}
+            onPrev={() => scrollRail(shirtRailRef.current, "prev")}
+            onNext={() => scrollRail(shirtRailRef.current, "next")}
+            onSelect={(shirt) => {
+              const fullShirt = visibleShirts.find((item) => item.id === shirt.id);
+              if (fullShirt) setSelectedShirt(fullShirt);
+            }}
+            cta={<KioskButton onClick={goAfterShirt} disabled={!selectedShirt} className="w-full">{copy("kiosk_continue", "Continuar")}</KioskButton>}
+          />
         )}
 
         {step === "background" && (
-          <section className="flex-1 min-h-0 flex flex-col">
-            <div className="shrink-0">
-              <p className="text-lg uppercase text-muted-foreground font-black">{copy("kiosk_background_step", "Passo 2 de 3")}</p>
-              <h2 className="text-6xl font-black uppercase leading-none mb-8">{copy("kiosk_background_title", "Escolha o cenario", "background_title")}</h2>
-              {team?.kiosk_show_shirt_step !== false && (
+          <KioskSelectionVisual
+            kind="background"
+            stepLabel={copy("kiosk_background_step", "Passo 2 de 3")}
+            title={copy("kiosk_background_title", "Escolha o cenario", "background_title")}
+            items={visibleBackgrounds.map((background) => ({
+              id: background.id,
+              name: background.name,
+              subtitle: background.subtitle,
+              imageUrl: background.imageUrl,
+            }))}
+            selectedId={selectedBackground?.id}
+            emptyLabel="Adicionar cenario"
+            railRef={backgroundRailRef}
+            onRailScroll={() => updateRailScrollState(backgroundRailRef.current, setBackgroundRailScroll)}
+            canPrev={backgroundRailScroll.canPrev}
+            canNext={backgroundRailScroll.canNext}
+            onPrev={() => scrollRail(backgroundRailRef.current, "prev")}
+            onNext={() => scrollRail(backgroundRailRef.current, "next")}
+            onSelect={(background) => {
+              const fullBackground = visibleBackgrounds.find((item) => item.id === background.id);
+              if (fullBackground) setSelectedBackground(fullBackground);
+            }}
+            backControl={team?.kiosk_show_shirt_step !== false && (
                 <button
                   type="button"
                   onClick={() => setStep("shirt")}
@@ -1477,58 +1463,8 @@ export default function KioskPage() {
                   {copy("kiosk_back", "Voltar")}
                 </button>
               )}
-            </div>
-            <div className="relative flex-1 min-h-0">
-              <div
-                ref={backgroundRailRef}
-                onScroll={() => updateRailScrollState(backgroundRailRef.current, setBackgroundRailScroll)}
-                className="h-full flex items-center gap-6 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth snap-x snap-mandatory px-24 py-8"
-              >
-                {visibleBackgrounds.map((background) => (
-                  <button
-                    key={background.id}
-                    onClick={() => setSelectedBackground(background)}
-                    className={`snap-center shrink-0 w-[720px] h-[640px] rounded-lg border-2 p-5 bg-card text-left transition flex flex-col shadow-[0_18px_42px_rgb(0_0_0_/_0.28)] ${
-                      selectedBackground?.id === background.id ? "border-primary bg-accent scale-[1.015]" : "border-border"
-                    }`}
-                  >
-                    <div className="aspect-[16/9] rounded-md bg-secondary mb-6 overflow-hidden shrink-0">
-                      <img src={background.imageUrl} alt={background.name} className="w-full h-full object-cover" />
-                    </div>
-                    <h3 className="text-3xl font-black uppercase leading-tight">{background.name}</h3>
-                    <p className="text-xl text-muted-foreground mt-3 line-clamp-3">{background.subtitle}</p>
-                  </button>
-                ))}
-              </div>
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-background via-background/80 to-transparent" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-background via-background/80 to-transparent" />
-              {visibleBackgrounds.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Ver cenarios anteriores"
-                    disabled={!backgroundRailScroll.canPrev}
-                    onClick={() => scrollRail(backgroundRailRef.current, "prev")}
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-r-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center disabled:opacity-25 disabled:grayscale disabled:shadow-none disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-12 h-12" strokeWidth={3} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Ver mais cenarios"
-                    disabled={!backgroundRailScroll.canNext}
-                    onClick={() => scrollRail(backgroundRailRef.current, "next")}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-20 h-28 rounded-l-lg bg-primary text-primary-foreground shadow-xl border border-primary/40 flex items-center justify-center disabled:opacity-25 disabled:grayscale disabled:shadow-none disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-12 h-12" strokeWidth={3} />
-                  </button>
-                </>
-              )}
-            </div>
-            <footer className="shrink-0 pt-7">
-              <KioskButton onClick={() => setStep("payment")} disabled={!selectedBackground} className="w-full">{copy("kiosk_pay", "Pagar")}</KioskButton>
-            </footer>
-          </section>
+            cta={<KioskButton onClick={() => setStep("payment")} disabled={!selectedBackground} className="w-full">{copy("kiosk_pay", "Pagar")}</KioskButton>}
+          />
         )}
 
         {step === "payment" && (

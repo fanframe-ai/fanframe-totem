@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import "./kioskVisual.css";
 
 type KioskVisualShellProps = {
@@ -32,6 +32,31 @@ type KioskHomeVisualProps = {
   afterLabel?: ReactNode;
   cta: ReactNode;
   onMediaSelect?: () => void;
+};
+
+export type KioskSelectionVisualItem = {
+  id: string;
+  name: ReactNode;
+  subtitle?: ReactNode;
+  imageUrl?: string;
+};
+
+type KioskSelectionVisualProps = {
+  stepLabel: ReactNode;
+  title: ReactNode;
+  items: KioskSelectionVisualItem[];
+  selectedId?: string;
+  kind: "shirt" | "background";
+  emptyLabel: ReactNode;
+  cta: ReactNode;
+  backControl?: ReactNode;
+  railRef?: React.Ref<HTMLDivElement>;
+  onRailScroll?: () => void;
+  canPrev?: boolean;
+  canNext?: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
+  onSelect?: (item: KioskSelectionVisualItem, index: number) => void;
 };
 
 export function KioskVisualShell({
@@ -127,6 +152,74 @@ export function KioskHomeVisual({
         </button>
       </div>
       {cta}
+    </section>
+  );
+}
+
+export function KioskSelectionVisual({
+  stepLabel,
+  title,
+  items,
+  selectedId,
+  kind,
+  emptyLabel,
+  cta,
+  backControl,
+  railRef,
+  onRailScroll,
+  canPrev,
+  canNext,
+  onPrev,
+  onNext,
+  onSelect,
+}: KioskSelectionVisualProps) {
+  const isBackground = kind === "background";
+  const showArrows = items.length > (isBackground ? 1 : 2);
+
+  return (
+    <section className={`ff-kiosk-selection ff-kiosk-selection-${kind}`}>
+      <div className="ff-kiosk-selection-heading">
+        <div>
+          <div className="ff-kiosk-selection-step">{stepLabel}</div>
+          <h2 className="ff-kiosk-selection-title">{title}</h2>
+        </div>
+        {backControl}
+      </div>
+      <div className="ff-kiosk-selection-stage">
+        <div ref={railRef} onScroll={onRailScroll} className="ff-kiosk-selection-rail">
+          {items.length ? (
+            items.map((item, index) => (
+              <button
+                type="button"
+                key={item.id}
+                className={`ff-kiosk-selection-card ${selectedId === item.id ? "is-selected" : ""}`}
+                onClick={() => onSelect?.(item, index)}
+              >
+                <div className="ff-kiosk-selection-image">
+                  {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <strong>{emptyLabel}</strong>}
+                </div>
+                <h3>{item.name}</h3>
+                {item.subtitle && <p>{item.subtitle}</p>}
+              </button>
+            ))
+          ) : (
+            <div className="ff-kiosk-selection-empty">{emptyLabel}</div>
+          )}
+        </div>
+        <div className="ff-kiosk-rail-fade ff-kiosk-rail-fade-left" />
+        <div className="ff-kiosk-rail-fade ff-kiosk-rail-fade-right" />
+        {showArrows && (
+          <>
+            <button type="button" aria-label="Anterior" disabled={!canPrev} onClick={onPrev} className="ff-kiosk-rail-arrow ff-kiosk-rail-arrow-left">
+              <ChevronLeft />
+            </button>
+            <button type="button" aria-label="Proximo" disabled={!canNext} onClick={onNext} className="ff-kiosk-rail-arrow ff-kiosk-rail-arrow-right">
+              <ChevronRight />
+            </button>
+          </>
+        )}
+      </div>
+      <footer className="ff-kiosk-selection-footer">{cta}</footer>
     </section>
   );
 }

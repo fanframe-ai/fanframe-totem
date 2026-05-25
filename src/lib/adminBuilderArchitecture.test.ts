@@ -42,4 +42,12 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("KioskHomeVisual");
     expect(kioskSource).toContain("KioskHomeVisual");
   });
+
+  it("shares the kiosk selection cards between the Windows app and admin preview", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
+
+    expect(adminSource).toContain("KioskSelectionVisual");
+    expect(kioskSource).toContain("KioskSelectionVisual");
+  });
 });

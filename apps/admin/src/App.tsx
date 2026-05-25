@@ -28,7 +28,7 @@ import { supabase, publicAssetUrl } from "./lib/supabase";
 import { createInstallCode, enqueueDeviceCommand, logAdminAudit, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
 import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
-import { KioskHomeVisual, KioskVisualShell } from "../../../src/shared/kiosk-ui/KioskVisual";
+import { KioskHomeVisual, KioskSelectionVisual, KioskVisualShell } from "../../../src/shared/kiosk-ui/KioskVisual";
 import {
   buildDeviceLocationLabel,
   getDeviceVersionStatus,
@@ -1300,20 +1300,6 @@ function TeamVisualBuilder({
     applyTeamPatch(result.team);
     setRecipeMessage("Receita aplicada no rascunho. Publique para chegar no totem.");
   };
-  const renderAssetCard = (asset: TeamAsset, index: number, kind: "shirt" | "background") => (
-    <button
-      type="button"
-      className={`builder-asset-preview-card ${selection.type === kind && selection.index === index ? "selected" : ""}`}
-      key={asset.id}
-      onClick={(event) => { event.stopPropagation(); setSelection({ type: kind, index } as BuilderSelection); }}
-    >
-      <div className="asset-preview-image">
-        {asset.imageUrl ? <img src={publicAssetUrl(asset.imageUrl)} alt="" /> : <ImageIcon size={28} />}
-      </div>
-      <strong>{asset.name || (kind === "shirt" ? "Nome da camisa" : "Nome do cenario")}</strong>
-      <span>{asset.subtitle || "Texto curto"}</span>
-    </button>
-  );
   const renderPreviewScreen = () => {
     if (screen === "home") {
       return (
@@ -1330,32 +1316,50 @@ function TeamVisualBuilder({
     }
     if (screen === "shirts") {
       return (
-        <div className="builder-preview-body">
-          <EditablePreviewText fieldKey="kiosk_shirt_step" texts={textOverrides} selected={selectedTextKey === "kiosk_shirt_step"} variant="eyebrow" onSelect={() => selectText("kiosk_shirt_step")} onChange={setTextOverride} />
-          <EditablePreviewText fieldKey="kiosk_shirt_title" texts={textOverrides} selected={selectedTextKey === "kiosk_shirt_title"} variant="section-title" onSelect={() => selectText("kiosk_shirt_title")} onChange={setTextOverride} />
-          <div className="builder-asset-preview-row">
-            {shirts.length ? shirts.slice(0, 3).map((asset, index) => renderAssetCard(asset, index, "shirt")) : <button type="button" className="empty-builder-card" onClick={() => addAsset("shirt")}>Adicionar camisa</button>}
-          </div>
-          <div className="builder-preview-actions">
-            <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
-            <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
-          </div>
-        </div>
+        <KioskSelectionVisual
+          kind="shirt"
+          stepLabel={<EditablePreviewText fieldKey="kiosk_shirt_step" texts={textOverrides} selected={selectedTextKey === "kiosk_shirt_step"} variant="eyebrow" onSelect={() => selectText("kiosk_shirt_step")} onChange={setTextOverride} />}
+          title={<EditablePreviewText fieldKey="kiosk_shirt_title" texts={textOverrides} selected={selectedTextKey === "kiosk_shirt_title"} variant="section-title" onSelect={() => selectText("kiosk_shirt_title")} onChange={setTextOverride} />}
+          items={shirts.slice(0, 3).map((asset) => ({
+            id: asset.id,
+            name: asset.name || "Nome da camisa",
+            subtitle: asset.subtitle || "Texto curto",
+            imageUrl: publicAssetUrl(asset.imageUrl || ""),
+          }))}
+          selectedId={selection.type === "shirt" ? shirts[selection.index]?.id : undefined}
+          emptyLabel="Adicionar camisa"
+          onSelect={(_, index) => setSelection({ type: "shirt", index } as BuilderSelection)}
+          cta={
+            <div className="builder-preview-actions">
+              <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
+              <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
+            </div>
+          }
+        />
       );
     }
     if (screen === "backgrounds") {
       return (
-        <div className="builder-preview-body">
-          <EditablePreviewText fieldKey="kiosk_background_step" texts={textOverrides} selected={selectedTextKey === "kiosk_background_step"} variant="eyebrow" onSelect={() => selectText("kiosk_background_step")} onChange={setTextOverride} />
-          <EditablePreviewText fieldKey="kiosk_background_title" texts={textOverrides} selected={selectedTextKey === "kiosk_background_title"} variant="section-title" onSelect={() => selectText("kiosk_background_title")} onChange={setTextOverride} />
-          <div className="builder-asset-preview-row">
-            {backgrounds.length ? backgrounds.slice(0, 3).map((asset, index) => renderAssetCard(asset, index, "background")) : <button type="button" className="empty-builder-card" onClick={() => addAsset("background")}>Adicionar cenario</button>}
-          </div>
-          <div className="builder-preview-actions">
-            <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
-            <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
-          </div>
-        </div>
+        <KioskSelectionVisual
+          kind="background"
+          stepLabel={<EditablePreviewText fieldKey="kiosk_background_step" texts={textOverrides} selected={selectedTextKey === "kiosk_background_step"} variant="eyebrow" onSelect={() => selectText("kiosk_background_step")} onChange={setTextOverride} />}
+          title={<EditablePreviewText fieldKey="kiosk_background_title" texts={textOverrides} selected={selectedTextKey === "kiosk_background_title"} variant="section-title" onSelect={() => selectText("kiosk_background_title")} onChange={setTextOverride} />}
+          items={backgrounds.slice(0, 3).map((asset) => ({
+            id: asset.id,
+            name: asset.name || "Nome do cenario",
+            subtitle: asset.subtitle || "Texto curto",
+            imageUrl: publicAssetUrl(asset.imageUrl || ""),
+          }))}
+          selectedId={selection.type === "background" ? backgrounds[selection.index]?.id : undefined}
+          emptyLabel="Adicionar cenario"
+          onSelect={(_, index) => setSelection({ type: "background", index } as BuilderSelection)}
+          cta={
+            <div className="builder-preview-actions">
+              <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
+              <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
+            </div>
+          }
+        />
       );
     }
     if (screen === "pix") {

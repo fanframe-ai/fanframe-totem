@@ -359,3 +359,251 @@
   border-radius: 7px;
   font-size: 11px;
 }
+
+.ff-kiosk-selection {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.ff-kiosk-selection-heading {
+  flex-shrink: 0;
+}
+
+.ff-kiosk-selection-step {
+  color: hsl(var(--muted-foreground, 0 0% 62%));
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.ff-kiosk-selection-title {
+  margin: 0 0 32px;
+  color: inherit;
+  font-size: 60px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ff-kiosk-selection-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.ff-kiosk-selection-rail {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  padding: 32px 96px;
+  scrollbar-width: none;
+}
+
+.ff-kiosk-selection-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.ff-kiosk-selection-card {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  scroll-snap-align: center;
+  border: 2px solid hsl(var(--border, 0 0% 100% / .18));
+  border-radius: 8px;
+  background: hsl(var(--card, 0 0% 7%));
+  color: inherit;
+  padding: 20px;
+  text-align: left;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+  box-shadow: 0 18px 42px rgb(0 0 0 / .28);
+}
+
+.ff-kiosk-selection-shirt .ff-kiosk-selection-card {
+  width: 410px;
+  height: 640px;
+}
+
+.ff-kiosk-selection-background .ff-kiosk-selection-card {
+  width: 720px;
+  height: 640px;
+}
+
+.ff-kiosk-selection-card.is-selected {
+  border-color: hsl(var(--primary, 0 0% 100%));
+  background: hsl(var(--accent, 0 0% 12%));
+  transform: scale(1.015);
+}
+
+.ff-kiosk-selection-image {
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: hsl(var(--secondary, 0 0% 12%));
+}
+
+.ff-kiosk-selection-shirt .ff-kiosk-selection-image {
+  aspect-ratio: 1;
+  margin-bottom: 24px;
+}
+
+.ff-kiosk-selection-background .ff-kiosk-selection-image {
+  aspect-ratio: 16 / 9;
+  margin-bottom: 24px;
+}
+
+.ff-kiosk-selection-image img {
+  width: 100%;
+  height: 100%;
+}
+
+.ff-kiosk-selection-shirt .ff-kiosk-selection-image img {
+  object-fit: contain;
+}
+
+.ff-kiosk-selection-background .ff-kiosk-selection-image img {
+  object-fit: cover;
+}
+
+.ff-kiosk-selection-image strong,
+.ff-kiosk-selection-empty {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+  place-items: center;
+  color: hsl(var(--muted-foreground, 0 0% 62%));
+  font-size: 20px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.ff-kiosk-selection-card h3 {
+  margin: 0;
+  color: inherit;
+  font-size: 28px;
+  font-weight: 950;
+  line-height: 1.08;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ff-kiosk-selection-background .ff-kiosk-selection-card h3 {
+  font-size: 32px;
+}
+
+.ff-kiosk-selection-card p {
+  display: -webkit-box;
+  margin: 12px 0 0;
+  overflow: hidden;
+  color: hsl(var(--muted-foreground, 0 0% 62%));
+  font-size: 20px;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.ff-kiosk-rail-fade {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 112px;
+}
+
+.ff-kiosk-rail-fade-left {
+  left: 0;
+  background: linear-gradient(90deg, hsl(var(--background, 0 0% 0%)), hsl(var(--background, 0 0% 0%) / .8), transparent);
+}
+
+.ff-kiosk-rail-fade-right {
+  right: 0;
+  background: linear-gradient(270deg, hsl(var(--background, 0 0% 0%)), hsl(var(--background, 0 0% 0%) / .8), transparent);
+}
+
+.ff-kiosk-rail-arrow {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  width: 80px;
+  height: 112px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--primary, 0 0% 100%) / .4);
+  background: hsl(var(--primary, 0 0% 100%));
+  color: hsl(var(--primary-foreground, 0 0% 0%));
+  box-shadow: 0 18px 38px rgb(0 0 0 / .34);
+  transform: translateY(-50%);
+}
+
+.ff-kiosk-rail-arrow:disabled {
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: .25;
+  box-shadow: none;
+}
+
+.ff-kiosk-rail-arrow svg {
+  width: 48px;
+  height: 48px;
+  stroke-width: 3;
+}
+
+.ff-kiosk-rail-arrow-left {
+  left: 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.ff-kiosk-rail-arrow-right {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+}
+
+.ff-kiosk-selection-footer {
+  flex-shrink: 0;
+  padding-top: 28px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-title {
+  margin-bottom: 28px;
+  font-size: 54px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-step {
+  font-size: 16px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-rail {
+  gap: 18px;
+  padding: 22px 72px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-shirt .ff-kiosk-selection-card {
+  width: 330px;
+  height: 520px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-background .ff-kiosk-selection-card {
+  width: 520px;
+  height: 520px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-card {
+  padding: 16px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-card h3 {
+  font-size: 24px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-card p {
+  font-size: 16px;
+}
