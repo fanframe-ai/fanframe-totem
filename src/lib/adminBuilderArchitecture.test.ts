@@ -60,4 +60,12 @@ describe("admin visual builder architecture", () => {
       expect(kioskSource).toContain(componentName);
     }
   });
+
+  it("keeps selection rail fades subtle instead of drawing dark side containers", () => {
+    const cssSource = readFileSync("src/shared/kiosk-ui/kioskVisual.css", "utf8");
+
+    expect(cssSource).toContain("width: 56px");
+    expect(cssSource).toContain("rgb(0 0 0 / 0)");
+    expect(cssSource).not.toContain("width: 112px");
+  });
 });
