@@ -19,6 +19,7 @@ import {
   Settings,
   Shield,
   Shirt,
+  Trash2,
   Type,
   Users,
 } from "lucide-react";
@@ -770,9 +771,10 @@ function DataTable({ columns, children }: { columns: string[]; children: React.R
 }
 
 function Teams() {
-  const { teams, loading } = useTeams();
+  const { teams, loading, reload } = useTeams();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [message, setMessage] = useState("");
   const filteredTeams = teams.filter((team) => {
     const haystack = [team.name, team.slug, team.subdomain].join(" ").toLowerCase();
     const matchesSearch = haystack.includes(search.trim().toLowerCase());
@@ -782,6 +784,41 @@ function Teams() {
       (statusFilter === "paused" && (team.kiosk_enabled === false || team.is_active === false));
     return matchesSearch && matchesStatus;
   });
+
+  async function deleteTeam(team: TeamRow) {
+    setMessage("");
+    const expected = team.slug || team.name;
+    const confirmation = window.prompt(`Para excluir o time "${team.name}", digite exatamente: ${expected}`);
+    if (confirmation !== expected) {
+      if (confirmation !== null) setMessage("Exclusao cancelada: confirmacao diferente do codigo do time.");
+      return;
+    }
+
+    const { count, error: countError } = await supabase
+      .from("kiosk_devices")
+      .select("id", { count: "exact", head: true })
+      .eq("team_id", team.id);
+
+    if (countError) {
+      setMessage(countError.message);
+      return;
+    }
+    if ((count || 0) > 0) {
+      setMessage(`Esse time ainda tem ${count} totem(ns) vinculado(s). Troque ou exclua os totens antes de apagar o time.`);
+      return;
+    }
+
+    await logAdminAudit("teams", team.id, "team_deleted", { name: team.name, slug: team.slug });
+    const { error } = await supabase.from("teams").delete().eq("id", team.id);
+    if (error) {
+      setMessage(`Nao foi possivel excluir o time: ${error.message}`);
+      return;
+    }
+
+    setMessage(`Time "${team.name}" excluido.`);
+    reload();
+  }
+
   return (
     <>
       <PageHeader
@@ -807,6 +844,7 @@ function Teams() {
           <span>{filteredTeams.length === 1 ? "time encontrado" : "times encontrados"}</span>
         </div>
       </section>
+      {message && <div className="form-message">{message}</div>}
       <section className="team-card-grid">
         {loading && <div className="panel empty-state">Carregando times...</div>}
         {!loading && filteredTeams.map((team) => (
@@ -831,6 +869,7 @@ function Teams() {
               <div className="team-card-actions">
                 <Link className="secondary link-button" to={getKioskPreviewUrl(team.slug)}>Ver kiosk online</Link>
                 <Link className="primary link-button" to={`/times/${team.slug}`}>Editar time</Link>
+                <button className="danger" type="button" onClick={() => deleteTeam(team)}><Trash2 size={14} /> Excluir</button>
               </div>
             </div>
           </article>
@@ -1950,6 +1989,31 @@ function Devices({ role }: { role: Role | null }) {
     }
   }
 
+  async function deleteDevice(device: KioskDevice) {
+    setMessage("");
+    const expected = device.device_code;
+    const confirmation = window.prompt(`Para excluir o totem "${device.label || device.device_code}", digite exatamente: ${expected}`);
+    if (confirmation !== expected) {
+      if (confirmation !== null) setMessage("Exclusao cancelada: confirmacao diferente do codigo do totem.");
+      return;
+    }
+
+    await logAdminAudit("kiosk_devices", device.id, "device_deleted", {
+      deviceCode: device.device_code,
+      label: device.label,
+      teamId: device.team_id,
+    });
+    const { error } = await supabase.from("kiosk_devices").delete().eq("id", device.id);
+    if (error) {
+      setMessage(`Nao foi possivel excluir o totem: ${error.message}`);
+      return;
+    }
+
+    setMessage(`Totem "${device.label || device.device_code}" excluido.`);
+    if (installCode?.deviceLabel === (device.label || device.device_code)) setInstallCode(null);
+    load();
+  }
+
   return (
     <>
       <PageHeader title="Totens" subtitle="Cadastre cada computador do totem e acompanhe se esta funcionando." />
@@ -2127,6 +2191,7 @@ function Devices({ role }: { role: Role | null }) {
                 {canEditDevices && <button className="secondary" onClick={() => generateInstall(d)}>Instalar</button>}
                 {canOperate && d.status === "maintenance" && <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Liberar venda</button>}
                 {canOperate && d.status !== "maintenance" && <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Pausar</button>}
+                {canEditDevices && <button className="danger" onClick={() => deleteDevice(d)}><Trash2 size={14} /> Excluir</button>}
               </div>
             </article>
           ))}
