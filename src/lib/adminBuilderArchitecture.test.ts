@@ -68,4 +68,17 @@ describe("admin visual builder architecture", () => {
     expect(cssSource).toContain("rgb(0 0 0 / 0)");
     expect(cssSource).not.toContain("width: 112px");
   });
+
+  it("lets the builder edit the team logo and before/after home images", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const sharedVisualSource = readFileSync("src/shared/kiosk-ui/KioskVisual.tsx", "utf8");
+
+    expect(sharedVisualSource).toContain("onLogoSelect");
+    expect(sharedVisualSource).toContain('onMediaSelect?.("before")');
+    expect(sharedVisualSource).toContain('onMediaSelect?.("after")');
+    expect(adminSource).toContain('type: "homeImage"');
+    expect(adminSource).toContain("uploadTutorialImage");
+    expect(adminSource).toContain("Trocar foto do antes");
+    expect(adminSource).toContain("Trocar foto do depois");
+  });
 });

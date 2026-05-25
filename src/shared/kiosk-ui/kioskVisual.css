@@ -79,6 +79,24 @@
   object-fit: contain;
 }
 
+.ff-kiosk-header-logo-button {
+  display: grid;
+  flex: none;
+  width: 80px;
+  height: 80px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.ff-kiosk-header-logo-button:hover {
+  outline: 2px solid #60a5fa;
+  outline-offset: 3px;
+}
+
 .ff-kiosk-brand-copy {
   min-width: 0;
 }
@@ -292,6 +310,11 @@
 }
 
 .inline-kiosk-preview .ff-kiosk-header-logo {
+  width: 46px;
+  height: 46px;
+}
+
+.inline-kiosk-preview .ff-kiosk-header-logo-button {
   width: 46px;
   height: 46px;
 }

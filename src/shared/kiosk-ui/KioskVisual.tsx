@@ -17,6 +17,7 @@ type KioskVisualShellProps = {
   priceLabel: ReactNode;
   backLabel?: string;
   onBack?: () => void;
+  onLogoSelect?: () => void;
   technicalHotspot?: ReactNode;
   technicalOverlay?: ReactNode;
   children: ReactNode;
@@ -31,7 +32,7 @@ type KioskHomeVisualProps = {
   beforeLabel?: ReactNode;
   afterLabel?: ReactNode;
   cta: ReactNode;
-  onMediaSelect?: () => void;
+  onMediaSelect?: (target: "before" | "after") => void;
 };
 
 export type KioskSelectionVisualItem = {
@@ -125,6 +126,7 @@ export function KioskVisualShell({
   priceLabel,
   backLabel = "Voltar",
   onBack,
+  onLogoSelect,
   technicalHotspot,
   technicalOverlay,
   children,
@@ -143,7 +145,15 @@ export function KioskVisualShell({
       <div className="ff-kiosk-content">
         <header className="ff-kiosk-header">
           <div className="ff-kiosk-brand">
-            {logoUrl && <img src={logoUrl} alt={logoAlt} className="ff-kiosk-header-logo" />}
+            {logoUrl && (
+              onLogoSelect ? (
+                <button type="button" className="ff-kiosk-header-logo-button" onClick={onLogoSelect}>
+                  <img src={logoUrl} alt={logoAlt} className="ff-kiosk-header-logo" />
+                </button>
+              ) : (
+                <img src={logoUrl} alt={logoAlt} className="ff-kiosk-header-logo" />
+              )
+            )}
             <div className="ff-kiosk-brand-copy">
               <div className="ff-kiosk-brand-label">{brandLabel}</div>
               <h1 className="ff-kiosk-team-name">{teamName}</h1>
@@ -187,14 +197,14 @@ export function KioskHomeVisual({
         <div className="ff-kiosk-home-subtitle">{subtitle}</div>
       </div>
       <div className="ff-kiosk-home-media">
-        <button type="button" className="ff-kiosk-home-card" onClick={onMediaSelect}>
+        <button type="button" className="ff-kiosk-home-card" onClick={() => onMediaSelect?.("before")}>
           <div className="ff-kiosk-home-card-label">
             <span>{beforeLabel}</span>
             <i />
           </div>
           {beforeImage ? <img src={beforeImage} alt="" /> : <strong>{beforeLabel}</strong>}
         </button>
-        <button type="button" className="ff-kiosk-home-card is-highlighted" onClick={onMediaSelect}>
+        <button type="button" className="ff-kiosk-home-card is-highlighted" onClick={() => onMediaSelect?.("after")}>
           <div className="ff-kiosk-home-card-label">
             <span>{afterLabel}</span>
             <i />

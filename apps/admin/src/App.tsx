@@ -1077,6 +1077,7 @@ type BuilderSelection =
   | { type: "text"; key: string; label: string; fallback: string; long?: boolean }
   | { type: "theme" }
   | { type: "logo" }
+  | { type: "homeImage"; target: "before" | "after" }
   | { type: "recipe" }
   | { type: "shirt"; index: number }
   | { type: "background"; index: number };
@@ -1297,6 +1298,11 @@ function TeamVisualBuilder({
     const name = target === "logo_url" ? "logo" : "watermark";
     set(target, await uploadAsset(file, `${team.slug || "novo"}/branding/${name}.${extension}`));
   };
+  const uploadTutorialImage = async (file: File, target: "before" | "after") => {
+    const extension = file.name.split(".").pop() || "png";
+    const url = await uploadAsset(file, `${team.slug || "novo"}/experience/${target}.${extension}`);
+    set("tutorial_assets", { ...tutorialAssets, [target]: url } as TeamRow["tutorial_assets"]);
+  };
   const uploadAssetImage = async (file: File, kind: "shirt" | "background", index: number) => {
     const asset = kind === "shirt" ? shirts[index] : backgrounds[index];
     if (!asset) return;
@@ -1329,7 +1335,7 @@ function TeamVisualBuilder({
           subtitle={<EditablePreviewText fieldKey="kiosk_home_subtitle" texts={textOverrides} selected={selectedTextKey === "kiosk_home_subtitle"} variant="subtitle" onSelect={() => selectText("kiosk_home_subtitle")} onChange={setTextOverride} />}
           beforeImage={homeBeforeImage}
           afterImage={homeAfterImage}
-          onMediaSelect={() => setSelection({ type: "theme" })}
+          onMediaSelect={(target) => setSelection({ type: "homeImage", target })}
           cta={<EditablePreviewText fieldKey="kiosk_home_cta" texts={textOverrides} selected={selectedTextKey === "kiosk_home_cta"} variant="cta" onSelect={() => selectText("kiosk_home_cta")} onChange={setTextOverride} />}
         />
       );
@@ -1487,6 +1493,7 @@ function TeamVisualBuilder({
             totalLabel={<EditablePreviewText fieldKey="kiosk_total_label" texts={textOverrides} selected={selectedTextKey === "kiosk_total_label"} variant="micro" onSelect={() => selectText("kiosk_total_label")} onChange={setTextOverride} />}
             priceLabel={money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}
             onThemeSelect={() => setSelection({ type: "theme" })}
+            onLogoSelect={() => setSelection({ type: "logo" })}
           >
             {renderPreviewScreen()}
           </InlineKioskPreview>
@@ -1531,6 +1538,19 @@ function TeamVisualBuilder({
             {team.logo_url && <img className="inspector-image-preview" src={publicAssetUrl(team.logo_url)} alt="" />}
             <label className="file-input">Trocar logo<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadTeamImage(file, "logo_url"); }} /></label>
             <label className="file-input">Marca d'agua da foto<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadTeamImage(file, "watermark_url"); }} /></label>
+          </>
+        )}
+        {selection.type === "homeImage" && (
+          <>
+            <div className="inspector-heading"><ImageIcon size={17} /><strong>{selection.target === "before" ? "Foto do antes" : "Foto do depois"}</strong></div>
+            {(selection.target === "before" ? homeBeforeImage : homeAfterImage) && (
+              <img className="inspector-image-preview" src={selection.target === "before" ? homeBeforeImage : homeAfterImage} alt="" />
+            )}
+            <label className="file-input">
+              {selection.target === "before" ? "Trocar foto do antes" : "Trocar foto do depois"}
+              <input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadTutorialImage(file, selection.target); }} />
+            </label>
+            <p className="hint">Essa imagem aparece na tela inicial para mostrar ao cliente o exemplo da experiencia.</p>
           </>
         )}
         {selection.type === "recipe" && (
