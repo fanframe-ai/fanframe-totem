@@ -145,6 +145,7 @@ function KioskButton({
   disabled,
   variant = "primary",
   className = "",
+  type = "button",
 }: {
   children: React.ReactNode;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
@@ -152,6 +153,7 @@ function KioskButton({
   disabled?: boolean;
   variant?: "primary" | "secondary" | "ghost";
   className?: string;
+  type?: "button" | "submit";
 }) {
   const baseClassName =
     variant === "primary"
@@ -162,7 +164,7 @@ function KioskButton({
 
   return (
     <Button
-      type="button"
+      type={type}
       onClick={onClick}
       onPointerUp={onPointerUp}
       disabled={disabled}
@@ -1318,7 +1320,7 @@ export default function KioskPage() {
               autoFocus
               className="h-20 rounded-md border border-border bg-background px-6 text-center text-3xl font-black uppercase"
             />
-            <KioskButton disabled={pairingBusy || !pairingCode.trim()} className="w-full">
+            <KioskButton type="submit" disabled={pairingBusy || !pairingCode.trim()} className="w-full">
               {pairingBusy ? "Conectando..." : "Conectar"}
             </KioskButton>
           </form>
