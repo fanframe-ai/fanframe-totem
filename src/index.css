@@ -213,6 +213,7 @@
   }
 
   .technical-panel input,
+  .technical-panel select,
   .technical-panel button {
     min-height: 52px;
     border-radius: 6px;
@@ -220,10 +221,19 @@
     font-weight: 800;
   }
 
-  .technical-panel input {
+  .technical-panel input,
+  .technical-panel select {
     background: #030712;
     border: 1px solid rgb(255 255 255 / 18%);
     color: #f9fafb;
+  }
+
+  .technical-select-field {
+    display: grid;
+    gap: 8px;
+    color: #d1d5db;
+    font-size: 0.9rem;
+    font-weight: 900;
   }
 
   .technical-panel button {

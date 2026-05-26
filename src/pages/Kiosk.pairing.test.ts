@@ -16,4 +16,16 @@ describe("Kiosk pairing form", () => {
     expect(source).toContain('const isPairingTechnicalPin = step === "pairing" && pinInput.trim() === pairingTechnicalPin;');
     expect(source).toContain("if (!identity?.supportPinHash && !isPairingTechnicalPin)");
   });
+
+  it("lets the technical mode configure camera orientation beyond horizontal mirroring", () => {
+    const source = readFileSync("src/pages/Kiosk.tsx", "utf8");
+
+    expect(source).toContain("cameraOrientationOptions");
+    expect(source).toContain('"rotate-right"');
+    expect(source).toContain('"rotate-left"');
+    expect(source).toContain('"rotate-180"');
+    expect(source).toContain("drawOrientedVideoFrame");
+    expect(source).toContain("getCameraPreviewStyle(cameraOrientation)");
+    expect(source).toContain("Orientacao da camera");
+  });
 });

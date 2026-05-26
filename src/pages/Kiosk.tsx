@@ -135,7 +135,94 @@ const initialTechnicalChecks: TechnicalChecks = {
 
 const paymentTestModeStorageKey = "fanframe:kiosk-payment-test-mode";
 const cameraMirrorStorageKey = "fanframe:kiosk-camera-mirror";
+const cameraOrientationStorageKey = "fanframe:kiosk-camera-orientation";
 const pairingTechnicalPin = "0000";
+
+type CameraOrientation = "normal" | "mirror" | "rotate-right" | "rotate-left" | "rotate-180" | "rotate-right-mirror" | "rotate-left-mirror";
+
+const cameraOrientationOptions: Array<{ value: CameraOrientation; label: string; description: string }> = [
+  { value: "normal", label: "Normal", description: "Camera horizontal normal." },
+  { value: "mirror", label: "Espelhada", description: "Corrige camera invertida esquerda/direita." },
+  { value: "rotate-right", label: "Vertical direita", description: "Gira 90 graus para a direita." },
+  { value: "rotate-left", label: "Vertical esquerda", description: "Gira 90 graus para a esquerda." },
+  { value: "rotate-180", label: "De cabeca para baixo", description: "Gira 180 graus." },
+  { value: "rotate-right-mirror", label: "Vertical direita espelhada", description: "Gira para a direita e corrige espelho." },
+  { value: "rotate-left-mirror", label: "Vertical esquerda espelhada", description: "Gira para a esquerda e corrige espelho." },
+];
+
+function normalizeCameraOrientation(value: string | null | undefined): CameraOrientation {
+  if (value === "false") return "normal";
+  if (value === "true") return "mirror";
+  return cameraOrientationOptions.some((option) => option.value === value) ? value as CameraOrientation : "mirror";
+}
+
+function getCameraOrientationLabel(value: CameraOrientation) {
+  return cameraOrientationOptions.find((option) => option.value === value)?.label || "Espelhada";
+}
+
+function getCameraPreviewStyle(orientation: CameraOrientation): React.CSSProperties {
+  const transformByOrientation: Record<CameraOrientation, string> = {
+    normal: "none",
+    mirror: "scaleX(-1)",
+    "rotate-right": "rotate(90deg)",
+    "rotate-left": "rotate(-90deg)",
+    "rotate-180": "rotate(180deg)",
+    "rotate-right-mirror": "rotate(90deg) scaleX(-1)",
+    "rotate-left-mirror": "rotate(-90deg) scaleX(-1)",
+  };
+  const isVertical = orientation === "rotate-right" || orientation === "rotate-left" || orientation === "rotate-right-mirror" || orientation === "rotate-left-mirror";
+  return {
+    transform: transformByOrientation[orientation],
+    width: isVertical ? "100vh" : "100%",
+    height: isVertical ? "100vw" : "100%",
+    maxWidth: "none",
+    transformOrigin: "center",
+  };
+}
+
+function drawOrientedVideoFrame(ctx: CanvasRenderingContext2D, video: HTMLVideoElement, orientation: CameraOrientation, width: number, height: number) {
+  if (orientation === "normal") {
+    ctx.drawImage(video, 0, 0, width, height);
+    return;
+  }
+  if (orientation === "mirror") {
+    ctx.translate(width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, width, height);
+    return;
+  }
+  if (orientation === "rotate-180") {
+    ctx.translate(width, height);
+    ctx.rotate(Math.PI);
+    ctx.drawImage(video, 0, 0, width, height);
+    return;
+  }
+  if (orientation === "rotate-right") {
+    ctx.translate(width, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(video, 0, 0, height, width);
+    return;
+  }
+  if (orientation === "rotate-left") {
+    ctx.translate(0, height);
+    ctx.rotate(-Math.PI / 2);
+    ctx.drawImage(video, 0, 0, height, width);
+    return;
+  }
+  if (orientation === "rotate-right-mirror") {
+    ctx.translate(width, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.translate(height, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, height, width);
+    return;
+  }
+  ctx.translate(0, height);
+  ctx.rotate(-Math.PI / 2);
+  ctx.translate(width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, height, width);
+}
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -259,7 +346,11 @@ export default function KioskPage() {
   const [deliveryUrl, setDeliveryUrl] = useState<string | null>(null);
   const [deliveryQrImage, setDeliveryQrImage] = useState<string | null>(null);
   const [waitingSlideIndex, setWaitingSlideIndex] = useState(0);
-  const [mirrorCamera, setMirrorCamera] = useState(() => localStorage.getItem(cameraMirrorStorageKey) !== "false");
+  const [cameraOrientation, setCameraOrientation] = useState<CameraOrientation>(() => {
+    const storedOrientation = localStorage.getItem(cameraOrientationStorageKey);
+    if (storedOrientation) return normalizeCameraOrientation(storedOrientation);
+    return normalizeCameraOrientation(localStorage.getItem(cameraMirrorStorageKey));
+  });
   const [cameraCountdown, setCameraCountdown] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -905,19 +996,18 @@ export default function KioskPage() {
     if (!video) return;
 
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1080;
-    canvas.height = video.videoHeight || 1440;
+    const videoWidth = video.videoWidth || 1080;
+    const videoHeight = video.videoHeight || 1440;
+    const isVerticalOrientation = cameraOrientation === "rotate-right" || cameraOrientation === "rotate-left" || cameraOrientation === "rotate-right-mirror" || cameraOrientation === "rotate-left-mirror";
+    canvas.width = isVerticalOrientation ? videoHeight : videoWidth;
+    canvas.height = isVerticalOrientation ? videoWidth : videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    if (mirrorCamera) {
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-    }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    drawOrientedVideoFrame(ctx, video, cameraOrientation, canvas.width, canvas.height);
     setUserImage(canvas.toDataURL("image/jpeg", 0.92));
     stopCamera();
-  }, [mirrorCamera, stopCamera, stopCameraCountdown]);
+  }, [cameraOrientation, stopCamera, stopCameraCountdown]);
 
   const startCaptureCountdown = () => {
     if (cameraCountdown !== null) return;
@@ -1207,13 +1297,13 @@ export default function KioskPage() {
     });
   };
 
-  const toggleCameraMirror = () => {
-    const nextValue = !mirrorCamera;
-    localStorage.setItem(cameraMirrorStorageKey, String(nextValue));
-    setMirrorCamera(nextValue);
+  const updateCameraOrientation = (nextValue: CameraOrientation) => {
+    localStorage.setItem(cameraOrientationStorageKey, nextValue);
+    localStorage.setItem(cameraMirrorStorageKey, String(nextValue === "mirror" || nextValue === "rotate-right-mirror" || nextValue === "rotate-left-mirror"));
+    setCameraOrientation(nextValue);
     setTechnicalCheck("camera", {
       status: "ok",
-      message: nextValue ? "Correcao de camera invertida ligada." : "Correcao de camera invertida desligada.",
+      message: `Orientacao da camera: ${getCameraOrientationLabel(nextValue)}.`,
     });
   };
 
@@ -1299,8 +1389,16 @@ export default function KioskPage() {
                 <div><dt>Diagnostico</dt><dd className={`technical-${technicalChecks.diagnostics.status}`}>{checkText(technicalChecks.diagnostics)}</dd></div>
                 <div><dt>Atualizacao</dt><dd>{updateStatus?.message || "Ainda nao verificada neste PC."}</dd></div>
                 <div><dt>Modo teste</dt><dd>{config?.simulatePayments ? "Pagamento teste ligado" : "Pagamento real"}</dd></div>
-                <div><dt>Camera</dt><dd>{mirrorCamera ? "Correcao ligada" : "Correcao desligada"}</dd></div>
+                <div><dt>Orientacao</dt><dd>{getCameraOrientationLabel(cameraOrientation)}</dd></div>
               </dl>
+              <label className="technical-select-field">
+                Orientacao da camera
+                <select value={cameraOrientation} onChange={(event) => updateCameraOrientation(event.target.value as CameraOrientation)}>
+                  {cameraOrientationOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label} - {option.description}</option>
+                  ))}
+                </select>
+              </label>
               <button onClick={runAllTechnicalTests}>Testar tudo</button>
               <button onClick={testInternet}>Testar internet</button>
               <button onClick={testSupabase}>Testar painel</button>
@@ -1310,7 +1408,6 @@ export default function KioskPage() {
               <button onClick={() => window.location.reload()}>Sincronizar dados agora</button>
               <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
               <button onClick={togglePaymentTestMode}>{config?.simulatePayments ? "Desligar pagamento teste" : "Ativar pagamento teste"}</button>
-              <button onClick={toggleCameraMirror}>{mirrorCamera ? "Desligar correcao da camera" : "Corrigir camera invertida"}</button>
               <button onClick={startAppUpdate} disabled={updateBusy}>{updateBusy ? "Atualizando..." : "Atualizar app"}</button>
               <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
               {updateMessage && <p className="technical-note">{updateMessage}</p>}
@@ -1536,7 +1633,7 @@ export default function KioskPage() {
             media={userImage ? (
               <img src={userImage} alt="Foto capturada" />
             ) : (
-              <video ref={videoRef} className={mirrorCamera ? "-scale-x-100" : ""} playsInline muted />
+              <video ref={videoRef} style={getCameraPreviewStyle(cameraOrientation)} playsInline muted />
             )}
           />
         )}
