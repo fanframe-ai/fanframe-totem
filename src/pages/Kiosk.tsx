@@ -330,6 +330,7 @@ export default function KioskPage() {
   const [updateBusy, setUpdateBusy] = useState(false);
   const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
   const [technicalCameraPreview, setTechnicalCameraPreview] = useState(false);
+  const [technicalCameraOrientationOpen, setTechnicalCameraOrientationOpen] = useState(false);
   const [pendingRemoteReload, setPendingRemoteReload] = useState(false);
   const [shirtRailScroll, setShirtRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
   const [backgroundRailScroll, setBackgroundRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
@@ -420,6 +421,11 @@ export default function KioskPage() {
     setTechnicalCameraPreview(false);
   }, []);
 
+  const closeTechnicalCameraOrientation = useCallback(() => {
+    stopTechnicalCameraPreview();
+    setTechnicalCameraOrientationOpen(false);
+  }, [stopTechnicalCameraPreview]);
+
   const stopCameraCountdown = useCallback(() => {
     if (cameraCountdownTimerRef.current) {
       window.clearInterval(cameraCountdownTimerRef.current);
@@ -431,7 +437,7 @@ export default function KioskPage() {
   const clearLocalPairing = useCallback(async (message?: string) => {
     stopCameraCountdown();
     stopCamera();
-    stopTechnicalCameraPreview();
+    closeTechnicalCameraOrientation();
     await window.fanframeKiosk?.clearDeviceIdentity?.().catch(() => undefined);
     localStorage.removeItem("fanframe:kiosk-team");
     setIdentity(null);
@@ -457,12 +463,12 @@ export default function KioskPage() {
     setTechnicalPinError("");
     setError(message || null);
     setStep("pairing");
-  }, [setSlug, stopCamera, stopCameraCountdown, stopTechnicalCameraPreview]);
+  }, [setSlug, stopCamera, stopCameraCountdown, closeTechnicalCameraOrientation]);
 
   const resetFlow = useCallback(() => {
     stopCameraCountdown();
     stopCamera();
-    stopTechnicalCameraPreview();
+    closeTechnicalCameraOrientation();
     setStep(team?.kiosk_enabled ? "home" : "maintenance");
     setError(null);
     setSelectedShirt(null);
@@ -479,7 +485,7 @@ export default function KioskPage() {
     setGeneratedImage(null);
     setDeliveryUrl(null);
     setDeliveryQrImage(null);
-  }, [stopCamera, stopCameraCountdown, stopTechnicalCameraPreview, team?.kiosk_enabled]);
+  }, [stopCamera, stopCameraCountdown, closeTechnicalCameraOrientation, team?.kiosk_enabled]);
 
   const finishResult = useCallback((event?: React.SyntheticEvent<HTMLButtonElement>) => {
     event?.preventDefault();
@@ -1256,6 +1262,16 @@ export default function KioskPage() {
     }
   };
 
+  const toggleTechnicalCameraOrientation = () => {
+    const shouldOpen = !technicalCameraOrientationOpen;
+    setTechnicalCameraOrientationOpen(shouldOpen);
+    if (shouldOpen) {
+      void startTechnicalCameraPreview();
+    } else {
+      stopTechnicalCameraPreview();
+    }
+  };
+
   const testPayments = async () => {
     setTechnicalCheck("payments", { status: "running", message: "Verificando configuracao local..." });
     const paymentStatus = await window.fanframeKiosk?.getPaymentStatus?.().catch(() => null);
@@ -1265,34 +1281,6 @@ export default function KioskPage() {
       status: ready ? "ok" : "fail",
         message: paymentStatus?.message || (simulatedFallback ? "Pagamentos simulados ativos." : "PIX PagBank em modo producao."),
     });
-  };
-
-  const sendManualDiagnostics = async () => {
-    if (!hasDeviceAuth) {
-      setTechnicalCheck("diagnostics", { status: "fail", message: "Pareie o totem antes de enviar diagnostico." });
-      return;
-    }
-    setTechnicalCheck("diagnostics", { status: "running", message: "Enviando diagnostico para o painel..." });
-    try {
-      const health = await collectHealthPayload({
-        manualDiagnostics: true,
-        checks: technicalChecks,
-      });
-      await reportKioskHealth(activeDevice, {
-        health,
-        event: {
-          eventType: "manual_diagnostics_sent",
-          severity: "info",
-          payload: { checks: technicalChecks, currentScreen: step, paymentStatus: health.paymentStatus },
-        },
-      });
-      setTechnicalCheck("diagnostics", { status: "ok", message: "Diagnostico enviado. O suporte ja pode ver este totem." });
-    } catch (err) {
-      setTechnicalCheck("diagnostics", {
-        status: "fail",
-        message: err instanceof Error ? err.message : "Erro ao enviar diagnostico.",
-      });
-    }
   };
 
   const startAppUpdate = async () => {
@@ -1426,36 +1414,32 @@ export default function KioskPage() {
                 <div><dt>Modo teste</dt><dd>{config?.simulatePayments ? "Pagamento teste ligado" : "Pagamento real"}</dd></div>
                 <div><dt>Orientacao</dt><dd>{getCameraOrientationLabel(cameraOrientation)}</dd></div>
               </dl>
-              <label className="technical-select-field">
-                Orientacao da camera
-                <select value={cameraOrientation} onChange={(event) => updateCameraOrientation(event.target.value as CameraOrientation)}>
-                  {cameraOrientationOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label} - {option.description}</option>
-                  ))}
-                </select>
-              </label>
-              {technicalCameraPreview && (
-                <div className="technical-camera-preview">
-                  <video ref={technicalCameraVideoRef} style={getCameraPreviewStyle(cameraOrientation)} playsInline muted />
+              <button onClick={toggleTechnicalCameraOrientation}>
+                {technicalCameraOrientationOpen ? "Fechar orientacao da camera" : "Orientacao da camera"}
+              </button>
+              {technicalCameraOrientationOpen && (
+                <div className="technical-camera-orientation-panel">
+                  <label className="technical-select-field">
+                    Escolha como a camera esta instalada
+                    <select value={cameraOrientation} onChange={(event) => updateCameraOrientation(event.target.value as CameraOrientation)}>
+                      {cameraOrientationOptions.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label} - {option.description}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="technical-camera-preview">
+                    <video ref={technicalCameraVideoRef} style={getCameraPreviewStyle(cameraOrientation)} playsInline muted />
+                  </div>
+                  <p className="technical-note">Troque a opcao ate a imagem ficar em pe e do lado certo. Essa escolha tambem vale para a foto enviada para a IA.</p>
                 </div>
               )}
               <button onClick={runAllTechnicalTests}>Testar tudo</button>
-              <button onClick={testInternet}>Testar internet</button>
-              <button onClick={testSupabase}>Testar painel</button>
-              <button onClick={testCamera}>Testar camera</button>
-              <button onClick={technicalCameraPreview ? stopTechnicalCameraPreview : startTechnicalCameraPreview}>
-                {technicalCameraPreview ? "Fechar preview da camera" : "Ver preview da camera"}
-              </button>
-              <button onClick={testPayments}>Testar pagamentos</button>
-              <button onClick={sendManualDiagnostics}>Enviar diagnostico</button>
-              <button onClick={() => window.location.reload()}>Sincronizar dados agora</button>
-              <button onClick={() => window.fanframeKiosk?.relaunch?.() || window.location.reload()}>Reiniciar app</button>
               <button onClick={togglePaymentTestMode}>{config?.simulatePayments ? "Desligar pagamento teste" : "Ativar pagamento teste"}</button>
               <button onClick={startAppUpdate} disabled={updateBusy}>{updateBusy ? "Atualizando..." : "Atualizar app"}</button>
-              <button onClick={() => openTechnicalMode()}>Atualizar diagnostico</button>
               {updateMessage && <p className="technical-note">{updateMessage}</p>}
               <button className="technical-danger" onClick={resetKioskInstallation}>Resetar instalacao</button>
               <button onClick={() => {
+                closeTechnicalCameraOrientation();
                 setTechnicalOpen(false);
                 setTechnicalUnlocked(false);
                 setPinInput("");

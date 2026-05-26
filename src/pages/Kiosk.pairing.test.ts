@@ -27,7 +27,8 @@ describe("Kiosk pairing form", () => {
     expect(source).toContain("drawOrientedVideoFrame");
     expect(source).toContain("getCameraPreviewStyle(cameraOrientation)");
     expect(source).toContain("Orientacao da camera");
-    expect(source).toContain("Ver preview da camera");
+    expect(source).toContain("Escolha como a camera esta instalada");
     expect(source).toContain("technicalCameraVideoRef");
+    expect(source).not.toContain("Ver preview da camera");
   });
 });
