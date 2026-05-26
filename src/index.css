@@ -236,6 +236,23 @@
     font-weight: 900;
   }
 
+  .technical-camera-preview {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 8px;
+    background: #030712;
+  }
+
+  .technical-camera-preview video {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    object-fit: cover;
+  }
+
   .technical-panel button {
     background: #f9fafb;
     color: #111827;

@@ -329,6 +329,7 @@ export default function KioskPage() {
   const [updateMessage, setUpdateMessage] = useState("");
   const [updateBusy, setUpdateBusy] = useState(false);
   const [technicalChecks, setTechnicalChecks] = useState<TechnicalChecks>(initialTechnicalChecks);
+  const [technicalCameraPreview, setTechnicalCameraPreview] = useState(false);
   const [pendingRemoteReload, setPendingRemoteReload] = useState(false);
   const [shirtRailScroll, setShirtRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
   const [backgroundRailScroll, setBackgroundRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
@@ -354,6 +355,8 @@ export default function KioskPage() {
   const [cameraCountdown, setCameraCountdown] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const technicalCameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const technicalCameraStreamRef = useRef<MediaStream | null>(null);
   const cameraCountdownTimerRef = useRef<number | null>(null);
   const shirtRailRef = useRef<HTMLDivElement | null>(null);
   const backgroundRailRef = useRef<HTMLDivElement | null>(null);
@@ -410,6 +413,13 @@ export default function KioskPage() {
     streamRef.current = null;
   }, []);
 
+  const stopTechnicalCameraPreview = useCallback(() => {
+    technicalCameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    technicalCameraStreamRef.current = null;
+    if (technicalCameraVideoRef.current) technicalCameraVideoRef.current.srcObject = null;
+    setTechnicalCameraPreview(false);
+  }, []);
+
   const stopCameraCountdown = useCallback(() => {
     if (cameraCountdownTimerRef.current) {
       window.clearInterval(cameraCountdownTimerRef.current);
@@ -421,6 +431,7 @@ export default function KioskPage() {
   const clearLocalPairing = useCallback(async (message?: string) => {
     stopCameraCountdown();
     stopCamera();
+    stopTechnicalCameraPreview();
     await window.fanframeKiosk?.clearDeviceIdentity?.().catch(() => undefined);
     localStorage.removeItem("fanframe:kiosk-team");
     setIdentity(null);
@@ -446,11 +457,12 @@ export default function KioskPage() {
     setTechnicalPinError("");
     setError(message || null);
     setStep("pairing");
-  }, [setSlug, stopCamera, stopCameraCountdown]);
+  }, [setSlug, stopCamera, stopCameraCountdown, stopTechnicalCameraPreview]);
 
   const resetFlow = useCallback(() => {
     stopCameraCountdown();
     stopCamera();
+    stopTechnicalCameraPreview();
     setStep(team?.kiosk_enabled ? "home" : "maintenance");
     setError(null);
     setSelectedShirt(null);
@@ -467,7 +479,7 @@ export default function KioskPage() {
     setGeneratedImage(null);
     setDeliveryUrl(null);
     setDeliveryQrImage(null);
-  }, [stopCamera, stopCameraCountdown, team?.kiosk_enabled]);
+  }, [stopCamera, stopCameraCountdown, stopTechnicalCameraPreview, team?.kiosk_enabled]);
 
   const finishResult = useCallback((event?: React.SyntheticEvent<HTMLButtonElement>) => {
     event?.preventDefault();
@@ -1221,6 +1233,29 @@ export default function KioskPage() {
     }
   };
 
+  const startTechnicalCameraPreview = async () => {
+    setTechnicalCheck("camera", { status: "running", message: "Abrindo preview da camera..." });
+    try {
+      stopTechnicalCameraPreview();
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      technicalCameraStreamRef.current = stream;
+      setTechnicalCameraPreview(true);
+      window.setTimeout(() => {
+        if (!technicalCameraVideoRef.current) return;
+        technicalCameraVideoRef.current.srcObject = stream;
+        void technicalCameraVideoRef.current.play();
+      }, 0);
+      const [track] = stream.getVideoTracks();
+      const label = track?.label || "Camera detectada";
+      setTechnicalCheck("camera", { status: "ok", message: `${label}. Ajuste a orientacao olhando o preview.` });
+    } catch (err) {
+      setTechnicalCheck("camera", {
+        status: "fail",
+        message: err instanceof Error ? err.message : "Camera nao encontrada",
+      });
+    }
+  };
+
   const testPayments = async () => {
     setTechnicalCheck("payments", { status: "running", message: "Verificando configuracao local..." });
     const paymentStatus = await window.fanframeKiosk?.getPaymentStatus?.().catch(() => null);
@@ -1399,10 +1434,18 @@ export default function KioskPage() {
                   ))}
                 </select>
               </label>
+              {technicalCameraPreview && (
+                <div className="technical-camera-preview">
+                  <video ref={technicalCameraVideoRef} style={getCameraPreviewStyle(cameraOrientation)} playsInline muted />
+                </div>
+              )}
               <button onClick={runAllTechnicalTests}>Testar tudo</button>
               <button onClick={testInternet}>Testar internet</button>
               <button onClick={testSupabase}>Testar painel</button>
               <button onClick={testCamera}>Testar camera</button>
+              <button onClick={technicalCameraPreview ? stopTechnicalCameraPreview : startTechnicalCameraPreview}>
+                {technicalCameraPreview ? "Fechar preview da camera" : "Ver preview da camera"}
+              </button>
               <button onClick={testPayments}>Testar pagamentos</button>
               <button onClick={sendManualDiagnostics}>Enviar diagnostico</button>
               <button onClick={() => window.location.reload()}>Sincronizar dados agora</button>
