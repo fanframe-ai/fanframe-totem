@@ -15,7 +15,13 @@ serve(async (req) => {
     const { email, password, setupKey } = await req.json();
 
     // Verify setup key for security
-    const SETUP_KEY = Deno.env.get("ADMIN_SETUP_KEY") || "provador-fiel-2024-setup";
+    const SETUP_KEY = Deno.env.get("ADMIN_SETUP_KEY");
+    if (!SETUP_KEY) {
+      return new Response(
+        JSON.stringify({ error: "Admin setup is disabled" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     if (setupKey !== SETUP_KEY) {
       return new Response(
         JSON.stringify({ error: "Invalid setup key" }),

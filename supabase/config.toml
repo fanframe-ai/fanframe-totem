@@ -1,7 +1,7 @@
 project_id = "dzfbjscrpxhpyeimggut"
 
 [functions.create-first-admin]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-tryon]
 verify_jwt = false
@@ -10,7 +10,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.deploy-functions]
-verify_jwt = false
+verify_jwt = true
 
 [functions.health-check]
 verify_jwt = false
