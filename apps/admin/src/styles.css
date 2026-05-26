@@ -411,19 +411,23 @@ tbody tr:hover { background: #f9fafb; }
 
 .delivery-page {
   min-height: 100vh;
+  width: 100%;
   display: grid;
-  place-items: center;
-  padding: 20px;
+  justify-items: center;
+  align-items: start;
+  overflow-x: hidden;
+  padding: max(18px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   color: #ffffff;
   background:
     radial-gradient(circle at top left, rgba(230, 18, 31, .32), transparent 38%),
     linear-gradient(145deg, #080808 0%, #111111 48%, #050505 100%);
 }
 .delivery-shell {
+  box-sizing: border-box;
   width: min(100%, 520px);
   display: grid;
-  gap: 18px;
-  padding: 18px;
+  gap: clamp(14px, 3.8vw, 18px);
+  padding: 0;
 }
 .delivery-shell.compact {
   min-height: 70vh;
@@ -433,12 +437,14 @@ tbody tr:hover { background: #f9fafb; }
 .delivery-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: clamp(10px, 3.2vw, 14px);
+  min-width: 0;
 }
 .delivery-header img,
 .delivery-logo-fallback {
-  width: 54px;
-  height: 54px;
+  width: clamp(42px, 13vw, 58px);
+  height: clamp(42px, 13vw, 58px);
+  flex: none;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -449,16 +455,22 @@ tbody tr:hover { background: #f9fafb; }
   place-items: center;
   font-weight: 950;
 }
+.delivery-header > div {
+  min-width: 0;
+}
 .delivery-kicker {
   color: rgba(255,255,255,.64);
-  font-size: 12px;
+  font-size: clamp(10px, 2.9vw, 12px);
   font-weight: 950;
   text-transform: uppercase;
 }
 .delivery-page h1 {
   margin: 4px 0 0;
-  font-size: clamp(35px, 9.2vw, 46px);
-  line-height: .88;
+  max-width: 100%;
+  overflow-wrap: normal;
+  color: #ffffff;
+  font-size: clamp(31px, 9.7vw, 46px);
+  line-height: .92;
   text-transform: uppercase;
   letter-spacing: 0;
   white-space: nowrap;
@@ -466,8 +478,8 @@ tbody tr:hover { background: #f9fafb; }
 .delivery-message {
   margin: 0;
   color: rgba(255,255,255,.72);
-  font-size: 17px;
-  line-height: 1.45;
+  font-size: clamp(15px, 4.2vw, 17px);
+  line-height: 1.38;
   font-weight: 750;
 }
 .delivery-photo-card {
@@ -481,8 +493,9 @@ tbody tr:hover { background: #f9fafb; }
 .delivery-photo-card img {
   display: block;
   width: 100%;
-  max-height: 62vh;
-  object-fit: contain;
+  max-height: min(58vh, 640px);
+  object-fit: cover;
+  object-position: center top;
   background: #0b0b0b;
 }
 .delivery-actions {
@@ -517,14 +530,15 @@ tbody tr:hover { background: #f9fafb; }
 }
 .delivery-consent {
   display: grid;
-  gap: 10px;
-  padding: 16px;
+  gap: 12px;
+  padding: clamp(14px, 4.3vw, 18px);
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 18px;
   background: rgba(255,255,255,.05);
 }
 .delivery-consent strong {
-  font-size: 16px;
+  font-size: clamp(15px, 4.3vw, 18px);
+  line-height: 1.22;
   text-transform: uppercase;
 }
 .delivery-consent label {
@@ -556,7 +570,7 @@ tbody tr:hover { background: #f9fafb; }
 .delivery-feedback {
   margin: 0;
   color: rgba(255,255,255,.62);
-  line-height: 1.45;
+  line-height: 1.42;
 }
 .delivery-consent button {
   min-height: 48px;
@@ -567,6 +581,32 @@ tbody tr:hover { background: #f9fafb; }
 .delivery-feedback {
   text-align: center;
   font-weight: 850;
+}
+
+@media (max-width: 420px) {
+  .delivery-page {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .delivery-shell {
+    width: 100%;
+  }
+  .delivery-page h1 {
+    font-size: clamp(29px, 9.2vw, 38px);
+  }
+  .delivery-photo-card {
+    border-radius: 18px;
+  }
+  .delivery-photo-card img {
+    max-height: 52vh;
+  }
+  .delivery-primary,
+  .delivery-secondary,
+  .delivery-consent button,
+  .delivery-support {
+    min-height: 54px;
+    border-radius: 14px;
+  }
 }
 
 .asset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }

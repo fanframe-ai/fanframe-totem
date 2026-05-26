@@ -142,6 +142,9 @@ describe("admin visual builder architecture", () => {
     expect(cssSource).toContain(".delivery-photo-card");
     expect(cssSource).toContain("white-space: nowrap");
     expect(cssSource).toContain("background: transparent");
+    expect(cssSource).toContain("overflow-x: hidden");
+    expect(cssSource).toContain("box-sizing: border-box");
+    expect(cssSource).toContain("@media (max-width: 420px)");
   });
 
   it("does not place the team logo as a giant decorative background over the configured kiosk background", () => {
