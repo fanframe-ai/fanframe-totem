@@ -1403,7 +1403,6 @@ export default function KioskPage() {
       backgroundImage={tutorialAssets.kioskBackground}
       waitingVideo={tutorialAssets.waitingVideo}
       showWaitingVideo={step === "generating"}
-      ghostLogoUrl={team?.logo_url}
       logoUrl={team?.logo_url}
       logoAlt={team?.name}
       brandLabel={copy("kiosk_brand_label", "FanFrame Totem")}

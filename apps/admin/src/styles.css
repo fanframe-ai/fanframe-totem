@@ -428,17 +428,17 @@ tbody tr:hover { background: #f9fafb; }
 .delivery-header {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 .delivery-header img,
 .delivery-logo-fallback {
-  width: 70px;
-  height: 70px;
-  border: 1px solid rgba(255,255,255,.18);
-  border-radius: 18px;
-  background: #ffffff;
+  width: 54px;
+  height: 54px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   object-fit: contain;
-  padding: 10px;
+  padding: 0;
   color: #050505;
   display: grid;
   place-items: center;
@@ -452,10 +452,11 @@ tbody tr:hover { background: #f9fafb; }
 }
 .delivery-page h1 {
   margin: 4px 0 0;
-  font-size: clamp(34px, 10vw, 58px);
-  line-height: .9;
+  font-size: clamp(35px, 9.2vw, 46px);
+  line-height: .88;
   text-transform: uppercase;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 .delivery-message {
   margin: 0;

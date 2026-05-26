@@ -114,10 +114,22 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain('action: "get_delivery"');
     expect(adminSource).toContain("Baixar foto");
     expect(adminSource).toContain("Compartilhar");
+    expect(adminSource).toContain("function downloadPhoto");
+    expect(adminSource).toContain("URL.createObjectURL(blob)");
     expect(adminSource).toContain("new File([blob]");
     expect(adminSource).toContain("navigator.canShare");
     expect(adminSource).not.toContain("Abrir Instagram");
     expect(cssSource).toContain(".delivery-page");
     expect(cssSource).toContain(".delivery-photo-card");
+    expect(cssSource).toContain("white-space: nowrap");
+    expect(cssSource).toContain("background: transparent");
+  });
+
+  it("does not place the team logo as a giant decorative background over the configured kiosk background", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
+
+    expect(adminSource).not.toContain("ghostLogoUrl={publicAssetUrl(team.logo_url");
+    expect(kioskSource).not.toContain("ghostLogoUrl={team?.logo_url");
   });
 });

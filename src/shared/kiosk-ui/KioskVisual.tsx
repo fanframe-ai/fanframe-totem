@@ -8,7 +8,6 @@ type KioskVisualShellProps = {
   backgroundImage?: string;
   waitingVideo?: string;
   showWaitingVideo?: boolean;
-  ghostLogoUrl?: string;
   logoUrl?: string;
   logoAlt?: string;
   brandLabel: ReactNode;
@@ -117,7 +116,6 @@ export function KioskVisualShell({
   backgroundImage,
   waitingVideo,
   showWaitingVideo,
-  ghostLogoUrl,
   logoUrl,
   logoAlt = "",
   brandLabel,
@@ -140,7 +138,6 @@ export function KioskVisualShell({
           <video src={waitingVideo} className="ff-kiosk-bg-video" autoPlay loop muted playsInline />
         )}
         <div className="ff-kiosk-bg-scrim" />
-        {ghostLogoUrl && <img src={ghostLogoUrl} alt="" className="ff-kiosk-bg-logo" />}
       </div>
       <div className="ff-kiosk-content">
         <header className="ff-kiosk-header">

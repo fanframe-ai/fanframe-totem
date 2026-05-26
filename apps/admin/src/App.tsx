@@ -1226,7 +1226,6 @@ function InlineKioskPreview({
         fontFamily: resolveTeamFontFamily(team),
       }}
       backgroundImage={backgroundImage}
-      ghostLogoUrl={publicAssetUrl(team.logo_url || "")}
       logoUrl={publicAssetUrl(team.logo_url || "")}
       logoAlt={team.name || ""}
       brandLabel={brandLabel}
@@ -3373,6 +3372,29 @@ function DeliveryPage() {
     }
   }
 
+  async function downloadPhoto() {
+    if (!imageUrl) return;
+    setMessage("");
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error("download_failed");
+      const blob = await response.blob();
+      const extension = blob.type.includes("png") ? "png" : "jpg";
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `fanframe-foto.${extension}`;
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setMessage("Download iniciado.");
+    } catch {
+      setMessage("Nao foi possivel baixar automaticamente. Toque e segure na foto para salvar.");
+    }
+  }
+
   async function registerConsent() {
     setMessage("");
     try {
@@ -3434,7 +3456,7 @@ function DeliveryPage() {
         </figure>
 
         <div className="delivery-actions">
-          <a className="delivery-primary" href={imageUrl} download="fanframe-foto.jpg">Baixar foto</a>
+          <button type="button" className="delivery-primary" onClick={downloadPhoto}>Baixar foto</button>
           <button type="button" className="delivery-secondary" onClick={sharePhoto}>Compartilhar</button>
         </div>
 
