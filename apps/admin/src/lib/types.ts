@@ -1,7 +1,7 @@
 export type Role = "admin" | "super_admin" | "support" | "finance";
 export type InstallStatus = "not_paired" | "paired" | "revoked";
 export type CommandStatus = "pending" | "running" | "succeeded" | "failed" | "expired";
-export type CommandType = "sync_config" | "enter_maintenance" | "exit_maintenance" | "send_diagnostics" | "restart_app";
+export type CommandType = "sync_config" | "enter_maintenance" | "exit_maintenance" | "send_diagnostics" | "restart_app" | "update_app";
 
 export interface TeamAsset {
   id: string;
@@ -68,6 +68,7 @@ export interface KioskDeviceConfig {
   updateInstallerUrl?: string;
   updates?: {
     installerUrl?: string;
+    updateArgs?: string[];
     [key: string]: unknown;
   };
   [key: string]: unknown;

@@ -54,6 +54,32 @@ describe("kiosk update readiness", () => {
       ready: true,
       mode: "remote_installer",
       installerUrl: "https://fanframe.ai/releases/FanFrame-Kiosk-Setup.exe",
+      updateArgs: ["/S"],
+    });
+  });
+
+  it("uses silent NSIS installer arguments by default for unattended kiosk updates", () => {
+    expect(getUpdateReadiness({
+      updates: {
+        installerUrl: "https://fanframe.ai/releases/FanFrame-Kiosk-Setup-latest.exe",
+      },
+    })).toMatchObject({
+      ready: true,
+      mode: "remote_installer",
+      updateArgs: ["/S"],
+    });
+  });
+
+  it("keeps custom update arguments when the admin config overrides the default", () => {
+    expect(getUpdateReadiness({
+      updates: {
+        installerUrl: "https://fanframe.ai/releases/FanFrame-Kiosk-Setup-latest.exe",
+        updateArgs: ["/S", "/D=C:\\FanFrame"],
+      },
+    })).toMatchObject({
+      ready: true,
+      mode: "remote_installer",
+      updateArgs: ["/S", "/D=C:\\FanFrame"],
     });
   });
 
@@ -78,7 +104,7 @@ describe("kiosk update readiness", () => {
   it("prefers a local installer found in Downloads when no url is configured", () => {
     expect(getUpdateReadiness(
       { updates: {} },
-      { searchDirs: ["D:/Downloads"], fileExists: (filePath) => filePath.endsWith("FanFrame Kiosk Setup 0.2.1.exe") },
+      { searchDirs: ["D:/Downloads"], fileExists: (filePath) => filePath.endsWith("FanFrame Kiosk Setup.exe") },
     )).toMatchObject({
       ready: true,
       mode: "local_installer",

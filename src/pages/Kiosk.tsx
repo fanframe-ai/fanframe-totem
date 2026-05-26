@@ -477,6 +477,7 @@ export default function KioskPage() {
   const collectHealthPayload = useCallback(async (extra: Record<string, unknown> = {}) => {
     const status = await window.fanframeKiosk?.getTechnicalStatus?.().catch(() => null);
     const paymentStatus = await window.fanframeKiosk?.getPaymentStatus?.().catch(() => null);
+    const appUpdateStatus = await window.fanframeKiosk?.getUpdateStatus?.().catch(() => null);
     const friendlyError = error ? classifyKioskError(error) : null;
 
     return {
@@ -492,6 +493,7 @@ export default function KioskPage() {
         plugpagConfigured: false,
         simulated: config?.simulatePayments === true,
       },
+      appUpdateStatus,
       ...extra,
     };
   }, [config?.appVersion, config?.simulatePayments, error, step]);
@@ -509,6 +511,17 @@ export default function KioskPage() {
           result: { handledAt: new Date().toISOString(), relaunching: true },
         });
         await window.fanframeKiosk?.relaunch?.();
+        return;
+      }
+      if (command.command_type === "update_app") {
+        if (!window.fanframeKiosk?.startAppUpdate) throw new Error("Atualizacao nao disponivel neste app.");
+        const result = await window.fanframeKiosk.startAppUpdate();
+        await pollKioskCommand(activeDevice, {
+          completeCommandId: command.id,
+          success: result.ok,
+          result: { handledAt: new Date().toISOString(), update: result },
+          errorMessage: result.ok ? null : result.message,
+        });
         return;
       }
       if (command.command_type === "enter_maintenance") {

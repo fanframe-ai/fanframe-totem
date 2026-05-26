@@ -303,7 +303,7 @@ async function startAppUpdate() {
         message: "Nao foi possivel baixar a atualizacao. Verifique a internet.",
       };
     }
-    args = [];
+    args = readiness.updateArgs || [];
   }
 
   if (!command) {
@@ -325,7 +325,7 @@ async function startAppUpdate() {
   const child = spawn(command, args, {
     detached: true,
     stdio: "ignore",
-    windowsHide: false,
+    windowsHide: true,
   });
   await new Promise((resolve, reject) => {
     child.once("spawn", resolve);
@@ -338,7 +338,7 @@ async function startAppUpdate() {
   return {
     ok: true,
     status: "started",
-    message: "Atualizacao iniciada. O app sera fechado.",
+    message: "Atualizacao iniciada. O app sera fechado e abrira novamente quando terminar.",
     ...(intermediateStatus ? { intermediateStatus } : {}),
   };
 }

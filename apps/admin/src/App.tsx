@@ -351,6 +351,7 @@ const friendlyLabels: Record<string, string> = {
   restart_app: "Reiniciar app",
   send_diagnostics: "Pedir diagnostico",
   sync_config: "Atualizar dados",
+  update_app: "Atualizar app",
   version: "Atualizacao",
   warning: "Atencao",
   web: "Site",
@@ -2615,10 +2616,12 @@ function DeviceDetail({ role }: { role: Role | null }) {
     if (updateInstallerUrl) {
       nextConfig.updateInstallerUrl = updateInstallerUrl;
       nextUpdates.installerUrl = updateInstallerUrl;
+      nextUpdates.updateArgs = ["/S"];
       nextConfig.updates = nextUpdates;
     } else {
       delete nextConfig.updateInstallerUrl;
       delete nextUpdates.installerUrl;
+      delete nextUpdates.updateArgs;
       if (Object.keys(nextUpdates).length > 0) nextConfig.updates = nextUpdates;
       else delete nextConfig.updates;
     }
@@ -2688,6 +2691,7 @@ function DeviceDetail({ role }: { role: Role | null }) {
         </div>
         <div className="actions-row">
           {canOperate && <button className="secondary" onClick={() => sendCommand("sync_config")}>Atualizar dados</button>}
+          {canOperate && <button className="secondary" onClick={() => sendCommand("update_app")}>Atualizar app agora</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("exit_maintenance")}>Liberar vendas</button>}
           {canOperate && <button className="danger" onClick={() => sendCommand("enter_maintenance")}>Pausar vendas</button>}
           {canOperate && <button className="secondary" onClick={() => sendCommand("restart_app")}>Reiniciar app</button>}
@@ -2743,13 +2747,13 @@ function DeviceDetail({ role }: { role: Role | null }) {
           <div className="section-heading">
             <div>
               <h2>Atualizacao do app</h2>
-              <p className="hint">Configure a versao que este totem deve usar e o link HTTPS do instalador.</p>
+              <p className="hint">Configure a versao que este totem deve usar e o link HTTPS do instalador. O app baixa esse instalador e tenta atualizar em modo silencioso.</p>
             </div>
           </div>
           <form className="compact-grid" onSubmit={saveDeviceUpdateSettings}>
             <label>Link do instalador
               <input
-                placeholder="https://fanframe.ai/releases/FanFrame-Kiosk-Setup.exe"
+                placeholder="https://github.com/fanframe-ai/fanframe-totem/releases/latest/download/FanFrame-Kiosk-Setup-latest.exe"
                 value={updateSettings.installerUrl}
                 onChange={(event) => setUpdateSettings({ ...updateSettings, installerUrl: event.target.value })}
               />

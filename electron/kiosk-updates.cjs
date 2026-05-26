@@ -12,6 +12,8 @@ const knownInstallerFileNames = [
   "FanFrame-Kiosk-Setup.exe",
 ];
 
+const defaultInstallerArgs = ["/S"];
+
 function findLatestLocalInstaller(searchDirs = [], options = {}) {
   const candidates = [];
   const installerPattern = /^FanFrame Kiosk Setup .+\.exe$/i;
@@ -45,9 +47,10 @@ function findLatestLocalInstaller(searchDirs = [], options = {}) {
 
 function normalizeUpdateConfig(config, options = {}) {
   const updates = config?.updates && typeof config.updates === "object" ? config.updates : {};
-  const updateArgs = Array.isArray(updates.updateArgs)
+  const configuredUpdateArgs = Array.isArray(updates.updateArgs)
     ? updates.updateArgs.filter((item) => typeof item === "string")
     : [];
+  const updateArgs = configuredUpdateArgs.length > 0 ? configuredUpdateArgs : defaultInstallerArgs;
   const discoveredInstallerPath = findLatestLocalInstaller(options.searchDirs || [], options);
 
   return {
