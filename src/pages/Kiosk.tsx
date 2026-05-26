@@ -31,6 +31,7 @@ import {
   normalizeKioskTimeout,
   shouldReportHealth,
   shouldReloadForRemoteKioskState,
+  shouldResetKioskForInactivity,
   verifyTechnicalPin,
 } from "@/lib/kiosk";
 import type { KioskRuntimeConfig, KioskTechnicalStatus, KioskUpdateStatus, StoredDeviceIdentity } from "@/types/kiosk";
@@ -716,7 +717,7 @@ export default function KioskPage() {
   }, [step, team, teamError, teamLoading]);
 
   useEffect(() => {
-    if (["home", "boot", "maintenance", "generating", "result"].includes(step)) return;
+    if (!shouldResetKioskForInactivity(step)) return;
     const timeout = setTimeout(resetFlow, timeoutSeconds * 1000);
     return () => clearTimeout(timeout);
   }, [resetFlow, step, timeoutSeconds]);

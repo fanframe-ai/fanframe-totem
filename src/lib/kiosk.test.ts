@@ -5,6 +5,7 @@ import {
   formatCurrencyFromCents,
   isSafeKioskReloadStep,
   normalizeKioskTimeout,
+  shouldResetKioskForInactivity,
   shouldReloadForRemoteKioskState,
 } from "./kiosk";
 
@@ -48,5 +49,14 @@ describe("kiosk helpers", () => {
     expect(isSafeKioskReloadStep("shirt")).toBe(false);
     expect(isSafeKioskReloadStep("payment")).toBe(false);
     expect(isSafeKioskReloadStep("camera")).toBe(false);
+  });
+
+  it("never resets an active payment screen for inactivity", () => {
+    expect(shouldResetKioskForInactivity("shirt")).toBe(true);
+    expect(shouldResetKioskForInactivity("background")).toBe(true);
+    expect(shouldResetKioskForInactivity("camera")).toBe(true);
+    expect(shouldResetKioskForInactivity("payment")).toBe(false);
+    expect(shouldResetKioskForInactivity("generating")).toBe(false);
+    expect(shouldResetKioskForInactivity("result")).toBe(false);
   });
 });
