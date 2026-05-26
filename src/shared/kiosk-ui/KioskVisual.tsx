@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, WheelEvent } from "react";
 import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw } from "lucide-react";
 import "./kioskVisual.css";
 
@@ -233,6 +233,14 @@ export function KioskSelectionVisual({
 }: KioskSelectionVisualProps) {
   const isBackground = kind === "background";
   const showArrows = items.length > (isBackground ? 1 : 2);
+  const handleRailWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    const rail = event.currentTarget;
+    if (rail.scrollWidth <= rail.clientWidth) return;
+    event.preventDefault();
+    rail.scrollLeft += event.deltaY;
+    onRailScroll?.();
+  };
 
   return (
     <section className={`ff-kiosk-selection ff-kiosk-selection-${kind}`}>
@@ -244,7 +252,7 @@ export function KioskSelectionVisual({
         {backControl}
       </div>
       <div className="ff-kiosk-selection-stage">
-        <div ref={railRef} onScroll={onRailScroll} className="ff-kiosk-selection-rail">
+        <div ref={railRef} onScroll={onRailScroll} onWheel={handleRailWheel} className="ff-kiosk-selection-rail">
           {items.length ? (
             items.map((item, index) => (
               <button

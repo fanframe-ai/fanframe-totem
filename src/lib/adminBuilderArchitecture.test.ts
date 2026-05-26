@@ -51,6 +51,20 @@ describe("admin visual builder architecture", () => {
     expect(kioskSource).toContain("KioskSelectionVisual");
   });
 
+  it("lets the admin builder scroll through all shirts and backgrounds in the preview", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const sharedVisualSource = readFileSync("src/shared/kiosk-ui/KioskVisual.tsx", "utf8");
+
+    expect(adminSource).toContain("shirtRailRef");
+    expect(adminSource).toContain("backgroundRailRef");
+    expect(adminSource).toContain("scrollBuilderRail");
+    expect(adminSource).toContain("items={shirts.map");
+    expect(adminSource).toContain("items={backgrounds.map");
+    expect(adminSource).not.toContain("items={shirts.slice(0, 3)");
+    expect(adminSource).not.toContain("items={backgrounds.slice(0, 3)");
+    expect(sharedVisualSource).toContain("onWheel={handleRailWheel}");
+  });
+
   it("shares payment, camera, generation and result visuals between the Windows app and admin preview", () => {
     const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
     const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");

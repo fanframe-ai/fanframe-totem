@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import type { User } from "@supabase/supabase-js";
 import {
@@ -1273,6 +1273,12 @@ function TeamVisualBuilder({
   const [selection, setSelection] = useState<BuilderSelection>({ type: "text", ...builderTextFields.kiosk_home_title });
   const [recipeText, setRecipeText] = useState("");
   const [recipeMessage, setRecipeMessage] = useState("");
+  const shirtRailRef = useRef<HTMLDivElement | null>(null);
+  const backgroundRailRef = useRef<HTMLDivElement | null>(null);
+  const [railState, setRailState] = useState({
+    shirts: { canPrev: false, canNext: false },
+    backgrounds: { canPrev: false, canNext: false },
+  });
   const selectedTextKey = selection.type === "text" ? selection.key : "";
   const visibleShirts = shirts.filter((asset) => asset.visible !== false);
   const visibleBackgrounds = backgrounds.filter((asset) => asset.visible !== false);
@@ -1280,6 +1286,35 @@ function TeamVisualBuilder({
   const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
   const homeBeforeImage = publicAssetUrl(typeof tutorialAssets.before === "string" ? tutorialAssets.before : "");
   const homeAfterImage = publicAssetUrl(typeof tutorialAssets.after === "string" ? tutorialAssets.after : "");
+  const updateBuilderRailState = useCallback((kind: "shirts" | "backgrounds") => {
+    const rail = kind === "shirts" ? shirtRailRef.current : backgroundRailRef.current;
+    if (!rail) return;
+    const maxScroll = rail.scrollWidth - rail.clientWidth;
+    setRailState((current) => ({
+      ...current,
+      [kind]: {
+        canPrev: rail.scrollLeft > 8,
+        canNext: rail.scrollLeft < maxScroll - 8,
+      },
+    }));
+  }, []);
+  const scrollBuilderRail = useCallback((kind: "shirts" | "backgrounds", direction: "prev" | "next") => {
+    const rail = kind === "shirts" ? shirtRailRef.current : backgroundRailRef.current;
+    if (!rail) return;
+    rail.scrollBy({
+      left: (direction === "next" ? 1 : -1) * Math.max(260, rail.clientWidth * 0.82),
+      behavior: "smooth",
+    });
+    window.setTimeout(() => updateBuilderRailState(kind), 240);
+  }, [updateBuilderRailState]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      updateBuilderRailState("shirts");
+      updateBuilderRailState("backgrounds");
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [screen, shirts.length, backgrounds.length, updateBuilderRailState]);
 
   const selectText = (key: string) => setSelection({ type: "text", ...builderTextFields[key] });
   const openBuilderScreen = (nextScreen: BuilderScreen) => {
@@ -1378,7 +1413,13 @@ function TeamVisualBuilder({
           kind="shirt"
           stepLabel={<EditablePreviewText fieldKey="kiosk_shirt_step" texts={textOverrides} selected={selectedTextKey === "kiosk_shirt_step"} variant="eyebrow" onSelect={() => selectText("kiosk_shirt_step")} onChange={setTextOverride} />}
           title={<EditablePreviewText fieldKey="kiosk_shirt_title" texts={textOverrides} selected={selectedTextKey === "kiosk_shirt_title"} variant="section-title" onSelect={() => selectText("kiosk_shirt_title")} onChange={setTextOverride} />}
-          items={shirts.slice(0, 3).map((asset) => ({
+          railRef={shirtRailRef}
+          onRailScroll={() => updateBuilderRailState("shirts")}
+          canPrev={railState.shirts.canPrev}
+          canNext={railState.shirts.canNext}
+          onPrev={() => scrollBuilderRail("shirts", "prev")}
+          onNext={() => scrollBuilderRail("shirts", "next")}
+          items={shirts.map((asset) => ({
             id: asset.id,
             name: asset.name || "Nome da camisa",
             subtitle: asset.subtitle || "Texto curto",
@@ -1402,7 +1443,13 @@ function TeamVisualBuilder({
           kind="background"
           stepLabel={<EditablePreviewText fieldKey="kiosk_background_step" texts={textOverrides} selected={selectedTextKey === "kiosk_background_step"} variant="eyebrow" onSelect={() => selectText("kiosk_background_step")} onChange={setTextOverride} />}
           title={<EditablePreviewText fieldKey="kiosk_background_title" texts={textOverrides} selected={selectedTextKey === "kiosk_background_title"} variant="section-title" onSelect={() => selectText("kiosk_background_title")} onChange={setTextOverride} />}
-          items={backgrounds.slice(0, 3).map((asset) => ({
+          railRef={backgroundRailRef}
+          onRailScroll={() => updateBuilderRailState("backgrounds")}
+          canPrev={railState.backgrounds.canPrev}
+          canNext={railState.backgrounds.canNext}
+          onPrev={() => scrollBuilderRail("backgrounds", "prev")}
+          onNext={() => scrollBuilderRail("backgrounds", "next")}
+          items={backgrounds.map((asset) => ({
             id: asset.id,
             name: asset.name || "Nome do cenario",
             subtitle: asset.subtitle || "Texto curto",
