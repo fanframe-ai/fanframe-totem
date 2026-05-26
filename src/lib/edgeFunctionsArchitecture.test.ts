@@ -9,6 +9,9 @@ describe("edge functions architecture", () => {
     expect(source).toContain('if (req.method === "POST")');
     expect(source).toContain('if (body?.action === "get_delivery")');
     expect(source).toContain('if (body?.action === "share_consent")');
+    expect(source).toContain("normalizeInstagramHandle");
+    expect(source).toContain("monthly_official_story_draw");
+    expect(source).toContain("instagram_handle");
     expect(source).toContain('const sessionId = body.session_id as string | undefined');
     expect(source).not.toContain('if (body?.action !== "share_consent")');
     expect(source.match(/await req\.json/g)?.length).toBe(1);

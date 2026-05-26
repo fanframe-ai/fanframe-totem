@@ -115,6 +115,11 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("Baixar foto");
     expect(adminSource).toContain("Compartilhar");
     expect(adminSource).toContain("function downloadPhoto");
+    expect(adminSource).toContain("function StoryDrawPage");
+    expect(adminSource).toContain('href: "/sorteio"');
+    expect(adminSource).toContain("instagram_handle");
+    expect(adminSource).toContain("Participar do sorteio");
+    expect(adminSource).toContain("Sorteio Stories");
     expect(adminSource).toContain("URL.createObjectURL(blob)");
     expect(adminSource).toContain("new File([blob]");
     expect(adminSource).toContain("navigator.canShare");

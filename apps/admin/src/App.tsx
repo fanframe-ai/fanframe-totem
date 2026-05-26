@@ -8,6 +8,7 @@ import {
   Code2,
   Copy,
   Cpu,
+  Gift,
   Image as ImageIcon,
   LayoutDashboard,
   LogOut,
@@ -468,6 +469,17 @@ function readConsentPayload(consentText: string) {
   }
 }
 
+function normalizeInstagramHandle(value: string) {
+  const handle = value.trim().replace(/^@/, "");
+  return /^[A-Za-z0-9._]{1,30}$/.test(handle) ? `@${handle}` : "";
+}
+
+function instagramProfileUrl(value: unknown) {
+  if (typeof value !== "string") return "";
+  const handle = normalizeInstagramHandle(value);
+  return handle ? `https://instagram.com/${encodeURIComponent(handle.slice(1))}` : "";
+}
+
 function hasUnpublishedDraft(team: Partial<TeamRow>) {
   const draft = JSON.stringify(buildKioskDraft(team));
   const published = JSON.stringify(team.published_config || {});
@@ -601,6 +613,7 @@ function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode
     { href: "/times", Icon: Shirt, label: "Times", roles: ["super_admin", "admin"] as Role[] },
     { href: "/totens", Icon: Monitor, label: "Totens", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/sessoes", Icon: Activity, label: "Vendas", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
+    { href: "/sorteio", Icon: Gift, label: "Sorteio", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/problemas", Icon: AlertTriangle, label: "Problemas", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/usuarios", Icon: Users, label: "Usuarios", roles: ["super_admin"] as Role[] },
     { href: "/configuracoes", Icon: Settings, label: "Ajustes", roles: ["super_admin", "admin"] as Role[] },
@@ -2893,7 +2906,6 @@ function Sessions() {
   const [rows, setRows] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [generations, setGenerations] = useState<GenerationQueueRow[]>([]);
-  const [consentLogs, setConsentLogs] = useState<ConsentLogRow[]>([]);
 
   const load = useCallback(async () => {
     const since = new Date(Date.now() - filters.days * 86400000).toISOString();
@@ -2915,19 +2927,10 @@ function Sessions() {
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(300);
-    let consentQuery = supabase
-      .from("consent_logs")
-      .select("*, teams(name, slug)")
-      .eq("consent_type", "kiosk_social_share")
-      .gte("accepted_at", since)
-      .order("accepted_at", { ascending: false })
-      .limit(120);
-
     if (filters.teamId) {
       sessionQuery = sessionQuery.eq("team_id", filters.teamId);
       paymentQuery = paymentQuery.eq("team_id", filters.teamId);
       generationQuery = generationQuery.eq("team_id", filters.teamId);
-      consentQuery = consentQuery.eq("team_id", filters.teamId);
     }
     if (filters.status) {
       sessionQuery = sessionQuery.eq("status", filters.status);
@@ -2935,11 +2938,10 @@ function Sessions() {
       generationQuery = generationQuery.eq("status", filters.status);
     }
 
-    const [sessionRes, paymentRes, generationRes, consentRes] = await Promise.all([sessionQuery, paymentQuery, generationQuery, consentQuery]);
+    const [sessionRes, paymentRes, generationRes] = await Promise.all([sessionQuery, paymentQuery, generationQuery]);
     setRows((sessionRes.data || []) as KioskSession[]);
     setPayments((paymentRes.data || []) as KioskPayment[]);
     setGenerations((generationRes.data || []) as GenerationQueueRow[]);
-    setConsentLogs((consentRes.data || []) as ConsentLogRow[]);
   }, [filters.days, filters.status, filters.teamId]);
   useEffect(() => { load(); }, [load]);
 
@@ -3002,32 +3004,6 @@ function Sessions() {
           {rows.length === 0 && <div className="empty-state">Nenhum atendimento neste filtro.</div>}
         </div>
       </div>
-      <div className="panel">
-        <div className="section-heading table-heading">
-          <div>
-            <h2>Fotos autorizadas para redes</h2>
-            <p>Clientes que autorizaram uso da foto pelo link do QR Code. A publicacao continua sendo manual e revisada.</p>
-          </div>
-        </div>
-        <div className="authorized-photo-list">
-          {consentLogs.map((log) => {
-            const payload = readConsentPayload(log.consent_text);
-            const imageUrl = typeof payload.result_image_url === "string" ? payload.result_image_url : "";
-            return (
-              <article className="authorized-photo-card" key={log.id}>
-                {imageUrl ? <img src={imageUrl} alt="" /> : <div className="authorized-photo-placeholder">Sem foto</div>}
-                <div>
-                  <strong>{log.teams?.name || "Time nao informado"}</strong>
-                  <span>Autorizado em {dateTime(log.accepted_at)}</span>
-                  <span>{String(payload.session_id || log.user_id)}</span>
-                </div>
-                {imageUrl && <a className="secondary link-button" href={imageUrl} target="_blank">Abrir foto</a>}
-              </article>
-            );
-          })}
-          {consentLogs.length === 0 && <div className="empty-state">Nenhuma foto autorizada neste filtro.</div>}
-        </div>
-      </div>
       <details className="panel advanced-box">
         <summary>Pagamentos e fotos da IA em formato tecnico</summary>
         <section className="two-col advanced-content">
@@ -3061,6 +3037,84 @@ function Sessions() {
         </div>
       </section>
       </details>
+    </>
+  );
+}
+
+function StoryDrawPage() {
+  const { teams } = useTeams();
+  const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 30 });
+  const [consentLogs, setConsentLogs] = useState<ConsentLogRow[]>([]);
+
+  const load = useCallback(async () => {
+    const since = new Date(Date.now() - filters.days * 86400000).toISOString();
+    let consentQuery = supabase
+      .from("consent_logs")
+      .select("*, teams(name, slug)")
+      .eq("consent_type", "kiosk_social_share")
+      .gte("accepted_at", since)
+      .order("accepted_at", { ascending: false })
+      .limit(300);
+
+    if (filters.teamId) consentQuery = consentQuery.eq("team_id", filters.teamId);
+
+    const { data } = await consentQuery;
+    setConsentLogs((data || []) as ConsentLogRow[]);
+  }, [filters.days, filters.teamId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const withInstagram = consentLogs.filter((log) => {
+    const payload = readConsentPayload(log.consent_text);
+    return Boolean(payload.instagram_handle);
+  });
+  const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date());
+
+  return (
+    <>
+      <PageHeader
+        title="Sorteio Stories"
+        subtitle="Fotos autorizadas para concorrer ao story oficial do time."
+        action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>}
+      />
+      <section className="stats-grid compact-stats">
+        <StatCard label="Participantes" value={consentLogs.length} tone="success" />
+        <StatCard label="Com Instagram" value={withInstagram.length} />
+        <StatCard label="Periodo" value={monthLabel} />
+      </section>
+      <FilterBar filters={filters} setFilters={(next) => setFilters({ ...next, status: "" })} teams={teams} />
+      <section className="panel">
+        <div className="section-heading table-heading">
+          <div>
+            <h2>Fotos para avaliar</h2>
+            <p>Use esta tela para escolher a foto do sorteio mensal e conferir o @ do participante.</p>
+          </div>
+        </div>
+        <div className="authorized-photo-list story-draw-list">
+          {consentLogs.map((log) => {
+            const payload = readConsentPayload(log.consent_text);
+            const imageUrl = typeof payload.result_image_url === "string" ? payload.result_image_url : "";
+            const instagramHandle = typeof payload.instagram_handle === "string" ? payload.instagram_handle : "";
+            const profileUrl = instagramProfileUrl(instagramHandle);
+            return (
+              <article className="authorized-photo-card story-draw-card" key={log.id}>
+                {imageUrl ? <img src={imageUrl} alt="" /> : <div className="authorized-photo-placeholder">Sem foto</div>}
+                <div>
+                  <strong>{instagramHandle || "Instagram nao informado"}</strong>
+                  <span>{log.teams?.name || "Time nao informado"} - {dateTime(log.accepted_at)}</span>
+                  <span>{String(payload.campaign || "sorteio mensal stories")}</span>
+                  <span>{String(payload.session_id || log.user_id)}</span>
+                </div>
+                <div className="story-draw-actions">
+                  {imageUrl && <a className="secondary link-button" href={imageUrl} target="_blank">Abrir foto</a>}
+                  {profileUrl && <a className="secondary link-button" href={profileUrl} target="_blank">Abrir perfil</a>}
+                </div>
+              </article>
+            );
+          })}
+          {consentLogs.length === 0 && <div className="empty-state">Nenhuma foto autorizada neste filtro.</div>}
+        </div>
+      </section>
     </>
   );
 }
@@ -3305,6 +3359,7 @@ function DeliveryPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [instagramHandle, setInstagramHandle] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -3397,6 +3452,11 @@ function DeliveryPage() {
 
   async function registerConsent() {
     setMessage("");
+    const normalizedInstagram = normalizeInstagramHandle(instagramHandle);
+    if (!normalizedInstagram) {
+      setMessage("Digite seu @ do Instagram para participar.");
+      return;
+    }
     try {
       const response = await fetch(`${SUPABASE_URL}/functions/v1/create-delivery-link`, {
         method: "POST",
@@ -3405,10 +3465,11 @@ function DeliveryPage() {
           apikey: SUPABASE_PUBLISHABLE_KEY,
           Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ action: "share_consent", token }),
+        body: JSON.stringify({ action: "share_consent", token, instagram_handle: normalizedInstagram }),
       });
-      if (!response.ok) throw new Error("Nao foi possivel registrar agora.");
-      setMessage("Autorizacao registrada. Obrigado!");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || "Nao foi possivel registrar agora.");
+      setMessage("Pronto. Sua foto entrou no sorteio mensal dos stories.");
     } catch (consentError) {
       setMessage(consentError instanceof Error ? consentError.message : "Nao foi possivel registrar agora.");
     }
@@ -3461,9 +3522,21 @@ function DeliveryPage() {
         </div>
 
         <section className="delivery-consent">
-          <strong>Quer aparecer nas redes?</strong>
-          <p>Autorize o FanFrame a avaliar esta foto para posts e stories. A publicacao continua sendo revisada manualmente.</p>
-          <button type="button" onClick={registerConsent}>Autorizo usar minha foto</button>
+          <strong>Concorra para aparecer no story oficial</strong>
+          <p>Deixe seu @ do Instagram e participe do sorteio mensal. Uma pessoa por mes pode ser selecionada para aparecer nos stories oficiais do {teamName}.</p>
+          <label>
+            Seu Instagram
+            <input
+              type="text"
+              inputMode="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              placeholder="@seuinstagram"
+              value={instagramHandle}
+              onChange={(event) => setInstagramHandle(event.target.value)}
+            />
+          </label>
+          <button type="button" onClick={registerConsent}>Participar do sorteio</button>
         </section>
 
         {whatsAppUrl && <a className="delivery-support" href={whatsAppUrl} target="_blank" rel="noreferrer">Falar com suporte</a>}
@@ -3492,6 +3565,7 @@ function App() {
               <Route path="/totens" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><Devices role={auth.role} /></RoleGate>} />
               <Route path="/totens/:id" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><DeviceDetail role={auth.role} /></RoleGate>} />
               <Route path="/sessoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support", "finance"]}><Sessions /></RoleGate>} />
+              <Route path="/sorteio" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><StoryDrawPage /></RoleGate>} />
               <Route path="/pagamentos" element={<Navigate to="/sessoes" replace />} />
               <Route path="/geracoes" element={<Navigate to="/sessoes" replace />} />
               <Route path="/status" element={<Navigate to="/problemas" replace />} />

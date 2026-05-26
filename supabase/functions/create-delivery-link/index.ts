@@ -95,6 +95,12 @@ function buildWhatsAppUrl(value: unknown) {
   return digits ? `https://wa.me/${digits}` : "";
 }
 
+function normalizeInstagramHandle(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const handle = value.trim().replace(/^@/, "");
+  return /^[A-Za-z0-9._]{1,30}$/.test(handle) ? `@${handle}` : "";
+}
+
 function formatExpiration(value: string) {
   return new Date(value).toLocaleString("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -145,6 +151,8 @@ function deliveryPage(imageUrl: string, token: string, expiresAt: string, teamVa
     button:disabled { opacity: .72; }
     .consent { border: 1px solid #2c2c2c; border-radius: 16px; background: #101010; padding: 16px; display: grid; gap: 10px; }
     .consent strong { font-size: 16px; text-transform: uppercase; }
+    .consent label { display: grid; gap: 7px; color: #d4d4d4; font-size: 12px; font-weight: 900; text-transform: uppercase; }
+    .consent input { width: 100%; min-height: 48px; border-radius: 12px; border: 1px solid #333; background: #050505; color: #fff; padding: 0 12px; font: inherit; font-size: 15px; }
     .consent button { min-height: 48px; font-size: 13px; }
     .support { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
     .support-link { min-height: 40px; padding: 0 14px; border-radius: 999px; background: #151515; color: #fff; border: 1px solid #333; font-size: 12px; }
@@ -165,9 +173,10 @@ function deliveryPage(imageUrl: string, token: string, expiresAt: string, teamVa
       <button type="button" id="shareButton">Compartilhar</button>
     </div>
     <section class="consent">
-      <strong>Autorizar uso nas redes</strong>
-      <p>Opcional: permita que a equipe FanFrame selecione esta foto para posts, stories ou materiais de divulgacao. A publicacao nao e automatica.</p>
-      <button type="button" id="consentButton">Autorizo usar minha foto</button>
+      <strong>Concorra para aparecer no story oficial</strong>
+      <p>Deixe seu @ do Instagram e participe do sorteio mensal. Uma pessoa por mes pode ser selecionada para aparecer nos stories oficiais do ${safeTeamName}.</p>
+      <label>Seu Instagram<input id="instagramInput" type="text" placeholder="@seuinstagram" autocomplete="off" autocapitalize="none" /></label>
+      <button type="button" id="consentButton">Participar do sorteio</button>
     </section>
     ${supportLinks ? `<nav class="support" aria-label="Canais de suporte">${supportLinks}</nav>` : ""}
     <small>Link valido ate ${safeExpiration}, horario de Brasil/Sao Paulo.</small>
@@ -197,15 +206,21 @@ function deliveryPage(imageUrl: string, token: string, expiresAt: string, teamVa
       }
     });
     const consentButton = document.getElementById("consentButton");
+    const instagramInput = document.getElementById("instagramInput");
     consentButton?.addEventListener("click", async () => {
+      const instagramHandle = String(instagramInput?.value || "").trim();
+      if (!instagramHandle) {
+        consentButton.textContent = "Digite seu Instagram";
+        return;
+      }
       consentButton.setAttribute("disabled", "true");
       consentButton.textContent = "Enviando...";
       const response = await fetch(location.href, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "share_consent", token })
+        body: JSON.stringify({ action: "share_consent", token, instagram_handle: instagramHandle })
       }).catch(() => null);
-      consentButton.textContent = response?.ok ? "Autorizacao registrada" : "Nao foi possivel registrar";
+      consentButton.textContent = response?.ok ? "Foto no sorteio" : "Nao foi possivel registrar";
       if (!response?.ok) consentButton.removeAttribute("disabled");
     });
   </script>
@@ -252,6 +267,8 @@ serve(async (req) => {
       if (body?.action === "share_consent") {
         const token = String(body.token || "");
         if (!token) return jsonResponse({ error: "Missing token" }, 400);
+        const instagramHandle = normalizeInstagramHandle(body.instagram_handle);
+        if (!instagramHandle) return jsonResponse({ error: "Digite um @ do Instagram valido." }, 400);
 
         const { data: link, error } = await supabase
           .from("kiosk_delivery_links")
@@ -266,7 +283,9 @@ serve(async (req) => {
         }
 
         const consentText = JSON.stringify({
-          text: "Cliente autorizou o uso da foto gerada em posts, stories ou materiais de divulgacao FanFrame. Publicacao depende de revisao humana.",
+          text: "Cliente autorizou a foto para participar do sorteio mensal dos stories oficiais do time. A selecao e publicacao dependem de revisao humana.",
+          campaign: "monthly_official_story_draw",
+          instagram_handle: instagramHandle,
           delivery_link_id: link.id,
           session_id: link.session_id,
           result_image_url: link.result_image_url,
