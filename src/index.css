@@ -265,6 +265,25 @@
     object-fit: cover;
   }
 
+  .oriented-camera-video {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #030712;
+  }
+
+  .oriented-camera-video video {
+    position: absolute;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    margin: 0;
+    max-width: none;
+    object-fit: cover;
+    transform-origin: center;
+  }
+
   .technical-camera-orientation-panel {
     display: grid;
     gap: 12px;

@@ -1,4 +1,4 @@
-import { type Dispatch, type FormEvent, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type Dispatch, type FormEvent, type RefObject, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { ArrowLeft, Loader2, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -160,7 +160,11 @@ function getCameraOrientationLabel(value: CameraOrientation) {
   return cameraOrientationOptions.find((option) => option.value === value)?.label || "Espelhada";
 }
 
-function getCameraPreviewStyle(orientation: CameraOrientation): React.CSSProperties {
+function isVerticalCameraOrientation(orientation: CameraOrientation) {
+  return orientation === "rotate-right" || orientation === "rotate-left" || orientation === "rotate-right-mirror" || orientation === "rotate-left-mirror";
+}
+
+function getCameraPreviewTransform(orientation: CameraOrientation) {
   const transformByOrientation: Record<CameraOrientation, string> = {
     normal: "none",
     mirror: "scaleX(-1)",
@@ -170,14 +174,40 @@ function getCameraPreviewStyle(orientation: CameraOrientation): React.CSSPropert
     "rotate-right-mirror": "rotate(90deg) scaleX(-1)",
     "rotate-left-mirror": "rotate(-90deg) scaleX(-1)",
   };
-  const isVertical = orientation === "rotate-right" || orientation === "rotate-left" || orientation === "rotate-right-mirror" || orientation === "rotate-left-mirror";
-  return {
-    transform: transformByOrientation[orientation],
-    width: isVertical ? "100vh" : "100%",
-    height: isVertical ? "100vw" : "100%",
-    maxWidth: "none",
-    transformOrigin: "center",
+  return transformByOrientation[orientation];
+}
+
+function OrientedCameraPreview({ videoRef, orientation }: { videoRef: RefObject<HTMLVideoElement>; orientation: CameraOrientation }) {
+  const frameRef = useRef<HTMLDivElement | null>(null);
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
+  const isVertical = isVerticalCameraOrientation(orientation);
+
+  useEffect(() => {
+    const element = frameRef.current;
+    if (!element) return;
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      setFrameSize({ width: rect.width, height: rect.height });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const videoStyle: CSSProperties = {
+    transform: `translate(-50%, -50%) ${getCameraPreviewTransform(orientation)}`,
+    width: isVertical && frameSize.height ? `${frameSize.height}px` : "100%",
+    height: isVertical && frameSize.width ? `${frameSize.width}px` : "100%",
   };
+
+  return (
+    <div ref={frameRef} className={`oriented-camera-video ${isVertical ? "is-vertical" : ""}`}>
+      <video ref={videoRef} style={videoStyle} playsInline muted />
+    </div>
+  );
 }
 
 function drawOrientedVideoFrame(ctx: CanvasRenderingContext2D, video: HTMLVideoElement, orientation: CameraOrientation, width: number, height: number) {
@@ -1016,7 +1046,7 @@ export default function KioskPage() {
     const canvas = document.createElement("canvas");
     const videoWidth = video.videoWidth || 1080;
     const videoHeight = video.videoHeight || 1440;
-    const isVerticalOrientation = cameraOrientation === "rotate-right" || cameraOrientation === "rotate-left" || cameraOrientation === "rotate-right-mirror" || cameraOrientation === "rotate-left-mirror";
+    const isVerticalOrientation = isVerticalCameraOrientation(cameraOrientation);
     canvas.width = isVerticalOrientation ? videoHeight : videoWidth;
     canvas.height = isVerticalOrientation ? videoWidth : videoHeight;
     const ctx = canvas.getContext("2d");
@@ -1428,7 +1458,7 @@ export default function KioskPage() {
                     </select>
                   </label>
                   <div className="technical-camera-preview">
-                    <video ref={technicalCameraVideoRef} style={getCameraPreviewStyle(cameraOrientation)} playsInline muted />
+                    <OrientedCameraPreview videoRef={technicalCameraVideoRef} orientation={cameraOrientation} />
                   </div>
                   <p className="technical-note">Troque a opcao ate a imagem ficar em pe e do lado certo. Essa escolha tambem vale para a foto enviada para a IA.</p>
                 </div>
@@ -1660,7 +1690,7 @@ export default function KioskPage() {
             media={userImage ? (
               <img src={userImage} alt="Foto capturada" />
             ) : (
-              <video ref={videoRef} style={getCameraPreviewStyle(cameraOrientation)} playsInline muted />
+              <OrientedCameraPreview videoRef={videoRef} orientation={cameraOrientation} />
             )}
           />
         )}
