@@ -194,31 +194,42 @@
 
   .technical-panel {
     width: min(720px, calc(100vw - 48px));
+    max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    overflow-x: hidden;
     background: #111827;
     color: #f9fafb;
     border: 1px solid rgb(255 255 255 / 16%);
     border-radius: 8px;
     padding: 28px;
+    box-sizing: border-box;
   }
 
   .technical-panel form,
   .technical-panel > div {
     display: grid;
     gap: 16px;
+    min-width: 0;
   }
 
   .technical-panel h2 {
     font-size: 2rem;
     line-height: 1;
+    overflow-wrap: anywhere;
   }
 
   .technical-panel input,
   .technical-panel select,
   .technical-panel button {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     min-height: 52px;
     border-radius: 6px;
     padding: 0 16px;
     font-weight: 800;
+    white-space: normal;
   }
 
   .technical-panel input,
@@ -231,6 +242,7 @@
   .technical-select-field {
     display: grid;
     gap: 8px;
+    min-width: 0;
     color: #d1d5db;
     font-size: 0.9rem;
     font-weight: 900;
@@ -256,6 +268,9 @@
   .technical-camera-orientation-panel {
     display: grid;
     gap: 12px;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
     border: 1px solid rgb(255 255 255 / 14%);
     border-radius: 8px;
     background: rgb(255 255 255 / 6%);
@@ -283,15 +298,19 @@
     gap: 16px;
     border-bottom: 1px solid rgb(255 255 255 / 12%);
     padding-bottom: 8px;
+    min-width: 0;
   }
 
   .technical-status dt {
+    flex: 0 0 auto;
     color: #9ca3af;
   }
 
   .technical-status dd {
+    min-width: 0;
     font-weight: 800;
     text-align: right;
+    overflow-wrap: anywhere;
   }
 
   .technical-ok {
@@ -307,6 +326,8 @@
   }
 
   .technical-note {
+    max-width: 100%;
+    box-sizing: border-box;
     border: 1px solid rgb(255 255 255 / 14%);
     border-radius: 6px;
     background: rgb(255 255 255 / 8%);
@@ -314,6 +335,24 @@
     color: #d1d5db;
     font-weight: 700;
     line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 760px) {
+    .technical-panel {
+      width: min(100vw - 24px, 720px);
+      max-width: calc(100vw - 24px);
+      padding: 20px;
+    }
+
+    .technical-status div {
+      display: grid;
+      gap: 4px;
+    }
+
+    .technical-status dd {
+      text-align: left;
+    }
   }
 }
 
