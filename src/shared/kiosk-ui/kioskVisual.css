@@ -20,7 +20,7 @@
 }
 
 .ff-kiosk-bg-media {
-  opacity: .24;
+  opacity: .62;
 }
 
 .ff-kiosk-bg-video {
@@ -30,7 +30,9 @@
 .ff-kiosk-bg-scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgb(0 0 0 / .72), rgb(0 0 0 / .9));
+  background:
+    radial-gradient(circle at 50% 42%, rgb(0 0 0 / .2), rgb(0 0 0 / .5) 58%, rgb(0 0 0 / .68) 100%),
+    linear-gradient(180deg, rgb(0 0 0 / .42), rgb(0 0 0 / .62));
 }
 
 .ff-kiosk-bg-logo {
@@ -291,7 +293,7 @@
 }
 
 .inline-kiosk-preview .ff-kiosk-bg-media {
-  opacity: .42;
+  opacity: .62;
 }
 
 .inline-kiosk-preview .ff-kiosk-content {
