@@ -7,6 +7,7 @@ export interface KioskRuntimeConfig {
   fullscreen?: boolean;
   autoLaunch?: boolean;
   blockShortcuts?: boolean;
+  cameraOrientation?: string;
   simulatePayments?: boolean;
   updates?: {
     installerUrl?: string;
@@ -98,6 +99,7 @@ declare global {
       saveDeviceIdentity: (identity: StoredDeviceIdentity) => Promise<void>;
       clearDeviceIdentity: () => Promise<void>;
       saveDeviceConfig: (config: KioskDeviceConfig) => Promise<void>;
+      saveCameraOrientation: (cameraOrientation: string) => Promise<void>;
       getTechnicalStatus: () => Promise<KioskTechnicalStatus>;
       getPaymentStatus: () => Promise<KioskPaymentStatus>;
       getUpdateStatus: () => Promise<KioskUpdateStatus>;

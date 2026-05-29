@@ -27,6 +27,10 @@ function remoteConfigPath() {
   return path.join(app.getPath("userData"), "kiosk.remote-config.json");
 }
 
+function localSettingsPath() {
+  return path.join(app.getPath("userData"), "kiosk.local-settings.json");
+}
+
 async function readIdentity() {
   try {
     return JSON.parse(await fs.promises.readFile(identityPath(), "utf8"));
@@ -57,6 +61,26 @@ async function writeRemoteConfig(config) {
   const safeConfig = isObjectRecord(config) ? config : {};
   await fs.promises.mkdir(path.dirname(remoteConfigPath()), { recursive: true });
   await fs.promises.writeFile(remoteConfigPath(), JSON.stringify(safeConfig, null, 2), "utf8");
+}
+
+async function readLocalSettings() {
+  try {
+    return JSON.parse(await fs.promises.readFile(localSettingsPath(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+async function writeLocalSettings(settings) {
+  const safeSettings = isObjectRecord(settings) ? settings : {};
+  await fs.promises.mkdir(path.dirname(localSettingsPath()), { recursive: true });
+  await fs.promises.writeFile(localSettingsPath(), JSON.stringify(safeSettings, null, 2), "utf8");
+}
+
+async function saveCameraOrientation(cameraOrientation) {
+  const settings = await readLocalSettings();
+  settings.cameraOrientation = typeof cameraOrientation === "string" ? cameraOrientation : "";
+  await writeLocalSettings(settings);
 }
 
 function resolveDistDir() {
@@ -93,6 +117,7 @@ function loadKioskConfig() {
     readJson(userDataConfig) ||
     {};
   const remoteConfig = readJson(remoteConfigPath()) || {};
+  const localSettings = readJson(localSettingsPath()) || {};
   const mergedConfig = mergeKioskConfig(fileConfig, remoteConfig, process.env);
   const updates = isObjectRecord(mergedConfig.updates) ? mergedConfig.updates : {};
 
@@ -105,6 +130,7 @@ function loadKioskConfig() {
     fullscreen: mergedConfig.fullscreen !== false,
     autoLaunch: mergedConfig.autoLaunch !== false,
     blockShortcuts: mergedConfig.blockShortcuts !== false,
+    cameraOrientation: typeof localSettings.cameraOrientation === "string" ? localSettings.cameraOrientation : "",
     simulatePayments:
       process.env.FANFRAME_SIMULATE_PAYMENTS === "true" ||
       mergedConfig.simulatePayments === true ||
@@ -462,6 +488,7 @@ app.whenReady().then(() => {
   ipcMain.handle("kiosk:save-device-identity", (_event, identity) => writeIdentity(identity));
   ipcMain.handle("kiosk:clear-device-identity", clearIdentity);
   ipcMain.handle("kiosk:save-device-config", (_event, config) => writeRemoteConfig(config));
+  ipcMain.handle("kiosk:save-camera-orientation", (_event, cameraOrientation) => saveCameraOrientation(cameraOrientation));
   ipcMain.handle("kiosk:get-technical-status", async () => ({
     online: net.isOnline(),
     appVersion: app.getVersion(),

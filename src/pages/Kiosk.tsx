@@ -738,6 +738,10 @@ export default function KioskPage() {
         ...runtimeConfig,
         simulatePayments: paymentTestModeOverride === null ? runtimeConfig.simulatePayments === true : paymentTestModeOverride === "true",
       };
+      const persistedCameraOrientation = normalizeCameraOrientation(runtimeConfig.cameraOrientation || localStorage.getItem(cameraOrientationStorageKey));
+      setCameraOrientation(persistedCameraOrientation);
+      localStorage.setItem(cameraOrientationStorageKey, persistedCameraOrientation);
+      localStorage.setItem(cameraMirrorStorageKey, String(persistedCameraOrientation === "mirror" || persistedCameraOrientation === "rotate-right-mirror" || persistedCameraOrientation === "rotate-left-mirror"));
       const storedIdentity = await window.fanframeKiosk?.loadDeviceIdentity?.();
 
       setConfig(effectiveConfig);
@@ -1350,9 +1354,10 @@ export default function KioskPage() {
     });
   };
 
-  const updateCameraOrientation = (nextValue: CameraOrientation) => {
+  const updateCameraOrientation = async (nextValue: CameraOrientation) => {
     localStorage.setItem(cameraOrientationStorageKey, nextValue);
     localStorage.setItem(cameraMirrorStorageKey, String(nextValue === "mirror" || nextValue === "rotate-right-mirror" || nextValue === "rotate-left-mirror"));
+    await (window.fanframeKiosk?.saveCameraOrientation?.(nextValue) ?? Promise.resolve()).catch(() => undefined);
     setCameraOrientation(nextValue);
     setTechnicalCheck("camera", {
       status: "ok",
