@@ -145,7 +145,7 @@ const emptyTeam: Partial<TeamRow> = {
   kiosk_camera_countdown_seconds: 5,
   kiosk_default_mode: "standard",
   kiosk_show_shirt_step: true,
-  kiosk_show_background_step: true,
+  kiosk_show_background_step: false,
 };
 
 const assetLimits = {
@@ -206,12 +206,10 @@ const kioskTextGroups: Array<{ title: string; description: string; fields: Kiosk
   },
   {
     title: "Escolha do cliente",
-    description: "Telas de camisa, cenario e botoes de navegacao.",
+    description: "Tela de camisa e botoes de navegacao. O cenario agora e fixo e usado apenas pela IA.",
     fields: [
-      { key: "kiosk_shirt_step", label: "Passo da camisa", placeholder: "Passo 1 de 3" },
+      { key: "kiosk_shirt_step", label: "Passo da camisa", placeholder: "Passo 1 de 2" },
       { key: "kiosk_shirt_title", label: "Titulo da camisa", placeholder: "Escolha a camisa" },
-      { key: "kiosk_background_step", label: "Passo do cenario", placeholder: "Passo 2 de 3" },
-      { key: "kiosk_background_title", label: "Titulo do cenario", placeholder: "Escolha o cenario" },
       { key: "kiosk_cancel", label: "Botao cancelar", placeholder: "Cancelar" },
       { key: "kiosk_back", label: "Botao voltar", placeholder: "Voltar" },
       { key: "kiosk_continue", label: "Botao continuar", placeholder: "Continuar" },
@@ -222,7 +220,7 @@ const kioskTextGroups: Array<{ title: string; description: string; fields: Kiosk
     title: "Pagamento PIX",
     description: "Textos exibidos na etapa de pagamento.",
     fields: [
-      { key: "kiosk_payment_step", label: "Passo do pagamento", placeholder: "Passo 3 de 3" },
+      { key: "kiosk_payment_step", label: "Passo do pagamento", placeholder: "Passo 2 de 2" },
       { key: "kiosk_payment_title", label: "Titulo do pagamento", placeholder: "Pagamento" },
       { key: "kiosk_payment_pix_cta", label: "Botao PIX", placeholder: "Pagar com PIX" },
       { key: "kiosk_payment_pix_hint", label: "Ajuda antes do QR Code", placeholder: "Aponte a camera do celular para o QR Code.", long: true },
@@ -253,6 +251,7 @@ const teamEditorTabs: Array<{ id: TeamEditorTab; label: string }> = [
   { id: "basico", label: "Basico" },
   { id: "venda", label: "Venda" },
   { id: "construtor", label: "Construtor" },
+  { id: "cenarios", label: "Cenario IA" },
   { id: "experiencia", label: "Experiencia" },
   { id: "ia", label: "IA" },
   { id: "avancado", label: "Avancado" },
@@ -917,7 +916,7 @@ function Teams() {
             <div className="team-card-summary">
               <div><span>Preco</span><strong>{money(team.kiosk_price_cents, team.kiosk_currency)}</strong></div>
               <div><span>Camisas</span><strong>{team.shirts?.length || 0}</strong></div>
-              <div><span>Cenarios</span><strong>{team.backgrounds?.length || 0}</strong></div>
+              <div><span>Cenario IA</span><strong>{(team.backgrounds || []).some((asset) => asset.visible !== false) ? "OK" : "Falta"}</strong></div>
             </div>
             <div className="team-card-footer">
               <span>{team.slug ? `/${team.slug}` : "Sem codigo"}</span>
@@ -1057,7 +1056,15 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
 
   const add = () => {
     const id = `${type}-${Date.now()}`;
-    onChange([...assets, { id, name: "", subtitle: "", imageUrl: "", assetPath: "", promptDescription: "", visible: true }]);
+    const visible = type === "backgrounds" ? assets.length === 0 : true;
+    onChange([...assets, { id, name: "", subtitle: "", imageUrl: "", assetPath: "", promptDescription: "", visible }]);
+  };
+
+  const setFixedBackground = (index: number) => {
+    onChange(assets.map((asset, assetIndex) => ({
+      ...asset,
+      visible: assetIndex === index,
+    })));
   };
 
   return (
@@ -1069,7 +1076,7 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
       <p className="hint">
         {type === "shirts"
           ? "Cadastre as camisas que o cliente vai escolher no totem. Use imagens limpas, de preferencia com fundo claro."
-          : "Cadastre os cenarios de fundo que aparecem na foto final."}
+          : "Cadastre o cenario fixo usado pela IA. Ele nao aparece para o cliente no totem; somente a foto final usa esse fundo."}
       </p>
       <div className="asset-grid">
         {assets.map((asset, index) => (
@@ -1093,8 +1100,12 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
               />
             </label>
             <label className="inline-check">
-              <input type="checkbox" checked={asset.visible !== false} onChange={(e) => update(index, { visible: e.target.checked })} />
-              Mostrar no totem
+              {type === "backgrounds" ? (
+                <input type="radio" name="fixed-background" checked={asset.visible !== false} onChange={() => setFixedBackground(index)} />
+              ) : (
+                <input type="checkbox" checked={asset.visible !== false} onChange={(e) => update(index, { visible: e.target.checked })} />
+              )}
+              {type === "backgrounds" ? "Usar como cenario fixo da IA" : "Mostrar no totem"}
             </label>
             <button className="danger" type="button" onClick={() => onChange(assets.filter((_, i) => i !== index))}>Remover</button>
           </div>
@@ -1104,22 +1115,20 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
   );
 }
 
-type BuilderScreen = "home" | "shirts" | "backgrounds" | "pix" | "camera" | "generating" | "result";
+type BuilderScreen = "home" | "shirts" | "pix" | "camera" | "generating" | "result";
 type BuilderSelection =
   | { type: "text"; key: string; label: string; fallback: string; long?: boolean }
   | { type: "theme" }
   | { type: "logo" }
   | { type: "homeImage"; target: "before" | "after" }
   | { type: "recipe" }
-  | { type: "shirt"; index: number }
-  | { type: "background"; index: number };
+  | { type: "shirt"; index: number };
 
 type TeamSetter = <K extends keyof TeamRow>(key: K, value: TeamRow[K]) => void;
 
 const builderScreens: Array<{ id: BuilderScreen; label: string }> = [
   { id: "home", label: "Inicio" },
   { id: "shirts", label: "Camisas" },
-  { id: "backgrounds", label: "Cenarios" },
   { id: "pix", label: "PIX" },
   { id: "camera", label: "Camera" },
   { id: "generating", label: "Gerando" },
@@ -1143,13 +1152,11 @@ const builderTextFields: Record<string, Omit<Extract<BuilderSelection, { type: "
   kiosk_home_title: { key: "kiosk_home_title", label: "Titulo da tela inicial", fallback: "Vista o manto" },
   kiosk_home_subtitle: { key: "kiosk_home_subtitle", label: "Texto de apoio da tela inicial", fallback: "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", long: true },
   kiosk_home_cta: { key: "kiosk_home_cta", label: "Botao da tela inicial", fallback: "Comecar" },
-  kiosk_shirt_step: { key: "kiosk_shirt_step", label: "Passo da camisa", fallback: "Passo 1 de 3" },
+  kiosk_shirt_step: { key: "kiosk_shirt_step", label: "Passo da camisa", fallback: "Passo 1 de 2" },
   kiosk_shirt_title: { key: "kiosk_shirt_title", label: "Titulo da camisa", fallback: "Escolha a camisa" },
-  kiosk_background_step: { key: "kiosk_background_step", label: "Passo do cenario", fallback: "Passo 2 de 3" },
-  kiosk_background_title: { key: "kiosk_background_title", label: "Titulo do cenario", fallback: "Escolha o cenario" },
   kiosk_continue: { key: "kiosk_continue", label: "Botao continuar", fallback: "Continuar" },
   kiosk_cancel: { key: "kiosk_cancel", label: "Botao cancelar", fallback: "Cancelar" },
-  kiosk_payment_step: { key: "kiosk_payment_step", label: "Passo do pagamento", fallback: "Passo 3 de 3" },
+  kiosk_payment_step: { key: "kiosk_payment_step", label: "Passo do pagamento", fallback: "Passo 2 de 2" },
   kiosk_payment_title: { key: "kiosk_payment_title", label: "Titulo do pagamento", fallback: "Pagamento PIX" },
   kiosk_payment_pix_hint: { key: "kiosk_payment_pix_hint", label: "Ajuda do PIX", fallback: "Aponte a camera do celular para o QR Code.", long: true },
   kiosk_payment_waiting: { key: "kiosk_payment_waiting", label: "Texto aguardando pagamento", fallback: "Aguardando pagamento" },
@@ -1274,10 +1281,8 @@ function TeamVisualBuilder({
   const [recipeText, setRecipeText] = useState("");
   const [recipeMessage, setRecipeMessage] = useState("");
   const shirtRailRef = useRef<HTMLDivElement | null>(null);
-  const backgroundRailRef = useRef<HTMLDivElement | null>(null);
   const [railState, setRailState] = useState({
     shirts: { canPrev: false, canNext: false },
-    backgrounds: { canPrev: false, canNext: false },
   });
   const selectedTextKey = selection.type === "text" ? selection.key : "";
   const visibleShirts = shirts.filter((asset) => asset.visible !== false);
@@ -1286,8 +1291,8 @@ function TeamVisualBuilder({
   const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
   const homeBeforeImage = publicAssetUrl(typeof tutorialAssets.before === "string" ? tutorialAssets.before : "");
   const homeAfterImage = publicAssetUrl(typeof tutorialAssets.after === "string" ? tutorialAssets.after : "");
-  const updateBuilderRailState = useCallback((kind: "shirts" | "backgrounds") => {
-    const rail = kind === "shirts" ? shirtRailRef.current : backgroundRailRef.current;
+  const updateBuilderRailState = useCallback((kind: "shirts") => {
+    const rail = shirtRailRef.current;
     if (!rail) return;
     const maxScroll = rail.scrollWidth - rail.clientWidth;
     setRailState((current) => ({
@@ -1298,8 +1303,8 @@ function TeamVisualBuilder({
       },
     }));
   }, []);
-  const scrollBuilderRail = useCallback((kind: "shirts" | "backgrounds", direction: "prev" | "next") => {
-    const rail = kind === "shirts" ? shirtRailRef.current : backgroundRailRef.current;
+  const scrollBuilderRail = useCallback((kind: "shirts", direction: "prev" | "next") => {
+    const rail = shirtRailRef.current;
     if (!rail) return;
     rail.scrollBy({
       left: (direction === "next" ? 1 : -1) * Math.max(260, rail.clientWidth * 0.82),
@@ -1311,7 +1316,6 @@ function TeamVisualBuilder({
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       updateBuilderRailState("shirts");
-      updateBuilderRailState("backgrounds");
     });
     return () => window.cancelAnimationFrame(frame);
   }, [screen, shirts.length, backgrounds.length, updateBuilderRailState]);
@@ -1322,7 +1326,6 @@ function TeamVisualBuilder({
     const defaultTextByScreen: Record<BuilderScreen, string> = {
       home: "kiosk_home_title",
       shirts: "kiosk_shirt_title",
-      backgrounds: "kiosk_background_title",
       pix: "kiosk_payment_title",
       camera: "kiosk_camera_title",
       generating: "kiosk_generating_title",
@@ -1330,35 +1333,31 @@ function TeamVisualBuilder({
     };
     selectText(defaultTextByScreen[nextScreen]);
   };
-  const updateAsset = (kind: "shirt" | "background", index: number, patch: Partial<TeamAsset>) => {
-    const current = kind === "shirt" ? shirts : backgrounds;
+  const updateAsset = (kind: "shirt", index: number, patch: Partial<TeamAsset>) => {
+    const current = shirts;
     const next = [...current];
     next[index] = { ...next[index], ...patch };
-    set(kind === "shirt" ? "shirts" : "backgrounds", next as TeamRow["shirts"]);
+    set("shirts", next as TeamRow["shirts"]);
   };
-  const addAsset = (kind: "shirt" | "background") => {
-    const type = kind === "shirt" ? "shirts" : "backgrounds";
-    const current = kind === "shirt" ? shirts : backgrounds;
-    const id = `${type}-${Date.now()}`;
-    const next = [...current, { id, name: kind === "shirt" ? "Nova camisa" : "Novo cenario", subtitle: "", imageUrl: "", assetPath: "", visible: true }];
-    set(type, next as TeamRow["shirts"]);
-    setSelection({ type: kind, index: next.length - 1 } as BuilderSelection);
-    setScreen(kind === "shirt" ? "shirts" : "backgrounds");
+  const addAsset = () => {
+    const id = `shirts-${Date.now()}`;
+    const next = [...shirts, { id, name: "Nova camisa", subtitle: "", imageUrl: "", assetPath: "", visible: true }];
+    set("shirts", next as TeamRow["shirts"]);
+    setSelection({ type: "shirt", index: next.length - 1 });
+    setScreen("shirts");
   };
-  const removeAsset = (kind: "shirt" | "background", index: number) => {
-    const type = kind === "shirt" ? "shirts" : "backgrounds";
-    const current = kind === "shirt" ? shirts : backgrounds;
-    set(type, current.filter((_, itemIndex) => itemIndex !== index) as TeamRow["shirts"]);
+  const removeAsset = (index: number) => {
+    set("shirts", shirts.filter((_, itemIndex) => itemIndex !== index) as TeamRow["shirts"]);
     setSelection({ type: "theme" });
   };
-  const moveAsset = (kind: "shirt" | "background", index: number, direction: -1 | 1) => {
-    const current = kind === "shirt" ? shirts : backgrounds;
+  const moveAsset = (index: number, direction: -1 | 1) => {
+    const current = shirts;
     const target = index + direction;
     if (target < 0 || target >= current.length) return;
     const next = [...current];
     [next[index], next[target]] = [next[target], next[index]];
-    set(kind === "shirt" ? "shirts" : "backgrounds", next as TeamRow["shirts"]);
-    setSelection({ type: kind, index: target } as BuilderSelection);
+    set("shirts", next as TeamRow["shirts"]);
+    setSelection({ type: "shirt", index: target });
   };
   const uploadTeamImage = async (file: File, target: "logo_url" | "watermark_url") => {
     const extension = file.name.split(".").pop() || "png";
@@ -1370,13 +1369,12 @@ function TeamVisualBuilder({
     const url = await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "experience", target, extension));
     set("tutorial_assets", { ...tutorialAssets, [target]: url } as TeamRow["tutorial_assets"]);
   };
-  const uploadAssetImage = async (file: File, kind: "shirt" | "background", index: number) => {
-    const asset = kind === "shirt" ? shirts[index] : backgrounds[index];
+  const uploadAssetImage = async (file: File, index: number) => {
+    const asset = shirts[index];
     if (!asset) return;
-    const type = kind === "shirt" ? "shirts" : "backgrounds";
     const extension = file.name.split(".").pop() || "png";
-    const url = await uploadAsset(file, uniqueAssetPath(team.slug || "novo", type, asset.id, extension));
-    updateAsset(kind, index, { imageUrl: url, assetPath: url });
+    const url = await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "shirts", asset.id, extension));
+    updateAsset("shirt", index, { imageUrl: url, assetPath: url });
   };
   const copyCurrentRecipe = async () => {
     const recipe = createDesignRecipeFromTeam(team);
@@ -1428,36 +1426,6 @@ function TeamVisualBuilder({
           selectedId={selection.type === "shirt" ? shirts[selection.index]?.id : undefined}
           emptyLabel="Adicionar camisa"
           onSelect={(_, index) => setSelection({ type: "shirt", index } as BuilderSelection)}
-          cta={
-            <div className="builder-preview-actions">
-              <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
-              <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
-            </div>
-          }
-        />
-      );
-    }
-    if (screen === "backgrounds") {
-      return (
-        <KioskSelectionVisual
-          kind="background"
-          stepLabel={<EditablePreviewText fieldKey="kiosk_background_step" texts={textOverrides} selected={selectedTextKey === "kiosk_background_step"} variant="eyebrow" onSelect={() => selectText("kiosk_background_step")} onChange={setTextOverride} />}
-          title={<EditablePreviewText fieldKey="kiosk_background_title" texts={textOverrides} selected={selectedTextKey === "kiosk_background_title"} variant="section-title" onSelect={() => selectText("kiosk_background_title")} onChange={setTextOverride} />}
-          railRef={backgroundRailRef}
-          onRailScroll={() => updateBuilderRailState("backgrounds")}
-          canPrev={railState.backgrounds.canPrev}
-          canNext={railState.backgrounds.canNext}
-          onPrev={() => scrollBuilderRail("backgrounds", "prev")}
-          onNext={() => scrollBuilderRail("backgrounds", "next")}
-          items={backgrounds.map((asset) => ({
-            id: asset.id,
-            name: asset.name || "Nome do cenario",
-            subtitle: asset.subtitle || "Texto curto",
-            imageUrl: publicAssetUrl(asset.imageUrl || ""),
-          }))}
-          selectedId={selection.type === "background" ? backgrounds[selection.index]?.id : undefined}
-          emptyLabel="Adicionar cenario"
-          onSelect={(_, index) => setSelection({ type: "background", index } as BuilderSelection)}
           cta={
             <div className="builder-preview-actions">
               <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
@@ -1521,8 +1489,7 @@ function TeamVisualBuilder({
       />
     );
   };
-  const selectedAsset = selection.type === "shirt" ? shirts[selection.index] : selection.type === "background" ? backgrounds[selection.index] : null;
-  const selectedAssetKind = selection.type === "shirt" || selection.type === "background" ? selection.type : null;
+  const selectedAsset = selection.type === "shirt" ? shirts[selection.index] : null;
 
   return (
     <div className="visual-builder">
@@ -1544,11 +1511,10 @@ function TeamVisualBuilder({
         <button type="button" className="builder-tool-button" onClick={() => setSelection({ type: "theme" })}><Palette size={16} /> Cores e preco</button>
         <button type="button" className="builder-tool-button" onClick={() => setSelection({ type: "logo" })}><ImageIcon size={16} /> Logo do time</button>
         <button type="button" className="builder-tool-button" onClick={() => { setSelection({ type: "recipe" }); if (!recipeText) setRecipeText(createDesignRecipeFromTeam(team)); }}><Code2 size={16} /> Receita JSON</button>
-        <button type="button" className="builder-tool-button" onClick={() => addAsset("shirt")}><Plus size={16} /> Nova camisa</button>
-        <button type="button" className="builder-tool-button" onClick={() => addAsset("background")}><Plus size={16} /> Novo cenario</button>
+        <button type="button" className="builder-tool-button" onClick={addAsset}><Plus size={16} /> Nova camisa</button>
         <div className="builder-mini-list">
-          <strong>Visiveis no totem</strong>
-          <span>{visibleShirts.length} camisa(s) e {visibleBackgrounds.length} cenario(s)</span>
+          <strong>Configurado no app</strong>
+          <span>{visibleShirts.length} camisa(s) para escolha e {visibleBackgrounds.length ? "1 cenario fixo da IA" : "nenhum cenario fixo"}</span>
         </div>
       </aside>
 
@@ -1655,19 +1621,19 @@ function TeamVisualBuilder({
             </div>
           </>
         )}
-        {selectedAsset && selectedAssetKind && (
+        {selectedAsset && selection.type === "shirt" && (
           <>
-            <div className="inspector-heading"><Shirt size={17} /><strong>{selectedAssetKind === "shirt" ? "Camisa" : "Cenario"}</strong></div>
+            <div className="inspector-heading"><Shirt size={17} /><strong>Camisa</strong></div>
             {selectedAsset.imageUrl && <img className="inspector-image-preview" src={publicAssetUrl(selectedAsset.imageUrl)} alt="" />}
-            <label>Nome<input value={selectedAsset.name || ""} onChange={(event) => updateAsset(selectedAssetKind, selection.index, { name: event.target.value })} /></label>
-            <label>Texto curto<input value={selectedAsset.subtitle || ""} onChange={(event) => updateAsset(selectedAssetKind, selection.index, { subtitle: event.target.value })} /></label>
-            <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadAssetImage(file, selectedAssetKind, selection.index); }} /></label>
-            <label className="inline-check"><input type="checkbox" checked={selectedAsset.visible !== false} onChange={(event) => updateAsset(selectedAssetKind, selection.index, { visible: event.target.checked })} /> Mostrar no totem</label>
+            <label>Nome<input value={selectedAsset.name || ""} onChange={(event) => updateAsset("shirt", selection.index, { name: event.target.value })} /></label>
+            <label>Texto curto<input value={selectedAsset.subtitle || ""} onChange={(event) => updateAsset("shirt", selection.index, { subtitle: event.target.value })} /></label>
+            <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadAssetImage(file, selection.index); }} /></label>
+            <label className="inline-check"><input type="checkbox" checked={selectedAsset.visible !== false} onChange={(event) => updateAsset("shirt", selection.index, { visible: event.target.checked })} /> Mostrar no totem</label>
             <div className="inspector-actions">
-              <button type="button" className="secondary" onClick={() => moveAsset(selectedAssetKind, selection.index, -1)}>Mover esquerda</button>
-              <button type="button" className="secondary" onClick={() => moveAsset(selectedAssetKind, selection.index, 1)}>Mover direita</button>
+              <button type="button" className="secondary" onClick={() => moveAsset(selection.index, -1)}>Mover esquerda</button>
+              <button type="button" className="secondary" onClick={() => moveAsset(selection.index, 1)}>Mover direita</button>
             </div>
-            <button type="button" className="danger" onClick={() => removeAsset(selectedAssetKind, selection.index)}>Remover</button>
+            <button type="button" className="danger" onClick={() => removeAsset(selection.index)}>Remover</button>
           </>
         )}
       </aside>
@@ -1699,6 +1665,7 @@ function TeamForm() {
   const textOverrides = (team.text_overrides || {}) as Record<string, string>;
   const shirts = (team.shirts || []) as TeamAsset[];
   const backgrounds = (team.backgrounds || []) as TeamAsset[];
+  const visibleBackgrounds = backgrounds.filter((asset) => asset.visible !== false);
   const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
   const waitingSlides = Array.isArray(tutorialAssets.waitingSlides) ? tutorialAssets.waitingSlides : [];
   const pendingDraft = hasUnpublishedDraft(team);
@@ -1706,7 +1673,7 @@ function TeamForm() {
     !team.name && "nome do time",
     !team.kiosk_price_cents && "preco da foto",
     shirts.length === 0 && "camisas",
-    backgrounds.length === 0 && "cenarios",
+    visibleBackgrounds.length === 0 && "cenario fixo da IA",
     !team.generation_prompt && "estilo da IA",
   ].filter(Boolean) as string[];
   const setTextOverride = (key: string, value: string) => {
@@ -1928,7 +1895,7 @@ function TeamForm() {
                 </div>
                 <div className="experience-card">
                   <strong>Depois</strong>
-                  <span>Exemplo do resultado com camisa/cenario.</span>
+                  <span>Exemplo do resultado com camisa e cenario fixo da IA.</span>
                   {tutorialAssets.after ? <img src={publicAssetUrl(String(tutorialAssets.after))} alt="" /> : <div className="experience-placeholder">Sem imagem</div>}
                   <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "after"); }} /></label>
                 </div>
@@ -1990,7 +1957,7 @@ function TeamForm() {
                   </article>
                 ))}
                 {waitingSlides.length === 0 && (
-                  <div className="empty-state">Nenhum slide cadastrado. Se deixar vazio, o app usa o logo, a camisa e o cenario escolhidos.</div>
+                  <div className="empty-state">Nenhum slide cadastrado. Se deixar vazio, o app usa o logo e a camisa escolhida.</div>
                 )}
               </div>
             </div>
@@ -2075,7 +2042,7 @@ function TeamForm() {
 
           {activeTab === "cenarios" && (
             <div className="editor-section">
-              <AssetEditor label="Cenarios" teamSlug={team.slug || ""} type="backgrounds" assets={backgrounds} onChange={(assets) => set("backgrounds", assets)} />
+              <AssetEditor label="Cenario fixo da IA" teamSlug={team.slug || ""} type="backgrounds" assets={backgrounds} onChange={(assets) => set("backgrounds", assets)} />
             </div>
           )}
 
@@ -2097,7 +2064,7 @@ function TeamForm() {
               </div>
               <label>Codigo interno do time<input value={team.slug || ""} onChange={(e) => set("slug", slugify(e.target.value))} disabled={!isNew} required /></label>
               <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_shirt_step !== false} onChange={(e) => set("kiosk_show_shirt_step", e.target.checked)} /> Mostrar escolha de camisa</label>
-              <label className="inline-check"><input type="checkbox" checked={team.kiosk_show_background_step !== false} onChange={(e) => set("kiosk_show_background_step", e.target.checked)} /> Mostrar escolha de cenario</label>
+              <p className="hint">A escolha de cenario foi removida do app do cliente. O totem usa sempre o cenario fixo marcado na aba Cenario fixo da IA.</p>
               <p className="hint">Depois de criar o time, o codigo interno fica travado para evitar erro nos totens ja instalados.</p>
             </div>
           )}

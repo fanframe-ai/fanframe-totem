@@ -363,7 +363,6 @@ export default function KioskPage() {
   const [technicalCameraOrientationOpen, setTechnicalCameraOrientationOpen] = useState(false);
   const [pendingRemoteReload, setPendingRemoteReload] = useState(false);
   const [shirtRailScroll, setShirtRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
-  const [backgroundRailScroll, setBackgroundRailScroll] = useState<RailScrollState>({ canPrev: false, canNext: false });
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
   const [selectedBackground, setSelectedBackground] = useState<TeamBackground | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -390,7 +389,6 @@ export default function KioskPage() {
   const technicalCameraStreamRef = useRef<MediaStream | null>(null);
   const cameraCountdownTimerRef = useRef<number | null>(null);
   const shirtRailRef = useRef<HTMLDivElement | null>(null);
-  const backgroundRailRef = useRef<HTMLDivElement | null>(null);
   const technicalHoldTimerRef = useRef<number | null>(null);
   const generationSettledRef = useRef(false);
   const { progress, complete } = useProgress(step === "generating");
@@ -409,6 +407,10 @@ export default function KioskPage() {
     deviceSecret: identity?.deviceSecret || config?.deviceSecret || "",
   }), [config?.deviceCode, config?.deviceSecret, identity?.deviceCode, identity?.deviceSecret]);
   const hasDeviceAuth = Boolean(activeDevice.deviceCode && activeDevice.deviceSecret);
+
+  useEffect(() => {
+    setSelectedBackground(visibleBackgrounds[0] || null);
+  }, [visibleBackgrounds]);
   const tutorialAssets = team?.tutorial_assets || {};
   const homeBeforeImage = tutorialAssets.before || beforeExampleImage;
   const homeAfterImage = tutorialAssets.after || afterExampleImage;
@@ -428,14 +430,8 @@ export default function KioskPage() {
         subtitle: selectedShirt?.subtitle || "A IA esta ajustando a camisa na sua foto.",
         imageUrl: selectedShirt?.imageUrl || "",
       },
-      {
-        id: "background",
-        title: selectedBackground?.name || "Cenario escolhido",
-        subtitle: selectedBackground?.subtitle || "O fundo tambem entra na composicao final.",
-        imageUrl: selectedBackground?.imageUrl || "",
-      },
     ].filter((slide) => slide.title || slide.subtitle || slide.imageUrl);
-  }, [selectedBackground, selectedShirt, team?.logo_url, team?.name, tutorialAssets.waitingSlides]);
+  }, [selectedShirt, team?.logo_url, team?.name, tutorialAssets.waitingSlides]);
   const currentWaitingSlide = waitingSlides[waitingSlideIndex % Math.max(1, waitingSlides.length)];
   const progressLabel = progress >= 95 ? "Quase pronto" : `${progress}%`;
 
@@ -720,10 +716,9 @@ export default function KioskPage() {
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       updateRailScrollState(shirtRailRef.current, setShirtRailScroll);
-      updateRailScrollState(backgroundRailRef.current, setBackgroundRailScroll);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [step, updateRailScrollState, visibleBackgrounds.length, visibleShirts.length]);
+  }, [step, updateRailScrollState, visibleShirts.length]);
 
   useEffect(() => {
     const init = async () => {
@@ -987,25 +982,28 @@ export default function KioskPage() {
 
   const startSelection = () => {
     if (visibleShirts.length === 0 || visibleBackgrounds.length === 0) {
-      setError("Cadastre camisas e cenarios no painel admin antes de usar este totem.");
+      setError("Cadastre camisas e um cenario fixo da IA no painel admin antes de usar este totem.");
       setStep("maintenance");
       return;
     }
     setSelectedShirt(visibleShirts[0]);
     setSelectedBackground(visibleBackgrounds[0]);
-    if (team?.kiosk_show_shirt_step === false && team?.kiosk_show_background_step === false) {
+    if (team?.kiosk_show_shirt_step === false) {
       setStep("payment");
       return;
     }
-    setStep(team?.kiosk_show_shirt_step === false ? "background" : "shirt");
+    setStep("shirt");
   };
 
   const goAfterShirt = () => {
-    setStep(team?.kiosk_show_background_step === false ? "payment" : "background");
+    setSelectedBackground((current) => current || visibleBackgrounds[0] || null);
+    setStep("payment");
   };
 
   const startPayment = async (method: PaymentMethod) => {
-    if (!team || !config || !selectedShirt || !selectedBackground || !hasDeviceAuth) return;
+    const backgroundForGeneration = selectedBackground || visibleBackgrounds[0] || null;
+    if (!team || !config || !selectedShirt || !backgroundForGeneration || !hasDeviceAuth) return;
+    setSelectedBackground(backgroundForGeneration);
     setPaymentMethod(method);
     setPaymentBusy(true);
     setError(null);
@@ -1019,7 +1017,7 @@ export default function KioskPage() {
         device_secret: activeDevice.deviceSecret,
         method,
         selected_shirt_id: selectedShirt.id,
-        selected_background_id: selectedBackground.id,
+        selected_background_id: backgroundForGeneration.id,
         simulate: config.simulatePayments && method === "pix",
       });
     } catch (paymentError) {
@@ -1093,10 +1091,6 @@ export default function KioskPage() {
     setSessionId(null);
     setPaymentBusy(false);
     setError(null);
-    if (team?.kiosk_show_background_step !== false) {
-      setStep("background");
-      return;
-    }
     if (team?.kiosk_show_shirt_step !== false) {
       setStep("shirt");
       return;
@@ -1117,7 +1111,9 @@ export default function KioskPage() {
   };
 
   const startGeneration = async () => {
-    if (!team || !selectedShirt || !selectedBackground || !userImage || !sessionId || !paymentId) return;
+    const backgroundForGeneration = selectedBackground || visibleBackgrounds[0] || null;
+    if (!team || !selectedShirt || !backgroundForGeneration || !userImage || !sessionId || !paymentId) return;
+    setSelectedBackground(backgroundForGeneration);
     generationSettledRef.current = false;
     setStep("generating");
     setError(null);
@@ -1126,7 +1122,7 @@ export default function KioskPage() {
       body: {
         userImageBase64: userImage,
         shirtAssetUrl: getAssetFullUrl(selectedShirt.assetPath),
-        backgroundAssetUrl: getAssetFullUrl(selectedBackground.assetPath),
+        backgroundAssetUrl: getAssetFullUrl(backgroundForGeneration.assetPath),
         shirtId: selectedShirt.id,
         team_slug: team.slug,
         kiosk_session_id: sessionId,
@@ -1602,7 +1598,7 @@ export default function KioskPage() {
         {step === "shirt" && (
           <KioskSelectionVisual
             kind="shirt"
-            stepLabel={copy("kiosk_shirt_step", "Passo 1 de 3")}
+            stepLabel={copy("kiosk_shirt_step", "Passo 1 de 2")}
             title={copy("kiosk_shirt_title", "Escolha a camisa", "shirt_title")}
             items={visibleShirts.map((shirt) => ({
               id: shirt.id,
@@ -1626,46 +1622,9 @@ export default function KioskPage() {
           />
         )}
 
-        {step === "background" && (
-          <KioskSelectionVisual
-            kind="background"
-            stepLabel={copy("kiosk_background_step", "Passo 2 de 3")}
-            title={copy("kiosk_background_title", "Escolha o cenario", "background_title")}
-            items={visibleBackgrounds.map((background) => ({
-              id: background.id,
-              name: background.name,
-              subtitle: background.subtitle,
-              imageUrl: background.imageUrl,
-            }))}
-            selectedId={selectedBackground?.id}
-            emptyLabel="Adicionar cenario"
-            railRef={backgroundRailRef}
-            onRailScroll={() => updateRailScrollState(backgroundRailRef.current, setBackgroundRailScroll)}
-            canPrev={backgroundRailScroll.canPrev}
-            canNext={backgroundRailScroll.canNext}
-            onPrev={() => scrollRail(backgroundRailRef.current, "prev")}
-            onNext={() => scrollRail(backgroundRailRef.current, "next")}
-            onSelect={(background) => {
-              const fullBackground = visibleBackgrounds.find((item) => item.id === background.id);
-              if (fullBackground) setSelectedBackground(fullBackground);
-            }}
-            backControl={team?.kiosk_show_shirt_step !== false && (
-                <button
-                  type="button"
-                  onClick={() => setStep("shirt")}
-                  className="mb-7 inline-flex min-h-[64px] items-center gap-3 rounded-full border-2 border-border bg-card px-6 text-xl font-black uppercase text-foreground shadow-[0_12px_34px_rgb(0_0_0_/_0.24)] active:scale-95"
-                >
-                  <ArrowLeft className="h-7 w-7" strokeWidth={3} />
-                  {copy("kiosk_back", "Voltar")}
-                </button>
-              )}
-            cta={<KioskButton onClick={() => setStep("payment")} disabled={!selectedBackground} className="w-full">{copy("kiosk_pay", "Pagar")}</KioskButton>}
-          />
-        )}
-
         {step === "payment" && (
           <KioskPaymentVisual
-            stepLabel={copy("kiosk_payment_step", "Passo 3 de 3")}
+            stepLabel={copy("kiosk_payment_step", "Passo 2 de 2")}
             title={copy("kiosk_payment_title", "Pagamento")}
             priceLabel={priceLabel}
             pixCta={copy("kiosk_payment_pix_cta", "Pagar com PIX")}

@@ -32,4 +32,13 @@ describe("Kiosk pairing form", () => {
     expect(source).toContain("technicalCameraVideoRef");
     expect(source).not.toContain("Ver preview da camera");
   });
+
+  it("uses a fixed IA background without showing a background selection step to the user", () => {
+    const source = readFileSync("src/pages/Kiosk.tsx", "utf8");
+
+    expect(source).toContain('setSelectedBackground(visibleBackgrounds[0])');
+    expect(source).toContain('selected_background_id: backgroundForGeneration.id');
+    expect(source).not.toContain('step === "background" &&');
+    expect(source).not.toContain('setStep("background")');
+  });
 });
