@@ -6,6 +6,7 @@ type KioskVisualShellProps = {
   className?: string;
   shellStyle?: CSSProperties;
   backgroundImage?: string;
+  backgroundVideo?: string;
   waitingVideo?: string;
   showWaitingVideo?: boolean;
   logoUrl?: string;
@@ -132,6 +133,7 @@ export function KioskVisualShell({
   className = "",
   shellStyle,
   backgroundImage,
+  backgroundVideo,
   waitingVideo,
   showWaitingVideo,
   logoUrl,
@@ -151,7 +153,11 @@ export function KioskVisualShell({
     <main className={`ff-kiosk-shell ${className}`.trim()} style={shellStyle}>
       {technicalHotspot}
       <div className="ff-kiosk-bg-layer">
-        {backgroundImage && <img src={backgroundImage} alt="" className="ff-kiosk-bg-media" />}
+        {backgroundVideo ? (
+          <video src={backgroundVideo} className="ff-kiosk-bg-video ff-kiosk-bg-video-home" autoPlay loop muted playsInline />
+        ) : (
+          backgroundImage && <img src={backgroundImage} alt="" className="ff-kiosk-bg-media" />
+        )}
         {waitingVideo && showWaitingVideo && (
           <video src={waitingVideo} className="ff-kiosk-bg-video" autoPlay loop muted playsInline />
         )}

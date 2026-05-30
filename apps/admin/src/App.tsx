@@ -1246,6 +1246,7 @@ function InlineKioskPreview({
   priceLabel,
   onThemeSelect,
   onLogoSelect,
+  backgroundVideo,
   children,
 }: {
   team: Partial<TeamRow>;
@@ -1255,6 +1256,7 @@ function InlineKioskPreview({
   priceLabel: React.ReactNode;
   onThemeSelect: () => void;
   onLogoSelect?: () => void;
+  backgroundVideo?: string;
   children: React.ReactNode;
 }) {
   const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
@@ -1269,6 +1271,7 @@ function InlineKioskPreview({
         fontFamily: resolveTeamFontFamily(team),
       }}
       backgroundImage={backgroundImage}
+      backgroundVideo={backgroundVideo}
       logoUrl={publicAssetUrl(team.logo_url || "")}
       logoAlt={team.name || ""}
       onLogoSelect={onLogoSelect}
@@ -1588,6 +1591,7 @@ function TeamVisualBuilder({
             priceLabel={money(Number(team.kiosk_price_cents || 0), team.kiosk_currency || "BRL")}
             onThemeSelect={() => setSelection({ type: "theme" })}
             onLogoSelect={() => setSelection({ type: "logo" })}
+            backgroundVideo={screen === "home" ? publicAssetUrl(String(tutorialAssets.kioskBackgroundVideo || "")) : ""}
           >
             {renderPreviewScreen()}
           </InlineKioskPreview>
@@ -1744,11 +1748,12 @@ function TeamForm() {
   const setTutorialAssets = (patch: Partial<TeamTutorialAssets>) => {
     set("tutorial_assets", { ...tutorialAssets, ...patch });
   };
-  const uploadExperienceImage = async (file: File, key: "before" | "after" | "kioskBackground" | "waitingVideo" | "deliveryLogo") => {
+  const uploadExperienceImage = async (file: File, key: "before" | "after" | "kioskBackground" | "kioskBackgroundVideo" | "waitingVideo" | "deliveryLogo") => {
     try {
       setUploadError("");
-      validateExperienceFile(file, key === "waitingVideo" ? "video" : "image");
-      const extension = file.name.split(".").pop() || (key === "waitingVideo" ? "mp4" : "png");
+      const isVideo = key === "waitingVideo" || key === "kioskBackgroundVideo";
+      validateExperienceFile(file, isVideo ? "video" : "image");
+      const extension = file.name.split(".").pop() || (isVideo ? "mp4" : "png");
       const url = await uploadAsset(file, uniqueAssetPath(team.slug || "novo", "experience", key, extension));
       setTutorialAssets({ [key]: url });
     } catch (error) {
@@ -1962,6 +1967,16 @@ function TeamForm() {
                   <span>Imagem sutil no fundo das telas do totem.</span>
                   {tutorialAssets.kioskBackground ? <img src={publicAssetUrl(String(tutorialAssets.kioskBackground))} alt="" /> : <div className="experience-placeholder">Sem imagem</div>}
                   <label className="file-input">Trocar imagem<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "kioskBackground"); }} /></label>
+                </div>
+                <div className="experience-card">
+                  <strong>Video da tela inicial</strong>
+                  <span>Video sem som usado no fundo da primeira tela do totem.</span>
+                  {tutorialAssets.kioskBackgroundVideo ? (
+                    <video src={publicAssetUrl(String(tutorialAssets.kioskBackgroundVideo))} muted playsInline controls />
+                  ) : (
+                    <div className="experience-placeholder">Sem video</div>
+                  )}
+                  <label className="file-input">Enviar video<input type="file" accept="video/*" onChange={async (event) => { const file = event.target.files?.[0]; if (file) await uploadExperienceImage(file, "kioskBackgroundVideo"); }} /></label>
                 </div>
                 <div className="experience-card">
                   <strong>Video da espera</strong>

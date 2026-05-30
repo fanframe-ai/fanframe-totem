@@ -36,7 +36,9 @@ describe("admin visual builder architecture", () => {
     expect(sharedVisualSource).toContain("homeLayout");
     expect(sharedVisualSource).toContain("campaign_poster");
     expect(sharedVisualSource).toContain("titleImage");
+    expect(sharedVisualSource).toContain("backgroundVideo");
     expect(sharedCssSource).toContain(".ff-kiosk-home-title-image");
+    expect(sharedCssSource).toContain(".ff-kiosk-bg-video-home");
     expect(sharedVisualSource).toContain("ff-kiosk-home-benefits");
     expect(sharedCssSource).toContain(".ff-kiosk-home.is-campaign-poster");
     expect(sharedCssSource).toContain(".ff-kiosk-home-brush-title");
@@ -44,8 +46,10 @@ describe("admin visual builder architecture", () => {
     expect(teamContextSource).toContain('homeLayout: value.homeLayout === "campaign_poster" ? "campaign_poster" : "default"');
     expect(kioskSource).toContain('homeLayout={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}');
     expect(kioskSource).toContain('tutorialAssets.homeTitleImage || "/flamengo/logomanto.png"');
+    expect(kioskSource).toContain('backgroundVideo={step === "home" ? tutorialAssets.kioskBackgroundVideo : undefined}');
     expect(adminSource).toContain('homeLayout={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}');
     expect(adminSource).toContain('tutorialAssets.homeTitleImage || "/flamengo/logomanto.png"');
+    expect(adminSource).toContain('kioskBackgroundVideo');
     expect(adminSource).toContain("Estilo Museu Imersivo");
   });
 

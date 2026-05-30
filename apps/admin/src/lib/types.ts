@@ -24,6 +24,7 @@ export interface TeamTutorialAssets {
   before?: string;
   after?: string;
   kioskBackground?: string;
+  kioskBackgroundVideo?: string;
   homeLayout?: "default" | "campaign_poster";
   homeTitleImage?: string;
   waitingVideo?: string;

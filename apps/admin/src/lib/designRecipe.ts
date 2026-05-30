@@ -16,6 +16,7 @@ type DesignRecipe = {
     beforeImage?: string;
     afterImage?: string;
     kioskBackground?: string;
+    kioskBackgroundVideo?: string;
     waitingVideo?: string;
     deliveryLogo?: string;
   };
@@ -90,6 +91,7 @@ export function applyDesignRecipe(team: Partial<TeamRow>, recipeText: string) {
   const before = readString(recipe.assets?.beforeImage);
   const after = readString(recipe.assets?.afterImage);
   const kioskBackground = readString(recipe.assets?.kioskBackground);
+  const kioskBackgroundVideo = readString(recipe.assets?.kioskBackgroundVideo);
   const waitingVideo = readString(recipe.assets?.waitingVideo);
   const deliveryLogo = readString(recipe.assets?.deliveryLogo);
   const deliveryMessage = readString(recipe.experience?.deliveryMessage);
@@ -98,6 +100,7 @@ export function applyDesignRecipe(team: Partial<TeamRow>, recipeText: string) {
   if (before) tutorialAssets.before = before;
   if (after) tutorialAssets.after = after;
   if (kioskBackground) tutorialAssets.kioskBackground = kioskBackground;
+  if (kioskBackgroundVideo) tutorialAssets.kioskBackgroundVideo = kioskBackgroundVideo;
   if (waitingVideo) tutorialAssets.waitingVideo = waitingVideo;
   if (deliveryLogo) tutorialAssets.deliveryLogo = deliveryLogo;
   if (deliveryMessage) tutorialAssets.deliveryMessage = deliveryMessage;
@@ -126,6 +129,7 @@ export function createDesignRecipeFromTeam(team: Partial<TeamRow>) {
       beforeImage: typeof tutorialAssets.before === "string" ? tutorialAssets.before : "",
       afterImage: typeof tutorialAssets.after === "string" ? tutorialAssets.after : "",
       kioskBackground: typeof tutorialAssets.kioskBackground === "string" ? tutorialAssets.kioskBackground : "",
+      kioskBackgroundVideo: typeof tutorialAssets.kioskBackgroundVideo === "string" ? tutorialAssets.kioskBackgroundVideo : "",
       waitingVideo: typeof tutorialAssets.waitingVideo === "string" ? tutorialAssets.waitingVideo : "",
       deliveryLogo: typeof tutorialAssets.deliveryLogo === "string" ? tutorialAssets.deliveryLogo : "",
     },

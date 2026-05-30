@@ -1612,6 +1612,7 @@ export default function KioskPage() {
     <KioskVisualShell
       shellStyle={shellStyle}
       backgroundImage={tutorialAssets.kioskBackground}
+      backgroundVideo={step === "home" ? tutorialAssets.kioskBackgroundVideo : undefined}
       waitingVideo={tutorialAssets.waitingVideo}
       showWaitingVideo={step === "generating"}
       logoUrl={team?.logo_url}

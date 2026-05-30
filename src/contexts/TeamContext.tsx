@@ -81,6 +81,7 @@ export interface TeamTutorialAssets {
   before?: string;
   after?: string;
   kioskBackground?: string;
+  kioskBackgroundVideo?: string;
   homeLayout?: "default" | "campaign_poster";
   homeTitleImage?: string;
   waitingVideo?: string;
@@ -160,6 +161,7 @@ function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
     before: typeof value.before === "string" ? value.before : "",
     after: typeof value.after === "string" ? value.after : "",
     kioskBackground: typeof value.kioskBackground === "string" ? value.kioskBackground : "",
+    kioskBackgroundVideo: typeof value.kioskBackgroundVideo === "string" ? value.kioskBackgroundVideo : "",
     homeLayout: value.homeLayout === "campaign_poster" ? "campaign_poster" : "default",
     homeTitleImage: typeof value.homeTitleImage === "string" ? value.homeTitleImage : "",
     waitingVideo: typeof value.waitingVideo === "string" ? value.waitingVideo : "",

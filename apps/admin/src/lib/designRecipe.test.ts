@@ -36,6 +36,7 @@ describe("admin design recipes", () => {
         beforeImage: "before.png",
         afterImage: "after.png",
         kioskBackground: "bg.png",
+        kioskBackgroundVideo: "home-bg.mp4",
       },
     });
 
@@ -54,6 +55,7 @@ describe("admin design recipes", () => {
       before: "before.png",
       after: "after.png",
       kioskBackground: "bg.png",
+      kioskBackgroundVideo: "home-bg.mp4",
     });
     expect(result.team.logo_url).toBe("logo.png");
   });

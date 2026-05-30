@@ -27,6 +27,10 @@
   opacity: .34;
 }
 
+.ff-kiosk-bg-video-home {
+  opacity: .62;
+}
+
 .ff-kiosk-bg-scrim {
   position: absolute;
   inset: 0;
