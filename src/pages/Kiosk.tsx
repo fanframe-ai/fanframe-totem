@@ -1586,11 +1586,18 @@ export default function KioskPage() {
 
         {step === "home" && (
           <KioskHomeVisual
+            homeLayout={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}
             eyebrow={copy("kiosk_home_eyebrow", "Experiencia interativa")}
             title={copy("kiosk_home_title", "Vista o manto", "welcome_title")}
+            titleAccent={tutorialAssets.homeLayout === "campaign_poster" ? copy("kiosk_home_title_accent", "Manto") : undefined}
             subtitle={copy("kiosk_home_subtitle", "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", "welcome_subtitle")}
             beforeImage={homeBeforeImage}
             afterImage={homeAfterImage}
+            benefits={[
+              { icon: "shirt", label: copy("kiosk_home_benefit_1", "Escolha seu manto") },
+              { icon: "camera", label: copy("kiosk_home_benefit_2", "Entre no clima da Nacao") },
+              { icon: "qr", label: copy("kiosk_home_benefit_3", "Receba sua foto por QR Code") },
+            ]}
             cta={<KioskButton onClick={startSelection} className="mx-auto w-full max-w-4xl">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>}
           />
         )}

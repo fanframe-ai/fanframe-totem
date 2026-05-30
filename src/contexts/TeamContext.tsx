@@ -34,8 +34,12 @@ export interface TeamTextOverrides {
   kiosk_total_label?: string;
   kiosk_home_eyebrow?: string;
   kiosk_home_title?: string;
+  kiosk_home_title_accent?: string;
   kiosk_home_subtitle?: string;
   kiosk_home_cta?: string;
+  kiosk_home_benefit_1?: string;
+  kiosk_home_benefit_2?: string;
+  kiosk_home_benefit_3?: string;
   kiosk_shirt_step?: string;
   kiosk_shirt_title?: string;
   kiosk_background_step?: string;
@@ -72,6 +76,7 @@ export interface TeamTutorialAssets {
   before?: string;
   after?: string;
   kioskBackground?: string;
+  homeLayout?: "default" | "campaign_poster";
   waitingVideo?: string;
   waitingSlides?: TeamWaitingSlide[];
   deliveryLogo?: string;
@@ -149,6 +154,7 @@ function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
     before: typeof value.before === "string" ? value.before : "",
     after: typeof value.after === "string" ? value.after : "",
     kioskBackground: typeof value.kioskBackground === "string" ? value.kioskBackground : "",
+    homeLayout: value.homeLayout === "campaign_poster" ? "campaign_poster" : "default",
     waitingVideo: typeof value.waitingVideo === "string" ? value.waitingVideo : "",
     waitingSlides,
     deliveryLogo: typeof value.deliveryLogo === "string" ? value.deliveryLogo : "",
@@ -239,7 +245,18 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         const published = isRecord(data.published_config) && Object.keys(data.published_config).length > 0
           ? data.published_config
           : {};
-        const view = { ...data, ...published };
+        const view = {
+          ...data,
+          ...published,
+          tutorial_assets: {
+            ...(isRecord(data.tutorial_assets) ? data.tutorial_assets : {}),
+            ...(isRecord(published.tutorial_assets) ? published.tutorial_assets : {}),
+          },
+          text_overrides: {
+            ...(isRecord(data.text_overrides) ? data.text_overrides : {}),
+            ...(isRecord(published.text_overrides) ? published.text_overrides : {}),
+          },
+        };
 
         const teamConfig: TeamConfig = {
           id: data.id,

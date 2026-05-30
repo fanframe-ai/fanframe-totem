@@ -26,6 +26,25 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("homeAfterImage");
   });
 
+  it("supports a Flamengo immersive poster home layout in both kiosk and admin preview", () => {
+    const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
+    const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
+    const teamContextSource = readFileSync("src/contexts/TeamContext.tsx", "utf8");
+    const sharedVisualSource = readFileSync("src/shared/kiosk-ui/KioskVisual.tsx", "utf8");
+    const sharedCssSource = readFileSync("src/shared/kiosk-ui/kioskVisual.css", "utf8");
+
+    expect(sharedVisualSource).toContain("homeLayout");
+    expect(sharedVisualSource).toContain("campaign_poster");
+    expect(sharedVisualSource).toContain("ff-kiosk-home-benefits");
+    expect(sharedCssSource).toContain(".ff-kiosk-home.is-campaign-poster");
+    expect(sharedCssSource).toContain(".ff-kiosk-home-brush-title");
+    expect(teamContextSource).toContain("tutorial_assets: {");
+    expect(teamContextSource).toContain('homeLayout: value.homeLayout === "campaign_poster" ? "campaign_poster" : "default"');
+    expect(kioskSource).toContain('homeLayout={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}');
+    expect(adminSource).toContain('homeLayout={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}');
+    expect(adminSource).toContain("Estilo Museu Imersivo");
+  });
+
   it("uses a kiosk-sized portrait preview instead of a narrow phone preview", () => {
     const cssSource = readFileSync("apps/admin/src/styles.css", "utf8");
 

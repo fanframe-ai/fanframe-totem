@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode, WheelEvent } from "react";
-import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw } from "lucide-react";
+import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw, Shirt } from "lucide-react";
 import "./kioskVisual.css";
 
 type KioskVisualShellProps = {
@@ -23,13 +23,16 @@ type KioskVisualShellProps = {
 };
 
 type KioskHomeVisualProps = {
+  homeLayout?: "default" | "campaign_poster";
   eyebrow: ReactNode;
   title: ReactNode;
+  titleAccent?: ReactNode;
   subtitle: ReactNode;
   beforeImage?: string;
   afterImage?: string;
   beforeLabel?: ReactNode;
   afterLabel?: ReactNode;
+  benefits?: Array<{ icon: "shirt" | "camera" | "qr"; label: ReactNode }>;
   cta: ReactNode;
   onMediaSelect?: (target: "before" | "after") => void;
 };
@@ -176,21 +179,40 @@ export function KioskVisualShell({
 }
 
 export function KioskHomeVisual({
+  homeLayout = "default",
   eyebrow,
   title,
+  titleAccent,
   subtitle,
   beforeImage,
   afterImage,
   beforeLabel = "Antes",
   afterLabel = "Depois",
+  benefits,
   cta,
   onMediaSelect,
 }: KioskHomeVisualProps) {
+  const isCampaignPoster = homeLayout === "campaign_poster";
+  const escapedTitleAccent = typeof titleAccent === "string"
+    ? titleAccent.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    : "";
+  const visibleTitle = typeof title === "string" && typeof titleAccent === "string"
+    ? title.replace(new RegExp(`\\s*${escapedTitleAccent}\\s*$`, "i"), "").trim() || title
+    : title;
+  const visibleBenefits = benefits?.length ? benefits : [
+    { icon: "shirt" as const, label: "Escolha seu manto" },
+    { icon: "camera" as const, label: "Entre no clima da Nacao" },
+    { icon: "qr" as const, label: "Receba sua foto por QR Code" },
+  ];
+
   return (
-    <section className="ff-kiosk-home">
+    <section className={`ff-kiosk-home ${isCampaignPoster ? "is-campaign-poster" : ""}`.trim()}>
       <div className="ff-kiosk-home-copy">
         <div className="ff-kiosk-home-eyebrow">{eyebrow}</div>
-        <h2 className="ff-kiosk-home-title">{title}</h2>
+        <h2 className="ff-kiosk-home-title">
+          <span>{visibleTitle}</span>
+          {titleAccent && <strong className="ff-kiosk-home-brush-title">{titleAccent}</strong>}
+        </h2>
         <div className="ff-kiosk-home-subtitle">{subtitle}</div>
       </div>
       <div className="ff-kiosk-home-media">
@@ -201,6 +223,7 @@ export function KioskHomeVisual({
           </div>
           {beforeImage ? <img src={beforeImage} alt="" /> : <strong>{beforeLabel}</strong>}
         </button>
+        {isCampaignPoster && <div className="ff-kiosk-home-transform-arrow" aria-hidden="true">{"\u00bb"}</div>}
         <button type="button" className="ff-kiosk-home-card is-highlighted" onClick={() => onMediaSelect?.("after")}>
           <div className="ff-kiosk-home-card-label">
             <span>{afterLabel}</span>
@@ -209,6 +232,19 @@ export function KioskHomeVisual({
           {afterImage ? <img src={afterImage} alt="" /> : <strong>{afterLabel}</strong>}
         </button>
       </div>
+      {isCampaignPoster && (
+        <div className="ff-kiosk-home-benefits">
+          {visibleBenefits.map((benefit, index) => {
+            const Icon = benefit.icon === "shirt" ? Shirt : benefit.icon === "camera" ? Camera : QrCode;
+            return (
+              <div className="ff-kiosk-home-benefit" key={index}>
+                <span><Icon aria-hidden="true" /></span>
+                <strong>{benefit.label}</strong>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {cta}
     </section>
   );

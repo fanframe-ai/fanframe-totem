@@ -174,6 +174,28 @@
   text-align: center;
 }
 
+.ff-kiosk-home.is-campaign-poster {
+  position: relative;
+  grid-template-rows: auto auto auto auto;
+  align-content: end;
+  gap: 24px;
+  padding-top: 12px;
+  isolation: isolate;
+}
+
+.ff-kiosk-home.is-campaign-poster::before {
+  content: "";
+  position: absolute;
+  inset: -40px -48px -32px;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 86% 28%, rgb(255 0 0 / .18), transparent 30%),
+    radial-gradient(circle at 18% 42%, rgb(225 180 80 / .12), transparent 28%),
+    linear-gradient(135deg, rgb(255 0 0 / .08), transparent 30%, rgb(255 0 0 / .12) 72%, transparent);
+  mix-blend-mode: screen;
+  opacity: .9;
+}
+
 .ff-kiosk-home-copy {
   width: 100%;
   max-width: 900px;
@@ -199,6 +221,24 @@
   text-transform: uppercase;
 }
 
+.ff-kiosk-home-title span,
+.ff-kiosk-home-title strong {
+  display: block;
+}
+
+.ff-kiosk-home-brush-title {
+  margin-top: 2px;
+  color: #d61217;
+  font-size: 1.34em;
+  line-height: .75;
+  font-family: Impact, "Arial Black", system-ui, sans-serif;
+  font-style: italic;
+  text-shadow:
+    0 2px 0 rgb(0 0 0 / .85),
+    0 0 28px rgb(255 0 0 / .52);
+  transform: skewX(-8deg);
+}
+
 .ff-kiosk-home-subtitle {
   max-width: 760px;
   margin: 0 auto;
@@ -209,12 +249,27 @@
 }
 
 .ff-kiosk-home-media {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   width: 100%;
   max-width: 896px;
   margin: 0 auto;
+}
+
+.ff-kiosk-home-transform-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  color: #ff1b22;
+  font-size: 74px;
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: 0 0 18px rgb(255 0 0 / .9);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .ff-kiosk-home-card {
@@ -236,6 +291,138 @@
   border-color: hsl(var(--primary, 0 0% 100%));
   background: hsl(var(--card, 0 0% 7%) / .86);
   box-shadow: 0 18px 42px rgb(0 0 0 / .34);
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-copy {
+  max-width: 980px;
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-eyebrow {
+  margin-bottom: 8px;
+  color: #e8c36d;
+  font-size: 22px;
+  letter-spacing: .14em;
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-title {
+  margin-bottom: 18px;
+  font-size: 96px;
+  text-shadow: 0 5px 0 rgb(0 0 0 / .9), 0 0 30px rgb(255 255 255 / .14);
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-subtitle {
+  max-width: 880px;
+  color: rgb(255 255 255 / .78);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-media {
+  max-width: 940px;
+  gap: 34px;
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgb(238 211 146 / .7);
+  border-radius: 14px;
+  background: rgb(0 0 0 / .62);
+  padding: 14px;
+  box-shadow:
+    0 18px 54px rgb(0 0 0 / .48),
+    0 0 0 1px rgb(255 255 255 / .08) inset,
+    0 0 26px rgb(232 195 109 / .28);
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card.is-highlighted {
+  border-color: #ff262d;
+  box-shadow:
+    0 18px 54px rgb(0 0 0 / .52),
+    0 0 0 1px rgb(255 255 255 / .14) inset,
+    0 0 34px rgb(255 0 0 / .48);
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card-label {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  left: 14px;
+  justify-content: flex-start;
+  min-width: 132px;
+  border-radius: 0 0 10px 0;
+  background: linear-gradient(135deg, rgb(0 0 0 / .92), rgb(45 0 0 / .82));
+  padding: 10px 16px;
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card-label span {
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card-label i {
+  display: none;
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card img,
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card > strong {
+  aspect-ratio: 4 / 5;
+  border-radius: 10px;
+}
+
+.ff-kiosk-home-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  width: min(940px, 100%);
+  margin: 0 auto;
+}
+
+.ff-kiosk-home-benefit {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+}
+
+.ff-kiosk-home-benefit span {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  place-items: center;
+  border: 2px solid #e8c36d;
+  border-radius: 999px;
+  color: #e8c36d;
+  background: rgb(0 0 0 / .48);
+  box-shadow: 0 0 20px rgb(232 195 109 / .16);
+}
+
+.ff-kiosk-home-benefit svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 2.5;
+}
+
+.ff-kiosk-home-benefit strong {
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 950;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.ff-kiosk-home.is-campaign-poster > button,
+.ff-kiosk-home.is-campaign-poster > .ff-kiosk-primary-action {
+  border: 2px solid #ff1b22;
+  border-radius: 999px;
+  background: rgb(0 0 0 / .9);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / .14) inset,
+    0 0 28px rgb(255 0 0 / .62),
+    0 0 58px rgb(255 0 0 / .32);
 }
 
 .ff-kiosk-home-card-label {
@@ -351,6 +538,65 @@
 .inline-kiosk-preview .ff-kiosk-home-title {
   margin-bottom: 18px;
   font-size: 64px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster {
+  gap: 22px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster::before {
+  inset: -36px -34px -28px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-title {
+  font-size: 82px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-eyebrow {
+  font-size: 16px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-subtitle {
+  font-size: 20px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-media {
+  gap: 20px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card-label {
+  min-width: 88px;
+  padding: 7px 10px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-card-label span {
+  font-size: 13px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home-transform-arrow {
+  font-size: 52px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home-benefits {
+  gap: 10px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home-benefit {
+  gap: 8px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home-benefit span {
+  width: 44px;
+  height: 44px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home-benefit svg {
+  width: 23px;
+  height: 23px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home-benefit strong {
+  font-size: 12px;
 }
 
 .inline-kiosk-preview .ff-kiosk-home-subtitle {

@@ -200,7 +200,11 @@ const kioskTextGroups: Array<{ title: string; description: string; fields: Kiosk
     fields: [
       { key: "kiosk_home_eyebrow", label: "Texto pequeno acima do titulo", placeholder: "Experiencia interativa" },
       { key: "kiosk_home_title", label: "Titulo principal", placeholder: "Vista o manto" },
+      { key: "kiosk_home_title_accent", label: "Titulo em destaque vermelho", placeholder: "Manto" },
       { key: "kiosk_home_subtitle", label: "Frase explicando o que acontece", placeholder: "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", long: true },
+      { key: "kiosk_home_benefit_1", label: "Beneficio 1", placeholder: "Escolha seu manto" },
+      { key: "kiosk_home_benefit_2", label: "Beneficio 2", placeholder: "Entre no clima da Nacao" },
+      { key: "kiosk_home_benefit_3", label: "Beneficio 3", placeholder: "Receba sua foto por QR Code" },
       { key: "kiosk_home_cta", label: "Botao para iniciar", placeholder: "Comecar" },
     ],
   },
@@ -1150,7 +1154,11 @@ const builderTextFields: Record<string, Omit<Extract<BuilderSelection, { type: "
   kiosk_total_label: { key: "kiosk_total_label", label: "Texto acima do valor", fallback: "Total" },
   kiosk_home_eyebrow: { key: "kiosk_home_eyebrow", label: "Chamada pequena", fallback: "Experiencia interativa" },
   kiosk_home_title: { key: "kiosk_home_title", label: "Titulo da tela inicial", fallback: "Vista o manto" },
+  kiosk_home_title_accent: { key: "kiosk_home_title_accent", label: "Titulo vermelho", fallback: "Manto" },
   kiosk_home_subtitle: { key: "kiosk_home_subtitle", label: "Texto de apoio da tela inicial", fallback: "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", long: true },
+  kiosk_home_benefit_1: { key: "kiosk_home_benefit_1", label: "Beneficio 1", fallback: "Escolha seu manto" },
+  kiosk_home_benefit_2: { key: "kiosk_home_benefit_2", label: "Beneficio 2", fallback: "Entre no clima da Nacao" },
+  kiosk_home_benefit_3: { key: "kiosk_home_benefit_3", label: "Beneficio 3", fallback: "Receba sua foto por QR Code" },
   kiosk_home_cta: { key: "kiosk_home_cta", label: "Botao da tela inicial", fallback: "Comecar" },
   kiosk_shirt_step: { key: "kiosk_shirt_step", label: "Passo da camisa", fallback: "Passo 1 de 2" },
   kiosk_shirt_title: { key: "kiosk_shirt_title", label: "Titulo da camisa", fallback: "Escolha a camisa" },
@@ -1395,11 +1403,18 @@ function TeamVisualBuilder({
     if (screen === "home") {
       return (
         <KioskHomeVisual
+          homeLayout={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}
           eyebrow={<EditablePreviewText fieldKey="kiosk_home_eyebrow" texts={textOverrides} selected={selectedTextKey === "kiosk_home_eyebrow"} variant="eyebrow" onSelect={() => selectText("kiosk_home_eyebrow")} onChange={setTextOverride} />}
           title={<EditablePreviewText fieldKey="kiosk_home_title" texts={textOverrides} selected={selectedTextKey === "kiosk_home_title"} variant="hero-title" onSelect={() => selectText("kiosk_home_title")} onChange={setTextOverride} />}
+          titleAccent={tutorialAssets.homeLayout === "campaign_poster" ? <EditablePreviewText fieldKey="kiosk_home_title_accent" texts={textOverrides} selected={selectedTextKey === "kiosk_home_title_accent"} variant="hero-title" onSelect={() => selectText("kiosk_home_title_accent")} onChange={setTextOverride} /> : undefined}
           subtitle={<EditablePreviewText fieldKey="kiosk_home_subtitle" texts={textOverrides} selected={selectedTextKey === "kiosk_home_subtitle"} variant="subtitle" onSelect={() => selectText("kiosk_home_subtitle")} onChange={setTextOverride} />}
           beforeImage={homeBeforeImage}
           afterImage={homeAfterImage}
+          benefits={[
+            { icon: "shirt", label: <EditablePreviewText fieldKey="kiosk_home_benefit_1" texts={textOverrides} selected={selectedTextKey === "kiosk_home_benefit_1"} variant="benefit" onSelect={() => selectText("kiosk_home_benefit_1")} onChange={setTextOverride} /> },
+            { icon: "camera", label: <EditablePreviewText fieldKey="kiosk_home_benefit_2" texts={textOverrides} selected={selectedTextKey === "kiosk_home_benefit_2"} variant="benefit" onSelect={() => selectText("kiosk_home_benefit_2")} onChange={setTextOverride} /> },
+            { icon: "qr", label: <EditablePreviewText fieldKey="kiosk_home_benefit_3" texts={textOverrides} selected={selectedTextKey === "kiosk_home_benefit_3"} variant="benefit" onSelect={() => selectText("kiosk_home_benefit_3")} onChange={setTextOverride} /> },
+          ]}
           onMediaSelect={(target) => setSelection({ type: "homeImage", target })}
           cta={<EditablePreviewText fieldKey="kiosk_home_cta" texts={textOverrides} selected={selectedTextKey === "kiosk_home_cta"} variant="cta" onSelect={() => selectText("kiosk_home_cta")} onChange={setTextOverride} />}
         />
@@ -1563,6 +1578,15 @@ function TeamVisualBuilder({
         {selection.type === "theme" && (
           <>
             <div className="inspector-heading"><Palette size={17} /><strong>Cores e venda</strong></div>
+            <label>Estilo da tela inicial
+              <select
+                value={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}
+                onChange={(event) => set("tutorial_assets", { ...tutorialAssets, homeLayout: event.target.value } as TeamRow["tutorial_assets"])}
+              >
+                <option value="default">Padrao atual</option>
+                <option value="campaign_poster">Estilo Museu Imersivo</option>
+              </select>
+            </label>
             <div className="two-fields">
               <label>Fundo<input type="color" value={team.primary_color || "#050505"} onChange={(event) => set("primary_color", event.target.value)} /></label>
               <label>Texto<input type="color" value={team.secondary_color || "#ffffff"} onChange={(event) => set("secondary_color", event.target.value)} /></label>
