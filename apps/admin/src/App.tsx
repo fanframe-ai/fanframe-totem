@@ -31,6 +31,7 @@ import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/install
 import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
 import {
   KioskCameraVisual,
+  KioskCpfVisual,
   KioskGeneratingVisual,
   KioskHomeVisual,
   KioskPaymentVisual,
@@ -214,6 +215,11 @@ const kioskTextGroups: Array<{ title: string; description: string; fields: Kiosk
     fields: [
       { key: "kiosk_shirt_step", label: "Passo da camisa", placeholder: "Passo 1 de 2" },
       { key: "kiosk_shirt_title", label: "Titulo da camisa", placeholder: "Escolha a camisa" },
+      { key: "kiosk_cpf_step", label: "Passo do CPF", placeholder: "Passo 2 de 3" },
+      { key: "kiosk_cpf_title", label: "Titulo do CPF", placeholder: "Digite seu CPF" },
+      { key: "kiosk_cpf_hint", label: "Frase de ajuda do CPF", placeholder: "Informe o CPF para continuar.", long: true },
+      { key: "kiosk_cpf_error", label: "Mensagem de CPF invalido", placeholder: "CPF invalido" },
+      { key: "kiosk_cpf_continue", label: "Botao continuar CPF", placeholder: "Continuar" },
       { key: "kiosk_cancel", label: "Botao cancelar", placeholder: "Cancelar" },
       { key: "kiosk_back", label: "Botao voltar", placeholder: "Voltar" },
       { key: "kiosk_continue", label: "Botao continuar", placeholder: "Continuar" },
@@ -1119,7 +1125,7 @@ function AssetEditor({ label, teamSlug, assets, onChange, type }: {
   );
 }
 
-type BuilderScreen = "home" | "shirts" | "pix" | "camera" | "generating" | "result";
+type BuilderScreen = "home" | "shirts" | "cpf" | "pix" | "camera" | "generating" | "result";
 type BuilderSelection =
   | { type: "text"; key: string; label: string; fallback: string; long?: boolean }
   | { type: "theme" }
@@ -1133,6 +1139,7 @@ type TeamSetter = <K extends keyof TeamRow>(key: K, value: TeamRow[K]) => void;
 const builderScreens: Array<{ id: BuilderScreen; label: string }> = [
   { id: "home", label: "Inicio" },
   { id: "shirts", label: "Camisas" },
+  { id: "cpf", label: "CPF" },
   { id: "pix", label: "PIX" },
   { id: "camera", label: "Camera" },
   { id: "generating", label: "Gerando" },
@@ -1162,6 +1169,11 @@ const builderTextFields: Record<string, Omit<Extract<BuilderSelection, { type: "
   kiosk_home_cta: { key: "kiosk_home_cta", label: "Botao da tela inicial", fallback: "Comecar" },
   kiosk_shirt_step: { key: "kiosk_shirt_step", label: "Passo da camisa", fallback: "Passo 1 de 2" },
   kiosk_shirt_title: { key: "kiosk_shirt_title", label: "Titulo da camisa", fallback: "Escolha a camisa" },
+  kiosk_cpf_step: { key: "kiosk_cpf_step", label: "Passo do CPF", fallback: "Passo 2 de 3" },
+  kiosk_cpf_title: { key: "kiosk_cpf_title", label: "Titulo do CPF", fallback: "Digite seu CPF" },
+  kiosk_cpf_hint: { key: "kiosk_cpf_hint", label: "Ajuda do CPF", fallback: "Informe o CPF para continuar.", long: true },
+  kiosk_cpf_error: { key: "kiosk_cpf_error", label: "Erro de CPF", fallback: "CPF invalido" },
+  kiosk_cpf_continue: { key: "kiosk_cpf_continue", label: "Botao continuar CPF", fallback: "Continuar" },
   kiosk_continue: { key: "kiosk_continue", label: "Botao continuar", fallback: "Continuar" },
   kiosk_cancel: { key: "kiosk_cancel", label: "Botao cancelar", fallback: "Cancelar" },
   kiosk_payment_step: { key: "kiosk_payment_step", label: "Passo do pagamento", fallback: "Passo 2 de 2" },
@@ -1233,6 +1245,7 @@ function InlineKioskPreview({
   totalLabel,
   priceLabel,
   onThemeSelect,
+  onLogoSelect,
   children,
 }: {
   team: Partial<TeamRow>;
@@ -1241,6 +1254,7 @@ function InlineKioskPreview({
   totalLabel: React.ReactNode;
   priceLabel: React.ReactNode;
   onThemeSelect: () => void;
+  onLogoSelect?: () => void;
   children: React.ReactNode;
 }) {
   const tutorialAssets = (team.tutorial_assets || {}) as TeamTutorialAssets;
@@ -1257,6 +1271,7 @@ function InlineKioskPreview({
       backgroundImage={backgroundImage}
       logoUrl={publicAssetUrl(team.logo_url || "")}
       logoAlt={team.name || ""}
+      onLogoSelect={onLogoSelect}
       brandLabel={brandLabel}
       teamName={teamName}
       totalLabel={totalLabel}
@@ -1334,6 +1349,7 @@ function TeamVisualBuilder({
     const defaultTextByScreen: Record<BuilderScreen, string> = {
       home: "kiosk_home_title",
       shirts: "kiosk_shirt_title",
+      cpf: "kiosk_cpf_title",
       pix: "kiosk_payment_title",
       camera: "kiosk_camera_title",
       generating: "kiosk_generating_title",
@@ -1448,6 +1464,23 @@ function TeamVisualBuilder({
               <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
             </div>
           }
+        />
+      );
+    }
+    if (screen === "cpf") {
+      return (
+        <KioskCpfVisual
+          stepLabel={<EditablePreviewText fieldKey="kiosk_cpf_step" texts={textOverrides} selected={selectedTextKey === "kiosk_cpf_step"} variant="eyebrow" onSelect={() => selectText("kiosk_cpf_step")} onChange={setTextOverride} />}
+          title={<EditablePreviewText fieldKey="kiosk_cpf_title" texts={textOverrides} selected={selectedTextKey === "kiosk_cpf_title"} variant="section-title" onSelect={() => selectText("kiosk_cpf_title")} onChange={setTextOverride} />}
+          hint={<EditablePreviewText fieldKey="kiosk_cpf_hint" texts={textOverrides} selected={selectedTextKey === "kiosk_cpf_hint"} variant="subtitle" onSelect={() => selectText("kiosk_cpf_hint")} onChange={setTextOverride} />}
+          value="123.456.789-09"
+          error={null}
+          continueLabel={<EditablePreviewText fieldKey="kiosk_cpf_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_cpf_continue"} variant="button-copy" onSelect={() => selectText("kiosk_cpf_continue")} onChange={setTextOverride} />}
+          disabled={false}
+          onDigit={() => undefined}
+          onBackspace={() => undefined}
+          onClear={() => undefined}
+          onContinue={() => undefined}
         />
       );
     }

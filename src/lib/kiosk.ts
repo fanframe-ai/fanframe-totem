@@ -86,7 +86,7 @@ export function isSafeKioskReloadStep(step: string) {
 }
 
 export function shouldResetKioskForInactivity(step: string) {
-  return ["shirt", "camera"].includes(step);
+  return ["shirt", "cpf", "camera"].includes(step);
 }
 
 export function classifyKioskError(message: string): KioskFriendlyError {

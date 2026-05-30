@@ -79,6 +79,20 @@ type KioskPaymentVisualProps = {
   onCancel?: () => void;
 };
 
+type KioskCpfVisualProps = {
+  stepLabel: ReactNode;
+  title: ReactNode;
+  hint: ReactNode;
+  value: string;
+  error?: ReactNode;
+  continueLabel: ReactNode;
+  disabled?: boolean;
+  onDigit: (digit: string) => void;
+  onBackspace: () => void;
+  onClear: () => void;
+  onContinue: () => void;
+};
+
 type KioskCameraVisualProps = {
   title: ReactNode;
   media: ReactNode;
@@ -380,6 +394,57 @@ export function KioskPaymentVisual({
         )}
 
         {error && <p className="ff-kiosk-error">{error}</p>}
+      </div>
+    </section>
+  );
+}
+
+export function KioskCpfVisual({
+  stepLabel,
+  title,
+  hint,
+  value,
+  error,
+  continueLabel,
+  disabled,
+  onDigit,
+  onBackspace,
+  onClear,
+  onContinue,
+}: KioskCpfVisualProps) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "limpar", "0", "apagar"];
+
+  return (
+    <section className="ff-kiosk-cpf">
+      <div className="ff-kiosk-cpf-inner">
+        <div className="ff-kiosk-selection-step">{stepLabel}</div>
+        <h2 className="ff-kiosk-cpf-title">{title}</h2>
+        <p>{hint}</p>
+        <output className="ff-kiosk-cpf-display" aria-live="polite">{value || "000.000.000-00"}</output>
+        {error && <p className="ff-kiosk-error">{error}</p>}
+        <div className="ff-kiosk-cpf-keypad">
+          {keys.map((key) => {
+            const isDigit = /^\d$/.test(key);
+            const label = key === "limpar" ? "Limpar" : key === "apagar" ? "Apagar" : key;
+            return (
+              <button
+                type="button"
+                key={key}
+                className={isDigit ? "is-digit" : ""}
+                onClick={() => {
+                  if (isDigit) onDigit(key);
+                  else if (key === "limpar") onClear();
+                  else onBackspace();
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <button type="button" className="ff-kiosk-primary-action" disabled={disabled} onClick={onContinue}>
+          {continueLabel}
+        </button>
       </div>
     </section>
   );

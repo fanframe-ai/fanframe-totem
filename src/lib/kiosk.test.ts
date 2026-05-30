@@ -53,6 +53,7 @@ describe("kiosk helpers", () => {
 
   it("never resets an active payment screen for inactivity", () => {
     expect(shouldResetKioskForInactivity("shirt")).toBe(true);
+    expect(shouldResetKioskForInactivity("cpf")).toBe(true);
     expect(shouldResetKioskForInactivity("background")).toBe(false);
     expect(shouldResetKioskForInactivity("camera")).toBe(true);
     expect(shouldResetKioskForInactivity("payment")).toBe(false);

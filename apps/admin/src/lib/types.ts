@@ -164,6 +164,8 @@ export interface KioskPayment {
   status: string;
   amount_cents: number;
   currency: string;
+  customer_tax_id?: string | null;
+  customer_tax_id_last4?: string | null;
   reference_id: string;
   pagbank_order_id: string | null;
   expires_at: string | null;

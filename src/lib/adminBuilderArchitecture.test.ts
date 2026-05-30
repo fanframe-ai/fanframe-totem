@@ -106,10 +106,21 @@ describe("admin visual builder architecture", () => {
     const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
     const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
 
-    for (const componentName of ["KioskPaymentVisual", "KioskCameraVisual", "KioskGeneratingVisual", "KioskResultVisual"]) {
+    for (const componentName of ["KioskCpfVisual", "KioskPaymentVisual", "KioskCameraVisual", "KioskGeneratingVisual", "KioskResultVisual"]) {
       expect(adminSource).toContain(componentName);
       expect(kioskSource).toContain(componentName);
     }
+  });
+
+  it("collects CPF before creating the PIX order without using a fixed PagBank tax id", () => {
+    const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
+    const paymentFunctionSource = readFileSync("supabase/functions/create-kiosk-payment/index.ts", "utf8");
+
+    expect(kioskSource).toContain('setStep("cpf")');
+    expect(kioskSource).toContain("customer_cpf: cleanCpf(customerCpf)");
+    expect(paymentFunctionSource).toContain("customer_cpf?: string");
+    expect(paymentFunctionSource).toContain("tax_id: params.customerCpf");
+    expect(paymentFunctionSource).not.toContain('Deno.env.get("PAGBANK_CUSTOMER_TAX_ID") || "12345678909"');
   });
 
   it("keeps selection rail fades subtle instead of drawing dark side containers", () => {

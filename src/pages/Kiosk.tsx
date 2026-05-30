@@ -10,6 +10,7 @@ import beforeExampleImage from "@/assets/before-example.jpg";
 import afterExampleImage from "@/assets/after-example.png";
 import {
   KioskCameraVisual,
+  KioskCpfVisual,
   KioskGeneratingVisual,
   KioskHomeVisual,
   KioskPaymentVisual,
@@ -17,6 +18,7 @@ import {
   KioskSelectionVisual,
   KioskVisualShell,
 } from "@/shared/kiosk-ui/KioskVisual";
+import { cleanCpf, formatCpf, isValidCpf } from "@/lib/cpf";
 import {
   buildDeliveryUrl,
   classifyKioskError,
@@ -60,6 +62,7 @@ type KioskStep =
   | "home"
   | "shirt"
   | "background"
+  | "cpf"
   | "payment"
   | "camera"
   | "generating"
@@ -366,6 +369,8 @@ export default function KioskPage() {
   const [selectedShirt, setSelectedShirt] = useState<TeamShirt | null>(null);
   const [selectedBackground, setSelectedBackground] = useState<TeamBackground | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [customerCpf, setCustomerCpf] = useState("");
+  const [customerCpfTouched, setCustomerCpfTouched] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [paymentBusy, setPaymentBusy] = useState(false);
@@ -472,6 +477,8 @@ export default function KioskPage() {
     setSelectedShirt(null);
     setSelectedBackground(null);
     setPaymentMethod(null);
+    setCustomerCpf("");
+    setCustomerCpfTouched(false);
     setSessionId(null);
     setPaymentId(null);
     setPixQrImage(null);
@@ -500,6 +507,8 @@ export default function KioskPage() {
     setSelectedShirt(null);
     setSelectedBackground(null);
     setPaymentMethod(null);
+    setCustomerCpf("");
+    setCustomerCpfTouched(false);
     setSessionId(null);
     setPaymentId(null);
     setPaymentBusy(false);
@@ -989,7 +998,7 @@ export default function KioskPage() {
     setSelectedShirt(visibleShirts[0]);
     setSelectedBackground(visibleBackgrounds[0]);
     if (team?.kiosk_show_shirt_step === false) {
-      setStep("payment");
+      setStep("cpf");
       return;
     }
     setStep("shirt");
@@ -997,12 +1006,37 @@ export default function KioskPage() {
 
   const goAfterShirt = () => {
     setSelectedBackground((current) => current || visibleBackgrounds[0] || null);
+    setStep("cpf");
+  };
+
+  const addCpfDigit = (digit: string) => {
+    setCustomerCpf((current) => formatCpf(`${cleanCpf(current)}${digit}`));
+    setCustomerCpfTouched(false);
+  };
+
+  const removeCpfDigit = () => {
+    setCustomerCpf((current) => formatCpf(cleanCpf(current).slice(0, -1)));
+    setCustomerCpfTouched(false);
+  };
+
+  const clearCpf = () => {
+    setCustomerCpf("");
+    setCustomerCpfTouched(false);
+  };
+
+  const continueAfterCpf = () => {
+    setCustomerCpfTouched(true);
+    if (!isValidCpf(customerCpf)) return;
     setStep("payment");
   };
 
   const startPayment = async (method: PaymentMethod) => {
     const backgroundForGeneration = selectedBackground || visibleBackgrounds[0] || null;
-    if (!team || !config || !selectedShirt || !backgroundForGeneration || !hasDeviceAuth) return;
+    if (!team || !config || !selectedShirt || !backgroundForGeneration || !hasDeviceAuth || !isValidCpf(customerCpf)) {
+      setCustomerCpfTouched(true);
+      setStep("cpf");
+      return;
+    }
     setSelectedBackground(backgroundForGeneration);
     setPaymentMethod(method);
     setPaymentBusy(true);
@@ -1016,6 +1050,7 @@ export default function KioskPage() {
         device_code: activeDevice.deviceCode,
         device_secret: activeDevice.deviceSecret,
         method,
+        customer_cpf: cleanCpf(customerCpf),
         selected_shirt_id: selectedShirt.id,
         selected_background_id: backgroundForGeneration.id,
         simulate: config.simulatePayments && method === "pix",
@@ -1091,6 +1126,12 @@ export default function KioskPage() {
     setSessionId(null);
     setPaymentBusy(false);
     setError(null);
+    setStep("cpf");
+  };
+
+  const goBackFromCpf = () => {
+    setError(null);
+    setCustomerCpfTouched(false);
     if (team?.kiosk_show_shirt_step !== false) {
       setStep("shirt");
       return;
@@ -1106,6 +1147,7 @@ export default function KioskPage() {
 
   const getBackAction = () => {
     if (step === "payment") return goBackFromPayment;
+    if (step === "cpf") return goBackFromCpf;
     if (step === "camera") return goBackFromCamera;
     return null;
   };
@@ -1630,9 +1672,25 @@ export default function KioskPage() {
           />
         )}
 
+        {step === "cpf" && (
+          <KioskCpfVisual
+            stepLabel={copy("kiosk_cpf_step", "Passo 2 de 3")}
+            title={copy("kiosk_cpf_title", "Digite seu CPF")}
+            hint={copy("kiosk_cpf_hint", "Informe o CPF para continuar.")}
+            value={customerCpf}
+            error={customerCpfTouched && !isValidCpf(customerCpf) ? copy("kiosk_cpf_error", "CPF invalido") : null}
+            continueLabel={copy("kiosk_cpf_continue", "Continuar")}
+            disabled={!isValidCpf(customerCpf)}
+            onDigit={addCpfDigit}
+            onBackspace={removeCpfDigit}
+            onClear={clearCpf}
+            onContinue={continueAfterCpf}
+          />
+        )}
+
         {step === "payment" && (
           <KioskPaymentVisual
-            stepLabel={copy("kiosk_payment_step", "Passo 2 de 2")}
+            stepLabel={copy("kiosk_payment_step", "Passo 3 de 3")}
             title={copy("kiosk_payment_title", "Pagamento")}
             priceLabel={priceLabel}
             pixCta={copy("kiosk_payment_pix_cta", "Pagar com PIX")}

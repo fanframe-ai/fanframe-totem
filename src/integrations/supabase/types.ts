@@ -384,6 +384,8 @@ export type Database = {
           amount_cents: number
           created_at: string
           currency: string
+          customer_tax_id: string | null
+          customer_tax_id_last4: string | null
           device_id: string | null
           expires_at: string | null
           id: string
@@ -405,6 +407,8 @@ export type Database = {
           amount_cents: number
           created_at?: string
           currency?: string
+          customer_tax_id?: string | null
+          customer_tax_id_last4?: string | null
           device_id?: string | null
           expires_at?: string | null
           id?: string
@@ -426,6 +430,8 @@ export type Database = {
           amount_cents?: number
           created_at?: string
           currency?: string
+          customer_tax_id?: string | null
+          customer_tax_id_last4?: string | null
           device_id?: string | null
           expires_at?: string | null
           id?: string

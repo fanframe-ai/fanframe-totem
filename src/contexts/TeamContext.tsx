@@ -42,6 +42,11 @@ export interface TeamTextOverrides {
   kiosk_home_benefit_3?: string;
   kiosk_shirt_step?: string;
   kiosk_shirt_title?: string;
+  kiosk_cpf_step?: string;
+  kiosk_cpf_title?: string;
+  kiosk_cpf_hint?: string;
+  kiosk_cpf_error?: string;
+  kiosk_cpf_continue?: string;
   kiosk_background_step?: string;
   kiosk_background_title?: string;
   kiosk_payment_step?: string;

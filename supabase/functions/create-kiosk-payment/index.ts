@@ -23,6 +23,7 @@ interface KioskPaymentRequest {
   session_id?: string;
   payment_id?: string;
   method?: PaymentMethod;
+  customer_cpf?: string;
   selected_shirt_id?: string;
   selected_background_id?: string;
   simulate?: boolean;
@@ -107,6 +108,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+function cleanCpf(value = "") {
+  return value.replace(/\D/g, "").slice(0, 11);
+}
+
+function isValidCpf(value = "") {
+  const cpf = cleanCpf(value);
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  const digits = cpf.split("").map(Number);
+  const firstCheck = calculateCpfCheckDigit(digits.slice(0, 9));
+  const secondCheck = calculateCpfCheckDigit([...digits.slice(0, 9), firstCheck]);
+  return digits[9] === firstCheck && digits[10] === secondCheck;
+}
+
+function calculateCpfCheckDigit(numbers: number[]) {
+  const factorStart = numbers.length + 1;
+  const sum = numbers.reduce((total, number, index) => total + number * (factorStart - index), 0);
+  const remainder = (sum * 10) % 11;
+  return remainder === 10 ? 0 : remainder;
+}
+
 async function resolveTeam(supabase: ReturnType<typeof createClient>, slug?: string) {
   if (!slug) throw new Error("Missing team_slug");
 
@@ -178,6 +200,7 @@ async function createPixOrder(params: {
   teamName: string;
   amountCents: number;
   expiresAt: string;
+  customerCpf: string;
 }) {
   if (!PAGBANK_TOKEN) {
     throw new Error("PAGBANK_API_TOKEN is not configured");
@@ -188,7 +211,7 @@ async function createPixOrder(params: {
     customer: {
       name: Deno.env.get("PAGBANK_CUSTOMER_NAME") || "Cliente FanFrame",
       email: Deno.env.get("PAGBANK_CUSTOMER_EMAIL") || "totem@fanframe.local",
-      tax_id: Deno.env.get("PAGBANK_CUSTOMER_TAX_ID") || "12345678909",
+      tax_id: params.customerCpf,
       phones: [
         {
           country: "55",
@@ -249,6 +272,10 @@ async function createPayment(req: KioskPaymentRequest) {
   const currency = team.kiosk_currency || "BRL";
   const referenceId = `kiosk-${crypto.randomUUID()}`;
   const shouldSimulate = req.simulate || Deno.env.get("KIOSK_SIMULATE_PAYMENTS") === "true";
+  const customerCpf = cleanCpf(req.customer_cpf);
+  if (!isValidCpf(customerCpf)) {
+    throw new Error("CPF invalido.");
+  }
 
   if (method === "pix" && !shouldSimulate && !PAGBANK_TOKEN) {
     throw new Error("PagBank PIX ainda nao configurado. Use pagamento simulado para testes ou configure PAGBANK_API_TOKEN.");
@@ -296,6 +323,8 @@ async function createPayment(req: KioskPaymentRequest) {
       currency,
       reference_id: referenceId,
       expires_at: expiresAt,
+      customer_tax_id: customerCpf,
+      customer_tax_id_last4: customerCpf.slice(-4),
     })
     .select("*")
     .single();
@@ -337,6 +366,7 @@ async function createPayment(req: KioskPaymentRequest) {
     teamName: team.name,
     amountCents,
     expiresAt,
+    customerCpf,
   });
   const qrCode = Array.isArray(order.qr_codes) ? order.qr_codes[0] as Record<string, unknown> : {};
   const qrCodeText = typeof qrCode.text === "string" ? qrCode.text : null;
