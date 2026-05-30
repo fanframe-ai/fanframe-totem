@@ -1129,6 +1129,11 @@
 }
 
 .ff-kiosk-payment-busy {
+  display: flex;
+  min-height: 320px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
   padding: 80px 0;
   text-align: center;
 }
@@ -1149,8 +1154,10 @@
 
 .ff-kiosk-payment-qr {
   display: flex;
+  min-height: 420px;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .ff-kiosk-payment-qr img {
