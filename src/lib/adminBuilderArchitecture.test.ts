@@ -35,13 +35,17 @@ describe("admin visual builder architecture", () => {
 
     expect(sharedVisualSource).toContain("homeLayout");
     expect(sharedVisualSource).toContain("campaign_poster");
+    expect(sharedVisualSource).toContain("titleImage");
+    expect(sharedCssSource).toContain(".ff-kiosk-home-title-image");
     expect(sharedVisualSource).toContain("ff-kiosk-home-benefits");
     expect(sharedCssSource).toContain(".ff-kiosk-home.is-campaign-poster");
     expect(sharedCssSource).toContain(".ff-kiosk-home-brush-title");
     expect(teamContextSource).toContain("tutorial_assets: {");
     expect(teamContextSource).toContain('homeLayout: value.homeLayout === "campaign_poster" ? "campaign_poster" : "default"');
     expect(kioskSource).toContain('homeLayout={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}');
+    expect(kioskSource).toContain('tutorialAssets.homeTitleImage || "/flamengo/logomanto.png"');
     expect(adminSource).toContain('homeLayout={tutorialAssets.homeLayout === "campaign_poster" ? "campaign_poster" : "default"}');
+    expect(adminSource).toContain('tutorialAssets.homeTitleImage || "/flamengo/logomanto.png"');
     expect(adminSource).toContain("Estilo Museu Imersivo");
   });
 

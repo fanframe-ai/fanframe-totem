@@ -27,6 +27,7 @@ type KioskHomeVisualProps = {
   eyebrow: ReactNode;
   title: ReactNode;
   titleAccent?: ReactNode;
+  titleImage?: string;
   subtitle: ReactNode;
   beforeImage?: string;
   afterImage?: string;
@@ -183,6 +184,7 @@ export function KioskHomeVisual({
   eyebrow,
   title,
   titleAccent,
+  titleImage,
   subtitle,
   beforeImage,
   afterImage,
@@ -209,10 +211,14 @@ export function KioskHomeVisual({
     <section className={`ff-kiosk-home ${isCampaignPoster ? "is-campaign-poster" : ""}`.trim()}>
       <div className="ff-kiosk-home-copy">
         <div className="ff-kiosk-home-eyebrow">{eyebrow}</div>
-        <h2 className="ff-kiosk-home-title">
-          <span>{visibleTitle}</span>
-          {titleAccent && <strong className="ff-kiosk-home-brush-title">{titleAccent}</strong>}
-        </h2>
+        {titleImage ? (
+          <img src={titleImage} alt={typeof title === "string" ? title : "Vista o manto"} className="ff-kiosk-home-title-image" />
+        ) : (
+          <h2 className="ff-kiosk-home-title">
+            <span>{visibleTitle}</span>
+            {titleAccent && <strong className="ff-kiosk-home-brush-title">{titleAccent}</strong>}
+          </h2>
+        )}
         <div className="ff-kiosk-home-subtitle">{subtitle}</div>
       </div>
       <div className="ff-kiosk-home-media">

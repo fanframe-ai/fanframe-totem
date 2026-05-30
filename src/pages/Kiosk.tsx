@@ -1590,6 +1590,7 @@ export default function KioskPage() {
             eyebrow={copy("kiosk_home_eyebrow", "Experiencia interativa")}
             title={copy("kiosk_home_title", "Vista o manto", "welcome_title")}
             titleAccent={tutorialAssets.homeLayout === "campaign_poster" ? copy("kiosk_home_title_accent", "Manto") : undefined}
+            titleImage={tutorialAssets.homeLayout === "campaign_poster" ? tutorialAssets.homeTitleImage || "/flamengo/logomanto.png" : undefined}
             subtitle={copy("kiosk_home_subtitle", "Escolha sua camisa, pague no totem e receba sua foto por QR Code.", "welcome_subtitle")}
             beforeImage={homeBeforeImage}
             afterImage={homeAfterImage}

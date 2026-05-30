@@ -77,6 +77,7 @@ export interface TeamTutorialAssets {
   after?: string;
   kioskBackground?: string;
   homeLayout?: "default" | "campaign_poster";
+  homeTitleImage?: string;
   waitingVideo?: string;
   waitingSlides?: TeamWaitingSlide[];
   deliveryLogo?: string;
@@ -155,6 +156,7 @@ function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
     after: typeof value.after === "string" ? value.after : "",
     kioskBackground: typeof value.kioskBackground === "string" ? value.kioskBackground : "",
     homeLayout: value.homeLayout === "campaign_poster" ? "campaign_poster" : "default",
+    homeTitleImage: typeof value.homeTitleImage === "string" ? value.homeTitleImage : "",
     waitingVideo: typeof value.waitingVideo === "string" ? value.waitingVideo : "",
     waitingSlides,
     deliveryLogo: typeof value.deliveryLogo === "string" ? value.deliveryLogo : "",

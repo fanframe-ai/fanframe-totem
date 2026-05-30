@@ -1407,6 +1407,7 @@ function TeamVisualBuilder({
           eyebrow={<EditablePreviewText fieldKey="kiosk_home_eyebrow" texts={textOverrides} selected={selectedTextKey === "kiosk_home_eyebrow"} variant="eyebrow" onSelect={() => selectText("kiosk_home_eyebrow")} onChange={setTextOverride} />}
           title={<EditablePreviewText fieldKey="kiosk_home_title" texts={textOverrides} selected={selectedTextKey === "kiosk_home_title"} variant="hero-title" onSelect={() => selectText("kiosk_home_title")} onChange={setTextOverride} />}
           titleAccent={tutorialAssets.homeLayout === "campaign_poster" ? <EditablePreviewText fieldKey="kiosk_home_title_accent" texts={textOverrides} selected={selectedTextKey === "kiosk_home_title_accent"} variant="hero-title" onSelect={() => selectText("kiosk_home_title_accent")} onChange={setTextOverride} /> : undefined}
+          titleImage={tutorialAssets.homeLayout === "campaign_poster" ? tutorialAssets.homeTitleImage || "/flamengo/logomanto.png" : undefined}
           subtitle={<EditablePreviewText fieldKey="kiosk_home_subtitle" texts={textOverrides} selected={selectedTextKey === "kiosk_home_subtitle"} variant="subtitle" onSelect={() => selectText("kiosk_home_subtitle")} onChange={setTextOverride} />}
           beforeImage={homeBeforeImage}
           afterImage={homeAfterImage}

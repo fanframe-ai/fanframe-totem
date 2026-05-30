@@ -177,9 +177,9 @@
 .ff-kiosk-home.is-campaign-poster {
   position: relative;
   grid-template-rows: auto auto auto auto;
-  align-content: end;
+  align-content: center;
   gap: 24px;
-  padding-top: 12px;
+  padding-top: 20px;
   isolation: isolate;
 }
 
@@ -224,6 +224,17 @@
 .ff-kiosk-home-title span,
 .ff-kiosk-home-title strong {
   display: block;
+}
+
+.ff-kiosk-home-title-image {
+  display: block;
+  width: min(760px, 100%);
+  height: auto;
+  margin: 0 auto 22px;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 5px 0 rgb(0 0 0 / .88))
+    drop-shadow(0 0 28px rgb(255 0 0 / .22));
 }
 
 .ff-kiosk-home-brush-title {
@@ -295,6 +306,7 @@
 
 .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-copy {
   max-width: 980px;
+  text-align: center;
 }
 
 .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-eyebrow {
@@ -308,6 +320,11 @@
   margin-bottom: 18px;
   font-size: 96px;
   text-shadow: 0 5px 0 rgb(0 0 0 / .9), 0 0 30px rgb(255 255 255 / .14);
+}
+
+.ff-kiosk-home.is-campaign-poster .ff-kiosk-home-title-image {
+  width: min(760px, 96%);
+  margin-bottom: 18px;
 }
 
 .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-subtitle {
@@ -550,6 +567,11 @@
 
 .inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-title {
   font-size: 82px;
+}
+
+.inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-title-image {
+  width: min(440px, 96%);
+  margin-bottom: 14px;
 }
 
 .inline-kiosk-preview .ff-kiosk-home.is-campaign-poster .ff-kiosk-home-eyebrow {
