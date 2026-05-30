@@ -49,6 +49,22 @@ describe("admin visual builder architecture", () => {
     expect(adminSource).toContain("Estilo Museu Imersivo");
   });
 
+  it("keeps the rest of the kiosk flow visually aligned with the immersive home style", () => {
+    const sharedCssSource = readFileSync("src/shared/kiosk-ui/kioskVisual.css", "utf8");
+
+    for (const selector of [
+      ".ff-kiosk-selection-card::after",
+      ".ff-kiosk-pix-card",
+      ".ff-kiosk-camera-frame",
+      ".ff-kiosk-generating-progress",
+      ".ff-kiosk-result-image",
+    ]) {
+      expect(sharedCssSource).toContain(selector);
+    }
+    expect(sharedCssSource).toContain("#e8c36d");
+    expect(sharedCssSource).toContain("#ff262d");
+  });
+
   it("uses a kiosk-sized portrait preview instead of a narrow phone preview", () => {
     const cssSource = readFileSync("apps/admin/src/styles.css", "utf8");
 
@@ -99,7 +115,7 @@ describe("admin visual builder architecture", () => {
   it("keeps selection rail fades subtle instead of drawing dark side containers", () => {
     const cssSource = readFileSync("src/shared/kiosk-ui/kioskVisual.css", "utf8");
 
-    expect(cssSource).toContain("width: 56px");
+    expect(cssSource).toContain("width: 38px");
     expect(cssSource).toContain("rgb(0 0 0 / 0)");
     expect(cssSource).not.toContain("width: 112px");
   });
