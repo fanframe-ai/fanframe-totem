@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 describe("edge functions architecture", () => {
+  it("requests vertical 2:3 images from Replicate for kiosk delivery", () => {
+    const source = readFileSync("supabase/functions/generate-tryon/index.ts", "utf8");
+
+    expect(source).toContain('aspect_ratio: "2:3"');
+    expect(source).not.toContain('aspect_ratio: "match_input_image"');
+  });
+
   it("allows create-delivery-link POST requests from the kiosk flow", () => {
     const source = readFileSync("supabase/functions/create-delivery-link/index.ts", "utf8");
 

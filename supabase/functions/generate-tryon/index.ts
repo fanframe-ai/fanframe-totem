@@ -717,7 +717,7 @@ serve(async (req) => {
           prompt: textPrompt,
           image_input: [userImageUrl, shirtAssetUrl, backgroundAssetUrl],
           size: "2K",
-          aspect_ratio: "match_input_image",
+          aspect_ratio: "2:3",
           max_images: 1,
           sequential_image_generation: "disabled",
         },
