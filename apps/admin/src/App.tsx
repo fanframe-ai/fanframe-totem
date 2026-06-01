@@ -29,6 +29,7 @@ import { supabase, publicAssetUrl, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from
 import { createInstallCode, enqueueDeviceCommand, logAdminAudit, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
 import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
+import { mergeTutorialAssetsForPublish } from "./lib/kioskDraft";
 import {
   KioskCameraVisual,
   KioskCpfVisual,
@@ -1799,12 +1800,16 @@ function TeamForm() {
     setBusy(true);
     setMessage("");
     const finalSlug = team.slug || slugify(team.name || `time-${Date.now()}`);
-    const normalizedTeam = {
+    const normalizedBase = {
       ...team,
       kiosk_font_family: isFlamengoTeam({ ...team, slug: finalSlug }) ? flamengoToolkitFontFamily : team.kiosk_font_family,
       kiosk_price_cents: Number(team.kiosk_price_cents || 0),
       kiosk_timeout_seconds: Math.min(180, Math.max(15, Number(team.kiosk_timeout_seconds || 60))),
       kiosk_camera_countdown_seconds: Math.min(10, Math.max(0, Number(team.kiosk_camera_countdown_seconds ?? 5))),
+    };
+    const normalizedTeam = {
+      ...normalizedBase,
+      tutorial_assets: mergeTutorialAssetsForPublish(normalizedBase),
     };
     const draftConfig = buildKioskDraft(normalizedTeam);
     const basePayload = {
