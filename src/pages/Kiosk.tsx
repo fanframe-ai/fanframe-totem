@@ -1119,6 +1119,11 @@ export default function KioskPage() {
     setUserImage(null);
   };
 
+  const goBackFromShirt = () => {
+    setError(null);
+    setStep("home");
+  };
+
   const goBackFromPayment = () => {
     setPaymentMethod(null);
     setPixPayment(null);
@@ -1146,6 +1151,7 @@ export default function KioskPage() {
   };
 
   const getBackAction = () => {
+    if (step === "shirt") return goBackFromShirt;
     if (step === "payment") return goBackFromPayment;
     if (step === "cpf") return goBackFromCpf;
     if (step === "camera") return goBackFromCamera;

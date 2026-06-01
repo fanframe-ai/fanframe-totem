@@ -94,6 +94,13 @@ describe("admin visual builder architecture", () => {
     expect(kioskSource).toContain("KioskSelectionVisual");
   });
 
+  it("shows the standard back button on the shirt selection screen", () => {
+    const kioskSource = readFileSync("src/pages/Kiosk.tsx", "utf8");
+
+    expect(kioskSource).toContain("const goBackFromShirt");
+    expect(kioskSource).toContain('if (step === "shirt") return goBackFromShirt');
+  });
+
   it("lets the admin builder scroll through all shirts in the preview without exposing a public background choice", () => {
     const adminSource = readFileSync("apps/admin/src/App.tsx", "utf8");
     const sharedVisualSource = readFileSync("src/shared/kiosk-ui/KioskVisual.tsx", "utf8");
