@@ -56,6 +56,24 @@ function Get-GithubToken {
   return $token
 }
 
+function Stop-LocalReleaseApp {
+  Write-Host ""
+  Write-Host "==> Stop local release app if running" -ForegroundColor Cyan
+
+  if ($DryRun) {
+    Write-Host "Would stop FanFrame Kiosk processes running from release\\win-unpacked." -ForegroundColor DarkGray
+    return
+  }
+
+  $releasePath = Join-Path (Get-Location) "release\win-unpacked"
+  Get-Process -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Path -and
+      $_.Path.StartsWith($releasePath, [System.StringComparison]::OrdinalIgnoreCase)
+    } |
+    Stop-Process -Force
+}
+
 function Publish-GithubRelease {
   param([string]$ReleaseVersion)
 
@@ -156,6 +174,7 @@ if (-not $SkipChecks) {
   Run-Step "Build admin" "npm --prefix apps/admin run build"
 }
 
+Stop-LocalReleaseApp
 Run-Step "Build Windows installer" "npm run dist:win"
 Run-Step "Create update aliases" "Copy-Item -LiteralPath 'release\FanFrame Kiosk Setup $Version.exe' -Destination 'release\FanFrame-Kiosk-Setup-latest.exe' -Force; Copy-Item -LiteralPath 'release\FanFrame Kiosk Setup $Version.exe' -Destination 'release\FanFrame-Kiosk-Setup-$Version.exe' -Force; Copy-Item -LiteralPath 'release\FanFrame Kiosk Setup $Version.exe.blockmap' -Destination 'release\FanFrame-Kiosk-Setup-$Version.exe.blockmap' -Force"
 
