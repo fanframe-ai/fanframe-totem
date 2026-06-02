@@ -305,7 +305,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           kiosk_show_shirt_step: Boolean(view.kiosk_show_shirt_step ?? true),
           kiosk_show_background_step: Boolean(view.kiosk_show_background_step ?? true),
           kiosk_foreground_filter_enabled: Boolean(view.kiosk_foreground_filter_enabled ?? true),
-          kiosk_max_foreground_people: Math.min(2, Math.max(1, Number(view.kiosk_max_foreground_people ?? 2))),
+          kiosk_max_foreground_people: 2,
           kiosk_foreground_min_area_ratio: Number(view.kiosk_foreground_min_area_ratio ?? 0.08),
           kiosk_foreground_warning_text: typeof view.kiosk_foreground_warning_text === "string" ? view.kiosk_foreground_warning_text : null,
           published_config_version: data.published_config_version ?? 1,

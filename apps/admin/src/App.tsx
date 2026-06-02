@@ -1820,7 +1820,7 @@ function TeamForm() {
       kiosk_timeout_seconds: Math.min(180, Math.max(15, Number(team.kiosk_timeout_seconds || 60))),
       kiosk_camera_countdown_seconds: Math.min(10, Math.max(0, Number(team.kiosk_camera_countdown_seconds ?? 5))),
       kiosk_foreground_filter_enabled: team.kiosk_foreground_filter_enabled !== false,
-      kiosk_max_foreground_people: Math.min(2, Math.max(1, Number(team.kiosk_max_foreground_people ?? 2))),
+      kiosk_max_foreground_people: 2,
       kiosk_foreground_min_area_ratio: Math.min(0.4, Math.max(0.01, Number(team.kiosk_foreground_min_area_ratio ?? 0.08))),
       kiosk_foreground_warning_text: team.kiosk_foreground_warning_text || "Fique no centro da tela com ate duas pessoas.",
     };
@@ -1953,13 +1953,7 @@ function TeamForm() {
                 <div className="two-fields">
                   <label>
                     Maximo de pessoas na foto
-                    <select
-                      value={team.kiosk_max_foreground_people ?? 2}
-                      onChange={(e) => set("kiosk_max_foreground_people", Number(e.target.value))}
-                    >
-                      <option value={1}>1 pessoa</option>
-                      <option value={2}>2 pessoas</option>
-                    </select>
+                    <input value="Ate 2 pessoas principais" readOnly />
                   </label>
                   <label>
                     Sensibilidade do fundo

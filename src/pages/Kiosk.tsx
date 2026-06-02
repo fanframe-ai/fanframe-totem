@@ -1182,7 +1182,7 @@ export default function KioskPage() {
     try {
       foregroundResult = await processForegroundPhoto(userImage, {
         enabled: team.kiosk_foreground_filter_enabled !== false,
-        maxPeople: Number(team.kiosk_max_foreground_people ?? 2),
+        maxPeople: 2,
         minAreaRatio: Number(team.kiosk_foreground_min_area_ratio ?? 0.08),
         centerWeight: 0.35,
         warningText: team.kiosk_foreground_warning_text,
