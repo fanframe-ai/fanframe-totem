@@ -148,7 +148,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
+export function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
   if (!isRecord(value)) return {};
 
   const waitingSlides = Array.isArray(value.waitingSlides)
@@ -168,6 +168,8 @@ function normalizeTutorialAssets(value: unknown): TeamTutorialAssets {
     after: typeof value.after === "string" ? value.after : "",
     kioskBackground: typeof value.kioskBackground === "string" ? value.kioskBackground : "",
     kioskBackgroundVideo: typeof value.kioskBackgroundVideo === "string" ? value.kioskBackgroundVideo : "",
+    headerLogo: typeof value.headerLogo === "string" ? value.headerLogo : "",
+    headerLogoMode: value.headerLogoMode === "horizontal" ? "horizontal" : "compact",
     homeLayout: value.homeLayout === "campaign_poster" ? "campaign_poster" : "default",
     homeTitleImage: typeof value.homeTitleImage === "string" ? value.homeTitleImage : "",
     waitingVideo: typeof value.waitingVideo === "string" ? value.waitingVideo : "",
