@@ -18,6 +18,9 @@
     "admin:dev": "npm --prefix apps/admin run dev",
     "admin:build": "npm --prefix apps/admin run build",
     "admin:preview": "npm --prefix apps/admin run preview",
+    "release:kiosk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-kiosk.ps1 -Patch -CommitVersion -Push -PublishGithub",
+    "release:kiosk:dry": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/release-kiosk.ps1 -Patch -DryRun -CommitVersion -Push -PublishGithub",
+    "release:kiosk:verify": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kiosk-release.ps1",
     "dist:win": "npm run build && electron-builder --win",
     "dist:win:dir": "npm run build && electron-builder --win --dir",
     "dist:win:portable": "npm run build && electron-builder --win portable"
