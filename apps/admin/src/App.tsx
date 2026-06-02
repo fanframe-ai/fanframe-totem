@@ -148,6 +148,10 @@ const emptyTeam: Partial<TeamRow> = {
   kiosk_default_mode: "standard",
   kiosk_show_shirt_step: true,
   kiosk_show_background_step: false,
+  kiosk_foreground_filter_enabled: true,
+  kiosk_max_foreground_people: 2,
+  kiosk_foreground_min_area_ratio: 0.08,
+  kiosk_foreground_warning_text: "Fique no centro da tela com ate duas pessoas.",
 };
 
 const assetLimits = {
@@ -426,6 +430,10 @@ type TeamKioskDraft = Pick<TeamRow,
   | "kiosk_default_mode"
   | "kiosk_show_shirt_step"
   | "kiosk_show_background_step"
+  | "kiosk_foreground_filter_enabled"
+  | "kiosk_max_foreground_people"
+  | "kiosk_foreground_min_area_ratio"
+  | "kiosk_foreground_warning_text"
 >;
 
 const kioskDraftKeys: Array<keyof TeamKioskDraft> = [
@@ -449,6 +457,10 @@ const kioskDraftKeys: Array<keyof TeamKioskDraft> = [
   "kiosk_default_mode",
   "kiosk_show_shirt_step",
   "kiosk_show_background_step",
+  "kiosk_foreground_filter_enabled",
+  "kiosk_max_foreground_people",
+  "kiosk_foreground_min_area_ratio",
+  "kiosk_foreground_warning_text",
 ];
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -1806,6 +1818,10 @@ function TeamForm() {
       kiosk_price_cents: Number(team.kiosk_price_cents || 0),
       kiosk_timeout_seconds: Math.min(180, Math.max(15, Number(team.kiosk_timeout_seconds || 60))),
       kiosk_camera_countdown_seconds: Math.min(10, Math.max(0, Number(team.kiosk_camera_countdown_seconds ?? 5))),
+      kiosk_foreground_filter_enabled: team.kiosk_foreground_filter_enabled !== false,
+      kiosk_max_foreground_people: Math.min(2, Math.max(1, Number(team.kiosk_max_foreground_people ?? 2))),
+      kiosk_foreground_min_area_ratio: Math.min(0.4, Math.max(0.01, Number(team.kiosk_foreground_min_area_ratio ?? 0.08))),
+      kiosk_foreground_warning_text: team.kiosk_foreground_warning_text || "Fique no centro da tela com ate duas pessoas.",
     };
     const normalizedTeam = {
       ...normalizedBase,
@@ -1922,6 +1938,49 @@ function TeamForm() {
                 <label>Contagem antes da foto<input type="number" min="0" max="10" value={team.kiosk_camera_countdown_seconds ?? 5} onChange={(e) => set("kiosk_camera_countdown_seconds", Number(e.target.value))} /></label>
               </div>
               <p className="hint">Os tempos sao em segundos. Use 0 na contagem da foto para capturar imediatamente.</p>
+              <div className="editor-subsection">
+                <h3>Foto limpa</h3>
+                <p className="hint">Evita usar pessoas que aparecem atras do cliente na foto.</p>
+                <label className="inline-check">
+                  <input
+                    type="checkbox"
+                    checked={team.kiosk_foreground_filter_enabled !== false}
+                    onChange={(e) => set("kiosk_foreground_filter_enabled", e.target.checked)}
+                  />
+                  Ignorar pessoas no fundo
+                </label>
+                <div className="two-fields">
+                  <label>
+                    Maximo de pessoas na foto
+                    <select
+                      value={team.kiosk_max_foreground_people ?? 2}
+                      onChange={(e) => set("kiosk_max_foreground_people", Number(e.target.value))}
+                    >
+                      <option value={1}>1 pessoa</option>
+                      <option value={2}>2 pessoas</option>
+                    </select>
+                  </label>
+                  <label>
+                    Sensibilidade do fundo
+                    <input
+                      type="number"
+                      min="0.01"
+                      max="0.4"
+                      step="0.01"
+                      value={team.kiosk_foreground_min_area_ratio ?? 0.08}
+                      onChange={(e) => set("kiosk_foreground_min_area_ratio", Number(e.target.value))}
+                    />
+                  </label>
+                </div>
+                <label>
+                  Mensagem quando precisar refazer
+                  <input
+                    value={team.kiosk_foreground_warning_text || ""}
+                    placeholder="Fique no centro da tela com ate duas pessoas."
+                    onChange={(e) => set("kiosk_foreground_warning_text", e.target.value)}
+                  />
+                </label>
+              </div>
             </div>
           )}
 

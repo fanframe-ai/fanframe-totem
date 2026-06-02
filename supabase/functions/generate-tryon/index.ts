@@ -257,6 +257,8 @@ async function createQueueEntry(
     kiosk_session_id?: string | null;
     payment_id?: string | null;
     source?: string;
+    foreground_filter_applied?: boolean | null;
+    foreground_people_count?: number | null;
   }
 ): Promise<void> {
   const { error } = await supabase.from("generation_queue").insert({
@@ -271,6 +273,8 @@ async function createQueueEntry(
     kiosk_session_id: data.kiosk_session_id || null,
     payment_id: data.payment_id || null,
     source: data.source || "web",
+    foreground_filter_applied: data.foreground_filter_applied ?? null,
+    foreground_people_count: data.foreground_people_count ?? null,
   });
 
   if (error) {
@@ -567,6 +571,8 @@ serve(async (req) => {
       team_slug,
       kiosk_session_id,
       payment_id,
+      foregroundFilterApplied,
+      foregroundPeopleCount,
       source,
     } = parsed as {
       userImageBase64?: string;
@@ -577,6 +583,8 @@ serve(async (req) => {
       team_slug?: string;
       kiosk_session_id?: string;
       payment_id?: string;
+      foregroundFilterApplied?: boolean;
+      foregroundPeopleCount?: number | null;
       source?: string;
     };
     const requestSource = source === "kiosk" ? "kiosk" : "web";
@@ -590,6 +598,8 @@ serve(async (req) => {
       team_slug: team_slug || "default",
       kiosk_session_id: kiosk_session_id || null,
       payment_id: payment_id || null,
+      foregroundFilterApplied: Boolean(foregroundFilterApplied),
+      foregroundPeopleCount: typeof foregroundPeopleCount === "number" ? foregroundPeopleCount : null,
       source: requestSource,
     });
 
@@ -662,6 +672,8 @@ serve(async (req) => {
       kiosk_session_id: kiosk_session_id || null,
       payment_id: payment_id || null,
       source: requestSource,
+      foreground_filter_applied: Boolean(foregroundFilterApplied),
+      foreground_people_count: typeof foregroundPeopleCount === "number" ? foregroundPeopleCount : null,
     });
     console.log(`[${generationId}] Queue entry created`);
 

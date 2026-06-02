@@ -117,6 +117,10 @@ export interface TeamConfig {
   kiosk_default_mode: string;
   kiosk_show_shirt_step: boolean;
   kiosk_show_background_step: boolean;
+  kiosk_foreground_filter_enabled: boolean;
+  kiosk_max_foreground_people: number;
+  kiosk_foreground_min_area_ratio: number;
+  kiosk_foreground_warning_text: string | null;
   published_config_version?: number;
 }
 
@@ -216,7 +220,11 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           kiosk_camera_countdown_seconds,
           kiosk_default_mode,
           kiosk_show_shirt_step,
-          kiosk_show_background_step
+          kiosk_show_background_step,
+          kiosk_foreground_filter_enabled,
+          kiosk_max_foreground_people,
+          kiosk_foreground_min_area_ratio,
+          kiosk_foreground_warning_text
         `;
 
         let { data, error: fetchError } = await supabase
@@ -292,6 +300,10 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           kiosk_default_mode: String(view.kiosk_default_mode || "standard"),
           kiosk_show_shirt_step: Boolean(view.kiosk_show_shirt_step ?? true),
           kiosk_show_background_step: Boolean(view.kiosk_show_background_step ?? true),
+          kiosk_foreground_filter_enabled: Boolean(view.kiosk_foreground_filter_enabled ?? true),
+          kiosk_max_foreground_people: Math.min(2, Math.max(1, Number(view.kiosk_max_foreground_people ?? 2))),
+          kiosk_foreground_min_area_ratio: Number(view.kiosk_foreground_min_area_ratio ?? 0.08),
+          kiosk_foreground_warning_text: typeof view.kiosk_foreground_warning_text === "string" ? view.kiosk_foreground_warning_text : null,
           published_config_version: data.published_config_version ?? 1,
         };
 

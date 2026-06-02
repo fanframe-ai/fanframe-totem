@@ -115,6 +115,18 @@ tbody tr:hover { background: #f9fafb; }
 .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .inline-check { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #374151; }
 .inline-check input { width: auto; }
+.editor-subsection {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e7eb;
+}
+.editor-subsection h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+}
 .hint { color: var(--muted); font-size: 13px; line-height: 1.5; }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .list-toolbar { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 14px; display: grid; grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px) auto; gap: 12px; align-items: end; box-shadow: 0 8px 28px rgba(15, 23, 42, .035); }

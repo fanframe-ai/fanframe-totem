@@ -65,6 +65,10 @@ export interface TeamRow {
   kiosk_default_mode: string;
   kiosk_show_shirt_step: boolean;
   kiosk_show_background_step: boolean;
+  kiosk_foreground_filter_enabled: boolean;
+  kiosk_max_foreground_people: number;
+  kiosk_foreground_min_area_ratio: number;
+  kiosk_foreground_warning_text: string | null;
 }
 
 export interface KioskDeviceConfig {
