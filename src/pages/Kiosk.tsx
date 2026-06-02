@@ -420,6 +420,8 @@ export default function KioskPage() {
     setSelectedBackground(visibleBackgrounds[0] || null);
   }, [visibleBackgrounds]);
   const tutorialAssets = team?.tutorial_assets || {};
+  const headerLogoUrl = tutorialAssets.headerLogo || team?.logo_url || "";
+  const headerLogoMode = tutorialAssets.headerLogoMode === "horizontal" ? "horizontal" : "compact";
   const homeBeforeImage = tutorialAssets.before || beforeExampleImage;
   const homeAfterImage = tutorialAssets.after || afterExampleImage;
   const waitingSlides = useMemo<TeamWaitingSlide[]>(() => {
@@ -1658,7 +1660,8 @@ export default function KioskPage() {
       backgroundVideo={step === "home" ? tutorialAssets.kioskBackgroundVideo : undefined}
       waitingVideo={tutorialAssets.waitingVideo}
       showWaitingVideo={step === "generating"}
-      logoUrl={team?.logo_url}
+      logoUrl={headerLogoUrl}
+      logoMode={headerLogoMode}
       logoAlt={team?.name}
       brandLabel={copy("kiosk_brand_label", "FanFrame Totem")}
       teamName={team?.name}

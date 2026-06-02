@@ -85,6 +85,13 @@
   object-fit: contain;
 }
 
+.ff-kiosk-header-logo.is-horizontal {
+  width: min(58vw, 560px);
+  height: 92px;
+  object-fit: contain;
+  object-position: left center;
+}
+
 .ff-kiosk-header-logo-button {
   display: grid;
   flex: none;
@@ -96,6 +103,11 @@
   background: transparent;
   color: inherit;
   padding: 0;
+}
+
+.ff-kiosk-header-logo-button.is-horizontal {
+  width: min(58vw, 560px);
+  height: 92px;
 }
 
 .ff-kiosk-header-logo-button:hover {
@@ -527,6 +539,16 @@
 .inline-kiosk-preview .ff-kiosk-header-logo-button {
   width: 46px;
   height: 46px;
+}
+
+.inline-kiosk-preview .ff-kiosk-header-logo.is-horizontal {
+  width: min(54vw, 300px);
+  height: 50px;
+}
+
+.inline-kiosk-preview .ff-kiosk-header-logo-button.is-horizontal {
+  width: min(54vw, 300px);
+  height: 50px;
 }
 
 .inline-kiosk-preview .ff-kiosk-brand-label,

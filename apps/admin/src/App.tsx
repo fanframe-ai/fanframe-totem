@@ -1285,7 +1285,8 @@ function InlineKioskPreview({
       }}
       backgroundImage={backgroundImage}
       backgroundVideo={backgroundVideo}
-      logoUrl={publicAssetUrl(team.logo_url || "")}
+      logoUrl={publicAssetUrl(String((team.tutorial_assets || {}).headerLogo || team.logo_url || ""))}
+      logoMode={(team.tutorial_assets || {}).headerLogoMode === "horizontal" ? "horizontal" : "compact"}
       logoAlt={team.name || ""}
       onLogoSelect={onLogoSelect}
       brandLabel={brandLabel}

@@ -25,6 +25,8 @@ export interface TeamTutorialAssets {
   after?: string;
   kioskBackground?: string;
   kioskBackgroundVideo?: string;
+  headerLogo?: string;
+  headerLogoMode?: "compact" | "horizontal";
   homeLayout?: "default" | "campaign_poster";
   homeTitleImage?: string;
   waitingVideo?: string;

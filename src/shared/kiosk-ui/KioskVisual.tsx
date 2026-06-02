@@ -10,6 +10,7 @@ type KioskVisualShellProps = {
   waitingVideo?: string;
   showWaitingVideo?: boolean;
   logoUrl?: string;
+  logoMode?: "compact" | "horizontal";
   logoAlt?: string;
   brandLabel: ReactNode;
   teamName: ReactNode;
@@ -139,6 +140,7 @@ export function KioskVisualShell({
   waitingVideo,
   showWaitingVideo,
   logoUrl,
+  logoMode = "compact",
   logoAlt = "",
   brandLabel,
   teamName,
@@ -170,17 +172,19 @@ export function KioskVisualShell({
           <div className="ff-kiosk-brand">
             {logoUrl && (
               onLogoSelect ? (
-                <button type="button" className="ff-kiosk-header-logo-button" onClick={onLogoSelect}>
-                  <img src={logoUrl} alt={logoAlt} className="ff-kiosk-header-logo" />
+                <button type="button" className={`ff-kiosk-header-logo-button ${logoMode === "horizontal" ? "is-horizontal" : ""}`.trim()} onClick={onLogoSelect}>
+                  <img src={logoUrl} alt={logoAlt} className={`ff-kiosk-header-logo ${logoMode === "horizontal" ? "is-horizontal" : ""}`.trim()} />
                 </button>
               ) : (
-                <img src={logoUrl} alt={logoAlt} className="ff-kiosk-header-logo" />
+                <img src={logoUrl} alt={logoAlt} className={`ff-kiosk-header-logo ${logoMode === "horizontal" ? "is-horizontal" : ""}`.trim()} />
               )
             )}
-            <div className="ff-kiosk-brand-copy">
-              <div className="ff-kiosk-brand-label">{brandLabel}</div>
-              <h1 className="ff-kiosk-team-name">{teamName}</h1>
-            </div>
+            {logoMode !== "horizontal" && (
+              <div className="ff-kiosk-brand-copy">
+                <div className="ff-kiosk-brand-label">{brandLabel}</div>
+                <h1 className="ff-kiosk-team-name">{teamName}</h1>
+              </div>
+            )}
           </div>
           <div className="ff-kiosk-price">
             <div className="ff-kiosk-total-label">{totalLabel}</div>
