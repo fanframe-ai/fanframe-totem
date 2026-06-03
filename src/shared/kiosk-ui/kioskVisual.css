@@ -149,8 +149,11 @@
 
 .ff-kiosk-price {
   flex: none;
-  min-width: 250px;
-  padding: 16px 24px 18px;
+  display: grid;
+  grid-template-columns: auto;
+  justify-items: end;
+  min-width: 300px;
+  padding: 18px 28px 20px;
   border: 2px solid rgb(235 199 113 / .82);
   border-radius: 18px;
   background:
@@ -164,15 +167,21 @@
   backdrop-filter: blur(10px);
 }
 
-.ff-kiosk-price .ff-kiosk-total-label {
+.ff-kiosk-price-copy {
+  display: grid;
+  gap: 2px;
   color: rgb(238 211 142);
   font-size: 18px;
-  line-height: 1;
+  font-weight: 950;
+  line-height: 1.05;
+  letter-spacing: 0;
+  text-align: right;
+  text-transform: uppercase;
 }
 
 .ff-kiosk-price-value {
   color: rgb(245 205 103);
-  font-size: 48px;
+  font-size: 56px;
   line-height: .98;
   text-shadow: 0 3px 0 rgb(255 255 255 / .16), 0 0 28px rgb(245 205 103 / .26);
 }
@@ -586,17 +595,17 @@
 }
 
 .inline-kiosk-preview .ff-kiosk-price {
-  min-width: 150px;
+  min-width: 170px;
   padding: 10px 14px 12px;
   border-radius: 12px;
 }
 
-.inline-kiosk-preview .ff-kiosk-price .ff-kiosk-total-label {
+.inline-kiosk-preview .ff-kiosk-price-copy {
   font-size: 10px;
 }
 
 .inline-kiosk-preview .ff-kiosk-price-value {
-  font-size: 26px;
+  font-size: 30px;
 }
 
 .inline-kiosk-preview .ff-kiosk-team-name {

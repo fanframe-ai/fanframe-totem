@@ -187,7 +187,10 @@ export function KioskVisualShell({
             )}
           </div>
           <div className="ff-kiosk-price">
-            <div className="ff-kiosk-total-label">{totalLabel}</div>
+            <div className="ff-kiosk-price-copy">
+              <span>Sua foto oficial</span>
+              <span>por apenas</span>
+            </div>
             <div className="ff-kiosk-price-value">{priceLabel}</div>
           </div>
         </header>
