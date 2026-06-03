@@ -86,8 +86,8 @@
 }
 
 .ff-kiosk-header-logo.is-horizontal {
-  width: min(58vw, 560px);
-  height: 92px;
+  width: min(60vw, 650px);
+  height: 112px;
   object-fit: contain;
   object-position: left center;
 }
@@ -106,8 +106,8 @@
 }
 
 .ff-kiosk-header-logo-button.is-horizontal {
-  width: min(58vw, 560px);
-  height: 92px;
+  width: min(60vw, 650px);
+  height: 112px;
 }
 
 .ff-kiosk-header-logo-button:hover {
@@ -149,8 +149,32 @@
 
 .ff-kiosk-price {
   flex: none;
-  padding-left: 24px;
+  min-width: 250px;
+  padding: 16px 24px 18px;
+  border: 2px solid rgb(235 199 113 / .82);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgb(235 199 113 / .12), rgb(255 255 255 / .03) 42%, rgb(0 0 0 / .72)),
+    rgb(0 0 0 / .58);
   text-align: right;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / .06) inset,
+    0 18px 46px rgb(0 0 0 / .36),
+    0 0 34px rgb(235 30 30 / .18);
+  backdrop-filter: blur(10px);
+}
+
+.ff-kiosk-price .ff-kiosk-total-label {
+  color: rgb(238 211 142);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.ff-kiosk-price-value {
+  color: rgb(245 205 103);
+  font-size: 48px;
+  line-height: .98;
+  text-shadow: 0 3px 0 rgb(255 255 255 / .16), 0 0 28px rgb(245 205 103 / .26);
 }
 
 .ff-kiosk-back {
@@ -542,13 +566,13 @@
 }
 
 .inline-kiosk-preview .ff-kiosk-header-logo.is-horizontal {
-  width: min(54vw, 300px);
-  height: 50px;
+  width: min(55vw, 360px);
+  height: 64px;
 }
 
 .inline-kiosk-preview .ff-kiosk-header-logo-button.is-horizontal {
-  width: min(54vw, 300px);
-  height: 50px;
+  width: min(55vw, 360px);
+  height: 64px;
 }
 
 .inline-kiosk-preview .ff-kiosk-brand-label,
@@ -559,6 +583,20 @@
 .inline-kiosk-preview .ff-kiosk-team-name,
 .inline-kiosk-preview .ff-kiosk-price-value {
   font-size: 30px;
+}
+
+.inline-kiosk-preview .ff-kiosk-price {
+  min-width: 150px;
+  padding: 10px 14px 12px;
+  border-radius: 12px;
+}
+
+.inline-kiosk-preview .ff-kiosk-price .ff-kiosk-total-label {
+  font-size: 10px;
+}
+
+.inline-kiosk-preview .ff-kiosk-price-value {
+  font-size: 26px;
 }
 
 .inline-kiosk-preview .ff-kiosk-team-name {
