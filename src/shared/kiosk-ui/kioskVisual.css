@@ -774,6 +774,11 @@
   border-radius: 18px;
 }
 
+.ff-kiosk-selection-3d .ff-kiosk-selection-stage {
+  perspective: 1600px;
+  perspective-origin: 50% 45%;
+}
+
 .ff-kiosk-selection-rail {
   display: flex;
   align-items: center;
@@ -785,6 +790,13 @@
   scroll-snap-type: x mandatory;
   padding: 30px 78px;
   scrollbar-width: none;
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-selection-rail {
+  align-items: center;
+  gap: 0;
+  padding: 34px 260px 86px;
+  transform-style: preserve-3d;
 }
 
 .ff-kiosk-selection-rail::-webkit-scrollbar {
@@ -813,6 +825,17 @@
   backdrop-filter: blur(10px);
 }
 
+.ff-kiosk-selection-3d .ff-kiosk-selection-card {
+  transform-origin: center center;
+  will-change: transform, opacity, filter;
+  transition:
+    transform .34s cubic-bezier(.2, .8, .2, 1),
+    opacity .34s ease,
+    filter .34s ease,
+    border-color .24s ease,
+    box-shadow .24s ease;
+}
+
 .ff-kiosk-selection-card::after {
   content: "";
   position: absolute;
@@ -825,6 +848,21 @@
 .ff-kiosk-selection-shirt .ff-kiosk-selection-card {
   width: 410px;
   height: 640px;
+}
+
+.ff-kiosk-selection-3d.ff-kiosk-selection-shirt .ff-kiosk-selection-card {
+  width: 430px;
+  height: 610px;
+  margin: 0 -56px;
+  padding: 22px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 12%, rgb(255 255 255 / .08), transparent 34%),
+    linear-gradient(180deg, rgb(255 255 255 / .055), rgb(235 30 30 / .025)),
+    rgb(8 8 8 / .86);
+  box-shadow:
+    0 22px 64px rgb(0 0 0 / .62),
+    0 0 0 1px rgb(255 255 255 / .08) inset;
 }
 
 .ff-kiosk-selection-background .ff-kiosk-selection-card {
@@ -844,6 +882,49 @@
     0 0 34px rgb(255 0 0 / .46);
 }
 
+.ff-kiosk-selection-3d .ff-kiosk-selection-card.is-center {
+  z-index: 6;
+  opacity: 1;
+  filter: none;
+  border-color: rgb(238 211 146 / .88);
+  transform: translate3d(0, 0, 80px) rotateY(0deg) scale(1);
+  box-shadow:
+    0 28px 74px rgb(0 0 0 / .72),
+    0 0 0 1px rgb(255 255 255 / .16) inset,
+    0 0 36px rgb(238 211 146 / .22),
+    0 0 50px rgb(255 0 0 / .22);
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-selection-card.is-prev {
+  z-index: 4;
+  opacity: .55;
+  filter: blur(3px) saturate(.72) brightness(.72);
+  transform: translate3d(-26px, 8px, -150px) rotateY(24deg) scale(.84);
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-selection-card.is-next {
+  z-index: 4;
+  opacity: .55;
+  filter: blur(3px) saturate(.72) brightness(.72);
+  transform: translate3d(26px, 8px, -150px) rotateY(-24deg) scale(.84);
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-selection-card.is-far-prev {
+  z-index: 1;
+  opacity: .22;
+  filter: blur(9px) saturate(.45) brightness(.48);
+  pointer-events: none;
+  transform: translate3d(-80px, 18px, -320px) rotateY(42deg) scale(.72);
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-selection-card.is-far-next {
+  z-index: 1;
+  opacity: .22;
+  filter: blur(9px) saturate(.45) brightness(.48);
+  pointer-events: none;
+  transform: translate3d(80px, 18px, -320px) rotateY(-42deg) scale(.72);
+}
+
 .ff-kiosk-selection-image {
   flex-shrink: 0;
   overflow: hidden;
@@ -857,6 +938,12 @@
 .ff-kiosk-selection-shirt .ff-kiosk-selection-image {
   aspect-ratio: 1;
   margin-bottom: 24px;
+}
+
+.ff-kiosk-selection-3d.ff-kiosk-selection-shirt .ff-kiosk-selection-image {
+  aspect-ratio: 1 / 1.08;
+  margin-bottom: 26px;
+  border-radius: 16px;
 }
 
 .ff-kiosk-selection-background .ff-kiosk-selection-image {
@@ -921,6 +1008,20 @@
   -webkit-line-clamp: 3;
 }
 
+.ff-kiosk-selection-3d .ff-kiosk-selection-card h3,
+.ff-kiosk-selection-3d .ff-kiosk-selection-card p {
+  text-align: center;
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-selection-card h3 {
+  font-size: 28px;
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-selection-card p {
+  margin-inline: auto;
+  max-width: 330px;
+}
+
 .ff-kiosk-rail-fade {
   pointer-events: none;
   position: absolute;
@@ -937,6 +1038,49 @@
 .ff-kiosk-rail-fade-right {
   right: 0;
   background: linear-gradient(270deg, rgb(0 0 0 / .52), rgb(0 0 0 / 0));
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-rail-fade {
+  width: 160px;
+  opacity: .72;
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-rail-fade-left {
+  background: linear-gradient(90deg, rgb(0 0 0 / .8), rgb(0 0 0 / 0));
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-rail-fade-right {
+  background: linear-gradient(270deg, rgb(0 0 0 / .8), rgb(0 0 0 / 0));
+}
+
+.ff-kiosk-carousel-progress {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  z-index: 8;
+  display: flex;
+  width: min(560px, 56vw);
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.ff-kiosk-carousel-progress span {
+  height: 4px;
+  flex: 1 1 0;
+  max-width: 58px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / .2);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / .32);
+}
+
+.ff-kiosk-carousel-progress span.is-active {
+  background: #e8c36d;
+  box-shadow:
+    0 0 0 1px rgb(232 195 109 / .18),
+    0 0 18px rgb(232 195 109 / .8);
 }
 
 .ff-kiosk-rail-arrow {
@@ -1010,9 +1154,20 @@
   padding: 22px 56px;
 }
 
+.inline-kiosk-preview .ff-kiosk-selection-3d .ff-kiosk-selection-rail {
+  gap: 0;
+  padding: 24px 170px 72px;
+}
+
 .inline-kiosk-preview .ff-kiosk-selection-shirt .ff-kiosk-selection-card {
   width: 330px;
   height: 520px;
+}
+
+.inline-kiosk-preview .ff-kiosk-selection-3d.ff-kiosk-selection-shirt .ff-kiosk-selection-card {
+  width: 340px;
+  height: 500px;
+  margin: 0 -44px;
 }
 
 .inline-kiosk-preview .ff-kiosk-selection-background .ff-kiosk-selection-card {

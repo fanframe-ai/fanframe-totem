@@ -1,3 +1,4 @@
+import { useCallback, useRef } from "react";
 import type { CSSProperties, ReactNode, WheelEvent } from "react";
 import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw, Shirt } from "lucide-react";
 import "./kioskVisual.css";
@@ -303,7 +304,47 @@ export function KioskSelectionVisual({
   onSelect,
 }: KioskSelectionVisualProps) {
   const isBackground = kind === "background";
+  const isShirtCarousel = kind === "shirt";
+  const localRailRef = useRef<HTMLDivElement | null>(null);
+  const selectedIndex = Math.max(0, items.findIndex((item) => item.id === selectedId));
   const showArrows = items.length > (isBackground ? 1 : 2);
+  const setRailNode = useCallback((node: HTMLDivElement | null) => {
+    localRailRef.current = node;
+    if (typeof railRef === "function") {
+      railRef(node);
+    } else if (railRef && "current" in railRef) {
+      (railRef as { current: HTMLDivElement | null }).current = node;
+    }
+  }, [railRef]);
+  const scrollItemIntoView = useCallback((itemId: string) => {
+    window.requestAnimationFrame(() => {
+      const escapedItemId = typeof CSS !== "undefined" && typeof CSS.escape === "function"
+        ? CSS.escape(itemId)
+        : itemId.replace(/"/g, '\\"');
+      const target = localRailRef.current?.querySelector<HTMLElement>(`[data-selection-id="${escapedItemId}"]`);
+      target?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      onRailScroll?.();
+    });
+  }, [onRailScroll]);
+  const handleSelect = useCallback((item: KioskSelectionVisualItem, index: number, element?: HTMLElement | null) => {
+    onSelect?.(item, index);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      return;
+    }
+    scrollItemIntoView(item.id);
+  }, [onSelect, scrollItemIntoView]);
+  const handleCarouselStep = useCallback((direction: "prev" | "next") => {
+    if (!isShirtCarousel) {
+      if (direction === "prev") onPrev?.();
+      else onNext?.();
+      return;
+    }
+    const nextIndex = Math.min(items.length - 1, Math.max(0, selectedIndex + (direction === "next" ? 1 : -1)));
+    const nextItem = items[nextIndex];
+    if (!nextItem || nextIndex === selectedIndex) return;
+    handleSelect(nextItem, nextIndex);
+  }, [handleSelect, isShirtCarousel, items, onNext, onPrev, selectedIndex]);
   const handleRailWheel = (event: WheelEvent<HTMLDivElement>) => {
     if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
     const rail = event.currentTarget;
@@ -314,7 +355,7 @@ export function KioskSelectionVisual({
   };
 
   return (
-    <section className={`ff-kiosk-selection ff-kiosk-selection-${kind}`}>
+    <section className={`ff-kiosk-selection ff-kiosk-selection-${kind} ${isShirtCarousel ? "ff-kiosk-selection-3d" : ""}`}>
       <div className="ff-kiosk-selection-heading">
         <div>
           <div className="ff-kiosk-selection-step">{stepLabel}</div>
@@ -323,34 +364,71 @@ export function KioskSelectionVisual({
         {backControl}
       </div>
       <div className="ff-kiosk-selection-stage">
-        <div ref={railRef} onScroll={onRailScroll} onWheel={handleRailWheel} className="ff-kiosk-selection-rail">
+        <div ref={setRailNode} onScroll={onRailScroll} onWheel={handleRailWheel} className="ff-kiosk-selection-rail">
           {items.length ? (
-            items.map((item, index) => (
-              <button
-                type="button"
-                key={item.id}
-                className={`ff-kiosk-selection-card ${selectedId === item.id ? "is-selected" : ""}`}
-                onClick={() => onSelect?.(item, index)}
-              >
-                <div className="ff-kiosk-selection-image">
-                  {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <strong>{emptyLabel}</strong>}
-                </div>
-                <h3>{item.name}</h3>
-                {item.subtitle && <p>{item.subtitle}</p>}
-              </button>
-            ))
+            items.map((item, index) => {
+              const offset = index - selectedIndex;
+              const depthClass = isShirtCarousel
+                ? offset === 0
+                  ? "is-selected is-center"
+                  : offset === -1
+                    ? "is-prev"
+                    : offset === 1
+                      ? "is-next"
+                      : offset < -1
+                        ? "is-far-prev"
+                        : "is-far-next"
+                : selectedId === item.id
+                  ? "is-selected"
+                  : "";
+
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  data-selection-id={item.id}
+                  className={`ff-kiosk-selection-card ${depthClass}`}
+                  onClick={(event) => handleSelect(item, index, event.currentTarget)}
+                >
+                  <div className="ff-kiosk-selection-image">
+                    {item.imageUrl ? <img src={item.imageUrl} alt="" /> : <strong>{emptyLabel}</strong>}
+                  </div>
+                  <h3>{item.name}</h3>
+                  {item.subtitle && <p>{item.subtitle}</p>}
+                </button>
+              );
+            })
           ) : (
             <div className="ff-kiosk-selection-empty">{emptyLabel}</div>
           )}
         </div>
         <div className="ff-kiosk-rail-fade ff-kiosk-rail-fade-left" />
         <div className="ff-kiosk-rail-fade ff-kiosk-rail-fade-right" />
+        {isShirtCarousel && items.length > 1 && (
+          <div className="ff-kiosk-carousel-progress" aria-hidden="true">
+            {items.map((item, index) => (
+              <span key={item.id} className={index === selectedIndex ? "is-active" : ""} />
+            ))}
+          </div>
+        )}
         {showArrows && (
           <>
-            <button type="button" aria-label="Anterior" disabled={!canPrev} onClick={onPrev} className="ff-kiosk-rail-arrow ff-kiosk-rail-arrow-left">
+            <button
+              type="button"
+              aria-label="Anterior"
+              disabled={isShirtCarousel ? selectedIndex <= 0 : !canPrev}
+              onClick={() => handleCarouselStep("prev")}
+              className="ff-kiosk-rail-arrow ff-kiosk-rail-arrow-left"
+            >
               <ChevronLeft />
             </button>
-            <button type="button" aria-label="Proximo" disabled={!canNext} onClick={onNext} className="ff-kiosk-rail-arrow ff-kiosk-rail-arrow-right">
+            <button
+              type="button"
+              aria-label="Proximo"
+              disabled={isShirtCarousel ? selectedIndex >= items.length - 1 : !canNext}
+              onClick={() => handleCarouselStep("next")}
+              className="ff-kiosk-rail-arrow ff-kiosk-rail-arrow-right"
+            >
               <ChevronRight />
             </button>
           </>
