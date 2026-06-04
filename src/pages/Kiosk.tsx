@@ -486,8 +486,6 @@ export default function KioskPage() {
     setPixQrImage(null);
     setPixPayment(null);
     setUserImage(null);
-    setPhotoValidationBusy(false);
-    setPhotoValidationMessage(null);
     setQueueId(null);
     setGeneratedImage(null);
     setDeliveryUrl(null);
@@ -519,8 +517,6 @@ export default function KioskPage() {
     setPixQrImage(null);
     setPixPayment(null);
     setUserImage(null);
-    setPhotoValidationBusy(false);
-    setPhotoValidationMessage(null);
     setQueueId(null);
     generationSettledRef.current = false;
     setGeneratedImage(null);
@@ -1097,7 +1093,6 @@ export default function KioskPage() {
 
     drawOrientedVideoFrame(ctx, video, cameraOrientation, canvas.width, canvas.height);
     setUserImage(canvas.toDataURL("image/jpeg", 0.92));
-    setPhotoValidationMessage(null);
     stopCamera();
   }, [cameraOrientation, stopCamera, stopCameraCountdown]);
 
@@ -1123,8 +1118,6 @@ export default function KioskPage() {
 
   const retakePhoto = () => {
     stopCameraCountdown();
-    setPhotoValidationBusy(false);
-    setPhotoValidationMessage(null);
     setUserImage(null);
   };
 
