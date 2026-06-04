@@ -604,6 +604,8 @@ export function KioskGeneratingVisual({
   progressLabel,
   hasWaitingVideo,
 }: KioskGeneratingVisualProps) {
+  const statusPhrases = ["Preparando sua foto", "Ajustando o manto", "Finalizando detalhes"];
+
   return (
     <section className="ff-kiosk-generating">
       {slideImage ? (
@@ -623,6 +625,9 @@ export function KioskGeneratingVisual({
           <div>
             <h3>{title}</h3>
             <p>{subtitle}</p>
+            <div className="ff-kiosk-generating-phrases" aria-hidden="true">
+              {statusPhrases.map((phrase) => <span key={phrase}>{phrase}</span>)}
+            </div>
           </div>
           <strong>{progressLabel}</strong>
         </div>

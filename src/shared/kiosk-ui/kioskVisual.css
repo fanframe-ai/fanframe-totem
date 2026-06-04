@@ -1,4 +1,9 @@
 .ff-kiosk-shell {
+  --ff-motion-fast: 160ms;
+  --ff-motion-normal: 280ms;
+  --ff-motion-slow: 520ms;
+  --ff-motion-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ff-motion-premium: cubic-bezier(.16, 1, .3, 1);
   position: relative;
   min-height: 100vh;
   overflow: hidden;
@@ -29,6 +34,7 @@
 
 .ff-kiosk-bg-video-home {
   opacity: .62;
+  animation: ff-kiosk-bg-breathe 9000ms ease-in-out infinite alternate;
 }
 
 .ff-kiosk-bg-scrim {
@@ -69,6 +75,7 @@
   gap: 28px;
   border-bottom: 1px solid hsl(var(--border, 0 0% 100% / .18));
   padding-bottom: 24px;
+  animation: ff-kiosk-slide-down var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-brand {
@@ -165,6 +172,7 @@
     0 18px 46px rgb(0 0 0 / .36),
     0 0 34px rgb(235 30 30 / .18);
   backdrop-filter: blur(10px);
+  animation: ff-kiosk-price-reveal 620ms var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-price-copy {
@@ -201,10 +209,22 @@
   color: inherit;
   box-shadow: 0 18px 48px rgb(0 0 0 / .35);
   backdrop-filter: blur(10px);
+  transition:
+    transform var(--ff-motion-fast) var(--ff-motion-ease-out),
+    border-color var(--ff-motion-fast) var(--ff-motion-ease-out),
+    box-shadow var(--ff-motion-fast) var(--ff-motion-ease-out);
+  animation: ff-kiosk-pop-in 420ms var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-back:active {
   transform: scale(.95);
+}
+
+.ff-kiosk-back:hover {
+  border-color: rgb(238 211 146 / .62);
+  box-shadow:
+    0 18px 48px rgb(0 0 0 / .35),
+    0 0 30px rgb(232 195 109 / .18);
 }
 
 .ff-kiosk-back svg {
@@ -221,6 +241,7 @@
   gap: 32px;
   min-height: 0;
   text-align: center;
+  animation: ff-kiosk-screen-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-home.is-campaign-poster {
@@ -249,6 +270,7 @@
   width: 100%;
   max-width: 900px;
   margin: 0 auto;
+  animation: ff-kiosk-rise-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-home-eyebrow {
@@ -268,6 +290,8 @@
   line-height: .92;
   letter-spacing: 0;
   text-transform: uppercase;
+  animation: ff-kiosk-title-presence 4200ms ease-in-out 900ms infinite;
+  will-change: transform, filter;
 }
 
 .ff-kiosk-home-title span,
@@ -284,6 +308,10 @@
   filter:
     drop-shadow(0 5px 0 rgb(0 0 0 / .88))
     drop-shadow(0 0 28px rgb(255 0 0 / .22));
+  animation:
+    ff-kiosk-title-image-reveal 640ms var(--ff-motion-premium) both,
+    ff-kiosk-title-image-pulse 4600ms ease-in-out 1000ms infinite;
+  will-change: transform, filter;
 }
 
 .ff-kiosk-home-brush-title {
@@ -330,6 +358,7 @@
   text-shadow: 0 0 18px rgb(255 0 0 / .9);
   transform: translate(-50%, -50%);
   pointer-events: none;
+  animation: ff-kiosk-arrow-pulse 1800ms ease-in-out infinite;
 }
 
 .ff-kiosk-home-card {
@@ -344,6 +373,24 @@
   text-align: left;
   box-shadow: 0 18px 42px rgb(0 0 0 / .26);
   backdrop-filter: blur(10px);
+  transition:
+    transform var(--ff-motion-fast) var(--ff-motion-ease-out),
+    border-color var(--ff-motion-fast) var(--ff-motion-ease-out),
+    box-shadow var(--ff-motion-fast) var(--ff-motion-ease-out),
+    filter var(--ff-motion-fast) var(--ff-motion-ease-out);
+  animation: ff-kiosk-stagger-rise var(--ff-motion-slow) var(--ff-motion-premium) both;
+}
+
+.ff-kiosk-home-card.is-highlighted {
+  animation-delay: 80ms;
+}
+
+.ff-kiosk-home-card:active {
+  transform: translateY(2px) scale(.985);
+}
+
+.ff-kiosk-home-card:hover {
+  filter: brightness(1.06);
 }
 
 .ff-kiosk-home-card.is-highlighted {
@@ -450,6 +497,15 @@
   align-items: center;
   gap: 12px;
   text-align: left;
+  animation: ff-kiosk-stagger-rise var(--ff-motion-slow) var(--ff-motion-premium) both;
+}
+
+.ff-kiosk-home-benefit:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.ff-kiosk-home-benefit:nth-child(3) {
+  animation-delay: 160ms;
 }
 
 .ff-kiosk-home-benefit span {
@@ -479,6 +535,8 @@
   text-transform: uppercase;
 }
 
+.ff-kiosk-home > button,
+.ff-kiosk-home > .ff-kiosk-primary-action,
 .ff-kiosk-home.is-campaign-poster > button,
 .ff-kiosk-home.is-campaign-poster > .ff-kiosk-primary-action {
   border: 2px solid #ff1b22;
@@ -489,6 +547,9 @@
     0 0 0 1px rgb(255 255 255 / .14) inset,
     0 0 28px rgb(255 0 0 / .62),
     0 0 58px rgb(255 0 0 / .32);
+  animation:
+    ff-kiosk-stagger-rise var(--ff-motion-slow) var(--ff-motion-premium) 220ms both,
+    ff-kiosk-cta-pulse 2600ms ease-in-out 900ms infinite;
 }
 
 .ff-kiosk-home-card-label {
@@ -731,6 +792,7 @@
   flex: 1;
   min-height: 0;
   flex-direction: column;
+  animation: ff-kiosk-screen-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-selection-heading {
@@ -740,6 +802,7 @@
   gap: 24px;
   flex-shrink: 0;
   text-align: center;
+  animation: ff-kiosk-rise-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-selection-heading > div:first-child {
@@ -790,6 +853,7 @@
   scroll-snap-type: x mandatory;
   padding: 30px 78px;
   scrollbar-width: none;
+  animation: ff-kiosk-depth-in 640ms var(--ff-motion-premium) 90ms both;
 }
 
 .ff-kiosk-selection-3d .ff-kiosk-selection-rail {
@@ -818,11 +882,20 @@
   color: inherit;
   padding: 20px;
   text-align: left;
-  transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+  transition:
+    transform var(--ff-motion-normal) var(--ff-motion-premium),
+    border-color var(--ff-motion-normal) var(--ff-motion-ease-out),
+    background var(--ff-motion-normal) var(--ff-motion-ease-out),
+    box-shadow var(--ff-motion-normal) var(--ff-motion-ease-out),
+    filter var(--ff-motion-normal) var(--ff-motion-ease-out);
   box-shadow:
     0 18px 54px rgb(0 0 0 / .42),
     0 0 0 1px rgb(255 255 255 / .05) inset;
   backdrop-filter: blur(10px);
+}
+
+.ff-kiosk-selection-card:active {
+  transform: scale(.985);
 }
 
 .ff-kiosk-selection-3d .ff-kiosk-selection-card {
@@ -880,6 +953,11 @@
     0 20px 60px rgb(0 0 0 / .55),
     0 0 0 1px rgb(255 255 255 / .12) inset,
     0 0 34px rgb(255 0 0 / .46);
+  animation: ff-kiosk-card-selected 460ms var(--ff-motion-premium) both;
+}
+
+.ff-kiosk-selection-3d .ff-kiosk-selection-card.is-selected {
+  animation: none;
 }
 
 .ff-kiosk-selection-3d .ff-kiosk-selection-card.is-center {
@@ -1074,9 +1152,14 @@
   border-radius: 999px;
   background: rgb(255 255 255 / .2);
   box-shadow: 0 0 0 1px rgb(0 0 0 / .32);
+  transition:
+    max-width var(--ff-motion-normal) var(--ff-motion-premium),
+    background var(--ff-motion-normal) var(--ff-motion-ease-out),
+    box-shadow var(--ff-motion-normal) var(--ff-motion-ease-out);
 }
 
 .ff-kiosk-carousel-progress span.is-active {
+  max-width: 88px;
   background: #e8c36d;
   box-shadow:
     0 0 0 1px rgb(232 195 109 / .18),
@@ -1100,6 +1183,15 @@
     0 0 26px rgb(255 0 0 / .46);
   transform: translateY(-50%);
   backdrop-filter: blur(10px);
+  transition:
+    transform var(--ff-motion-fast) var(--ff-motion-ease-out),
+    border-color var(--ff-motion-fast) var(--ff-motion-ease-out),
+    box-shadow var(--ff-motion-fast) var(--ff-motion-ease-out),
+    opacity var(--ff-motion-fast) var(--ff-motion-ease-out);
+}
+
+.ff-kiosk-rail-arrow:active:not(:disabled) {
+  transform: translateY(-50%) scale(.92);
 }
 
 .ff-kiosk-rail-arrow:disabled {
@@ -1126,6 +1218,7 @@
 .ff-kiosk-selection-footer {
   flex-shrink: 0;
   padding-top: 28px;
+  animation: ff-kiosk-rise-in var(--ff-motion-slow) var(--ff-motion-premium) 180ms both;
 }
 
 .ff-kiosk-selection-footer .ff-kiosk-primary-action,
@@ -1193,6 +1286,7 @@
   min-height: 0;
   align-items: center;
   justify-content: center;
+  animation: ff-kiosk-screen-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-cpf {
@@ -1201,6 +1295,7 @@
   min-height: 0;
   align-items: center;
   justify-content: center;
+  animation: ff-kiosk-screen-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-cpf-inner {
@@ -1216,6 +1311,7 @@
     0 24px 70px rgb(0 0 0 / .42),
     0 0 0 1px rgb(255 255 255 / .04) inset;
   backdrop-filter: blur(10px);
+  animation: ff-kiosk-panel-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-cpf-title {
@@ -1247,6 +1343,10 @@
   font-weight: 950;
   letter-spacing: .06em;
   box-shadow: 0 0 30px rgb(232 195 109 / .18);
+  transition:
+    border-color var(--ff-motion-fast) var(--ff-motion-ease-out),
+    box-shadow var(--ff-motion-fast) var(--ff-motion-ease-out);
+  animation: ff-kiosk-cpf-caret 1200ms ease-in-out infinite;
 }
 
 .ff-kiosk-cpf-keypad {
@@ -1266,6 +1366,16 @@
   font-weight: 950;
   text-transform: uppercase;
   box-shadow: 0 12px 28px rgb(0 0 0 / .32);
+  transition:
+    transform var(--ff-motion-fast) var(--ff-motion-ease-out),
+    border-color var(--ff-motion-fast) var(--ff-motion-ease-out),
+    background var(--ff-motion-fast) var(--ff-motion-ease-out);
+}
+
+.ff-kiosk-cpf-keypad button:active {
+  transform: scale(.96);
+  border-color: rgb(238 211 146 / .74);
+  background: rgb(35 0 0 / .82);
 }
 
 .ff-kiosk-cpf-keypad button.is-digit {
@@ -1291,6 +1401,7 @@
     0 24px 70px rgb(0 0 0 / .42),
     0 0 0 1px rgb(255 255 255 / .04) inset;
   backdrop-filter: blur(10px);
+  animation: ff-kiosk-panel-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-payment-title {
@@ -1325,6 +1436,21 @@
   padding: 32px;
   text-align: left;
   box-shadow: 0 0 34px rgb(255 0 0 / .3), 0 16px 42px rgb(0 0 0 / .38);
+  transition:
+    transform var(--ff-motion-fast) var(--ff-motion-ease-out),
+    border-color var(--ff-motion-fast) var(--ff-motion-ease-out),
+    box-shadow var(--ff-motion-fast) var(--ff-motion-ease-out),
+    filter var(--ff-motion-fast) var(--ff-motion-ease-out);
+  animation: ff-kiosk-depth-in 520ms var(--ff-motion-premium) 120ms both;
+}
+
+.ff-kiosk-pix-card:active {
+  transform: scale(.985);
+}
+
+.ff-kiosk-pix-card:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 0 44px rgb(255 0 0 / .42), 0 18px 48px rgb(0 0 0 / .42);
 }
 
 .ff-kiosk-pix-card svg {
@@ -1360,6 +1486,7 @@
   flex-direction: column;
   padding: 80px 0;
   text-align: center;
+  animation: ff-kiosk-fade-in var(--ff-motion-normal) var(--ff-motion-ease-out) both;
 }
 
 .ff-kiosk-payment-busy svg,
@@ -1382,6 +1509,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  animation: ff-kiosk-panel-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-payment-qr img {
@@ -1393,6 +1521,7 @@
   background: #ffffff;
   padding: 16px;
   box-shadow: 0 0 34px rgb(232 195 109 / .32);
+  animation: ff-kiosk-qr-reveal 520ms var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-ghost-action,
@@ -1409,6 +1538,22 @@
   font-weight: 950;
   line-height: 1;
   text-transform: uppercase;
+  transition:
+    transform var(--ff-motion-fast) var(--ff-motion-ease-out),
+    box-shadow var(--ff-motion-fast) var(--ff-motion-ease-out),
+    filter var(--ff-motion-fast) var(--ff-motion-ease-out),
+    opacity var(--ff-motion-fast) var(--ff-motion-ease-out);
+}
+
+.ff-kiosk-ghost-action:active,
+.ff-kiosk-primary-action:active,
+.ff-kiosk-secondary-action:active {
+  transform: scale(.985);
+}
+
+.ff-kiosk-primary-action:hover:not(:disabled),
+.ff-kiosk-secondary-action:hover:not(:disabled) {
+  filter: brightness(1.08);
 }
 
 .ff-kiosk-ghost-action {
@@ -1461,6 +1606,7 @@
   min-height: 0;
   flex-direction: column;
   align-items: center;
+  animation: ff-kiosk-screen-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-camera h2 {
@@ -1471,6 +1617,7 @@
   line-height: 1;
   text-transform: uppercase;
   text-shadow: 0 5px 0 rgb(0 0 0 / .88), 0 0 28px rgb(255 255 255 / .12);
+  animation: ff-kiosk-rise-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-camera-frame {
@@ -1486,6 +1633,28 @@
   box-shadow:
     0 20px 62px rgb(0 0 0 / .48),
     0 0 0 1px rgb(255 255 255 / .06) inset;
+  animation: ff-kiosk-camera-in 620ms var(--ff-motion-premium) 90ms both;
+}
+
+.ff-kiosk-camera-frame::before {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  z-index: 2;
+  border: 1px solid rgb(238 211 146 / .2);
+  border-radius: 14px;
+  pointer-events: none;
+  box-shadow: 0 0 0 999px rgb(0 0 0 / .06);
+}
+
+.ff-kiosk-camera-frame:has(img)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #ffffff;
+  pointer-events: none;
+  animation: ff-kiosk-camera-flash 520ms ease-out both;
 }
 
 .ff-kiosk-camera-frame img,
@@ -1494,6 +1663,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.ff-kiosk-camera-frame img {
+  animation: ff-kiosk-photo-preview 420ms var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-camera-placeholder {
@@ -1511,6 +1684,7 @@
   display: grid;
   place-items: center;
   background: rgb(0 0 0 / .54);
+  animation: ff-kiosk-fade-in var(--ff-motion-fast) var(--ff-motion-ease-out) both;
 }
 
 .ff-kiosk-camera-countdown div {
@@ -1525,6 +1699,7 @@
   font-size: 96px;
   font-weight: 950;
   box-shadow: 0 0 42px rgb(232 195 109 / .36);
+  animation: ff-kiosk-countdown-pop 760ms var(--ff-motion-premium) infinite;
 }
 
 .ff-kiosk-camera-actions {
@@ -1533,6 +1708,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   width: 100%;
+  animation: ff-kiosk-rise-in var(--ff-motion-slow) var(--ff-motion-premium) 160ms both;
 }
 
 .ff-kiosk-camera-actions .is-wide {
@@ -1564,6 +1740,7 @@
   border-radius: 18px;
   background: hsl(var(--card, 0 0% 7%) / .28);
   box-shadow: 0 20px 70px rgb(0 0 0 / .42);
+  animation: ff-kiosk-cinematic-in 720ms var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-generating-media {
@@ -1573,6 +1750,7 @@
   height: 100%;
   object-fit: cover;
   opacity: .72;
+  animation: ff-kiosk-slow-zoom 9000ms ease-in-out infinite alternate;
 }
 
 .ff-kiosk-generating-media.is-muted {
@@ -1591,6 +1769,7 @@
   max-height: 38vh;
   object-fit: contain;
   opacity: .4;
+  animation: ff-kiosk-title-image-pulse 4200ms ease-in-out infinite;
 }
 
 .ff-kiosk-generating-scrim {
@@ -1608,6 +1787,7 @@
   right: 40px;
   max-width: 768px;
   text-align: left;
+  animation: ff-kiosk-fade-in var(--ff-motion-slow) var(--ff-motion-ease-out) both;
 }
 
 .ff-kiosk-generating-copy p {
@@ -1648,6 +1828,7 @@
   padding: 20px;
   box-shadow: 0 18px 54px rgb(0 0 0 / .45), 0 0 30px rgb(255 0 0 / .18);
   backdrop-filter: blur(10px);
+  animation: ff-kiosk-progress-dock 620ms var(--ff-motion-premium) 120ms both;
 }
 
 .ff-kiosk-generating-status {
@@ -1685,6 +1866,34 @@
   line-height: 1.25;
 }
 
+.ff-kiosk-generating-phrases {
+  position: relative;
+  height: 22px;
+  margin-top: 8px;
+  overflow: hidden;
+  color: rgb(232 195 109 / .88);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 22px;
+  text-transform: uppercase;
+}
+
+.ff-kiosk-generating-phrases span {
+  position: absolute;
+  inset: 0 auto auto 0;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: ff-kiosk-phrase-cycle 5400ms ease-in-out infinite;
+}
+
+.ff-kiosk-generating-phrases span:nth-child(2) {
+  animation-delay: 1800ms;
+}
+
+.ff-kiosk-generating-phrases span:nth-child(3) {
+  animation-delay: 3600ms;
+}
+
 .ff-kiosk-generating-status strong {
   min-width: 124px;
   margin-left: auto;
@@ -1706,6 +1915,7 @@
   border-radius: inherit;
   background: linear-gradient(90deg, #e8c36d, #ff1b22);
   box-shadow: 0 0 18px rgb(255 0 0 / .5);
+  transition: width var(--ff-motion-normal) var(--ff-motion-ease-out);
 }
 
 .ff-kiosk-result {
@@ -1714,6 +1924,7 @@
   min-height: 0;
   flex-direction: column;
   text-align: center;
+  animation: ff-kiosk-screen-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-result-heading {
@@ -1726,6 +1937,7 @@
   margin: 0 auto 16px;
   color: #e8c36d;
   filter: drop-shadow(0 0 18px rgb(232 195 109 / .34));
+  animation: ff-kiosk-check-reveal 680ms var(--ff-motion-premium) both;
 }
 
 .ff-kiosk-result-heading h2 {
@@ -1735,6 +1947,7 @@
   line-height: 1;
   text-transform: uppercase;
   text-shadow: 0 5px 0 rgb(0 0 0 / .88), 0 0 28px rgb(255 255 255 / .12);
+  animation: ff-kiosk-rise-in var(--ff-motion-slow) var(--ff-motion-premium) 80ms both;
 }
 
 .ff-kiosk-result-image {
@@ -1750,6 +1963,7 @@
   box-shadow:
     0 20px 62px rgb(0 0 0 / .48),
     0 0 0 1px rgb(255 255 255 / .06) inset;
+  animation: ff-kiosk-result-image-reveal 720ms var(--ff-motion-premium) 120ms both;
 }
 
 .ff-kiosk-result-image img {
@@ -1772,6 +1986,7 @@
   align-items: center;
   gap: 28px;
   text-align: left;
+  animation: ff-kiosk-rise-in var(--ff-motion-slow) var(--ff-motion-premium) 260ms both;
 }
 
 .ff-kiosk-result-delivery > img,
@@ -1784,6 +1999,7 @@
   color: #000000;
   padding: 12px;
   box-shadow: 0 0 34px rgb(232 195 109 / .32);
+  animation: ff-kiosk-qr-reveal 520ms var(--ff-motion-premium) 320ms both;
 }
 
 .ff-kiosk-result-fake-qr {
@@ -1805,9 +2021,365 @@
   width: 100%;
 }
 
+@keyframes ff-kiosk-screen-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ff-kiosk-slide-down {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ff-kiosk-rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ff-kiosk-stagger-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes ff-kiosk-depth-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, -80px) scale(.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes ff-kiosk-panel-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0) scale(.985);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes ff-kiosk-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ff-kiosk-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(.82);
+  }
+  68% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ff-kiosk-price-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, -10px, 0) scale(.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes ff-kiosk-title-presence {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgb(255 255 255 / 0));
+  }
+  50% {
+    transform: scale(1.012);
+    filter: drop-shadow(0 0 18px rgb(255 255 255 / .12));
+  }
+}
+
+@keyframes ff-kiosk-title-image-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ff-kiosk-title-image-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter:
+      drop-shadow(0 5px 0 rgb(0 0 0 / .88))
+      drop-shadow(0 0 28px rgb(255 0 0 / .22));
+  }
+  50% {
+    transform: scale(1.015);
+    filter:
+      drop-shadow(0 5px 0 rgb(0 0 0 / .88))
+      drop-shadow(0 0 38px rgb(255 0 0 / .38))
+      drop-shadow(0 0 14px rgb(232 195 109 / .18));
+  }
+}
+
+@keyframes ff-kiosk-arrow-pulse {
+  0%, 100% {
+    opacity: .82;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+@keyframes ff-kiosk-cta-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / .14) inset,
+      0 0 28px rgb(255 0 0 / .5),
+      0 0 58px rgb(255 0 0 / .22);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / .2) inset,
+      0 0 36px rgb(255 0 0 / .74),
+      0 0 76px rgb(255 0 0 / .34);
+  }
+}
+
+@keyframes ff-kiosk-card-selected {
+  0% {
+    box-shadow:
+      0 20px 60px rgb(0 0 0 / .55),
+      0 0 0 1px rgb(255 255 255 / .12) inset,
+      0 0 0 rgb(255 0 0 / 0);
+  }
+  55% {
+    box-shadow:
+      0 24px 70px rgb(0 0 0 / .62),
+      0 0 0 1px rgb(255 255 255 / .16) inset,
+      0 0 44px rgb(255 0 0 / .62);
+  }
+  100% {
+    box-shadow:
+      0 20px 60px rgb(0 0 0 / .55),
+      0 0 0 1px rgb(255 255 255 / .12) inset,
+      0 0 34px rgb(255 0 0 / .46);
+  }
+}
+
+@keyframes ff-kiosk-cpf-caret {
+  0%, 100% {
+    border-color: rgb(238 211 146 / .44);
+    box-shadow: 0 0 30px rgb(232 195 109 / .18);
+  }
+  50% {
+    border-color: rgb(238 211 146 / .72);
+    box-shadow: 0 0 40px rgb(232 195 109 / .28);
+  }
+}
+
+@keyframes ff-kiosk-qr-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(.92);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes ff-kiosk-camera-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes ff-kiosk-countdown-pop {
+  0% {
+    transform: scale(.92);
+    box-shadow: 0 0 20px rgb(232 195 109 / .22);
+  }
+  45% {
+    transform: scale(1.04);
+    box-shadow: 0 0 54px rgb(232 195 109 / .42);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 42px rgb(232 195 109 / .36);
+  }
+}
+
+@keyframes ff-kiosk-camera-flash {
+  0% {
+    opacity: .78;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ff-kiosk-photo-preview {
+  from {
+    opacity: 0;
+    transform: scale(1.035);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes ff-kiosk-cinematic-in {
+  from {
+    opacity: 0;
+    transform: scale(1.018);
+    filter: brightness(.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes ff-kiosk-progress-dock {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 34px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes ff-kiosk-slow-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.045);
+  }
+}
+
+@keyframes ff-kiosk-bg-breathe {
+  from {
+    transform: scale(1);
+    filter: saturate(1);
+  }
+  to {
+    transform: scale(1.025);
+    filter: saturate(1.08);
+  }
+}
+
+@keyframes ff-kiosk-check-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(.72);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes ff-kiosk-result-image-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(.985);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes ff-kiosk-phrase-cycle {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  10%, 28% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  38%, 100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
 @keyframes ff-kiosk-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-kiosk-shell *,
+  .ff-kiosk-shell *::before,
+  .ff-kiosk-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 
