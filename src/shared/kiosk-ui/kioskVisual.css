@@ -189,7 +189,7 @@
 .ff-kiosk-back {
   position: fixed;
   z-index: 40;
-  top: 176px;
+  top: 208px;
   left: 48px;
   display: grid;
   width: 80px;
