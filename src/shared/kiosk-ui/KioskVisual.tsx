@@ -104,8 +104,6 @@ type KioskCameraVisualProps = {
   captureLabel: ReactNode;
   retakeLabel: ReactNode;
   usePhotoLabel: ReactNode;
-  validationBusy?: boolean;
-  validationMessage?: string | null;
   onCapture?: () => void;
   onRetake?: () => void;
   onUsePhoto?: () => void;
@@ -551,8 +549,6 @@ export function KioskCameraVisual({
   captureLabel,
   retakeLabel,
   usePhotoLabel,
-  validationBusy = false,
-  validationMessage,
   onCapture,
   onRetake,
   onUsePhoto,
@@ -571,12 +567,12 @@ export function KioskCameraVisual({
       <div className="ff-kiosk-camera-actions">
         {hasPhoto ? (
           <>
-            <button type="button" className="ff-kiosk-secondary-action" disabled={validationBusy} onClick={onRetake}>
+            <button type="button" className="ff-kiosk-secondary-action" onClick={onRetake}>
               <RefreshCw />
               {retakeLabel}
             </button>
-            <button type="button" className="ff-kiosk-primary-action" disabled={validationBusy} onClick={onUsePhoto}>
-              {validationBusy ? "Analisando foto..." : usePhotoLabel}
+            <button type="button" className="ff-kiosk-primary-action" onClick={onUsePhoto}>
+              {usePhotoLabel}
             </button>
           </>
         ) : (
@@ -586,8 +582,6 @@ export function KioskCameraVisual({
           </button>
         )}
       </div>
-      {validationBusy && <p className="ff-kiosk-camera-note">Analisando quem esta no primeiro plano...</p>}
-      {validationMessage && <p className="ff-kiosk-camera-warning">{validationMessage}</p>}
     </section>
   );
 }

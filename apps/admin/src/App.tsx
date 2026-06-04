@@ -1939,43 +1939,6 @@ function TeamForm() {
                 <label>Contagem antes da foto<input type="number" min="0" max="10" value={team.kiosk_camera_countdown_seconds ?? 5} onChange={(e) => set("kiosk_camera_countdown_seconds", Number(e.target.value))} /></label>
               </div>
               <p className="hint">Os tempos sao em segundos. Use 0 na contagem da foto para capturar imediatamente.</p>
-              <div className="editor-subsection">
-                <h3>Foto limpa</h3>
-                <p className="hint">Evita usar pessoas que aparecem atras do cliente na foto.</p>
-                <label className="inline-check">
-                  <input
-                    type="checkbox"
-                    checked={team.kiosk_foreground_filter_enabled !== false}
-                    onChange={(e) => set("kiosk_foreground_filter_enabled", e.target.checked)}
-                  />
-                  Ignorar pessoas no fundo
-                </label>
-                <div className="two-fields">
-                  <label>
-                    Maximo de pessoas na foto
-                    <input value="Ate 2 pessoas principais" readOnly />
-                  </label>
-                  <label>
-                    Sensibilidade do fundo
-                    <input
-                      type="number"
-                      min="0.01"
-                      max="0.4"
-                      step="0.01"
-                      value={team.kiosk_foreground_min_area_ratio ?? 0.08}
-                      onChange={(e) => set("kiosk_foreground_min_area_ratio", Number(e.target.value))}
-                    />
-                  </label>
-                </div>
-                <label>
-                  Mensagem quando precisar refazer
-                  <input
-                    value={team.kiosk_foreground_warning_text || ""}
-                    placeholder="Fique no centro da tela com ate duas pessoas."
-                    onChange={(e) => set("kiosk_foreground_warning_text", e.target.value)}
-                  />
-                </label>
-              </div>
             </div>
           )}
 

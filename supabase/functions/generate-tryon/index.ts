@@ -40,6 +40,19 @@ RULES:
 - Maintain photorealistic quality, 8K resolution, sharp focus
 - Professional DSLR camera quality`;
 
+const FOREGROUND_PEOPLE_PROMPT_RULE = `Foreground people rule:
+- Use only the 1 or 2 main people closest to the camera as the photo subjects.
+- If there is 1 main person in the foreground, transform only that person.
+- If there are 2 main people in the foreground, transform both people.
+- Ignore bystanders, crowds, reflections, posters, screens, printed faces, and anyone behind the main foreground subject(s).
+- Do not crop, erase, or distort the main foreground subject(s). Keep identity, pose, face, body proportions, and framing natural.`;
+
+function withForegroundPeopleRule(prompt: string): string {
+  const basePrompt = prompt?.trim() || DEFAULT_PROMPT;
+  if (basePrompt.includes("Foreground people rule:")) return basePrompt;
+  return `${basePrompt}\n\n${FOREGROUND_PEOPLE_PROMPT_RULE}`;
+}
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
@@ -571,8 +584,6 @@ serve(async (req) => {
       team_slug,
       kiosk_session_id,
       payment_id,
-      foregroundFilterApplied,
-      foregroundPeopleCount,
       source,
     } = parsed as {
       userImageBase64?: string;
@@ -583,8 +594,6 @@ serve(async (req) => {
       team_slug?: string;
       kiosk_session_id?: string;
       payment_id?: string;
-      foregroundFilterApplied?: boolean;
-      foregroundPeopleCount?: number | null;
       source?: string;
     };
     const requestSource = source === "kiosk" ? "kiosk" : "web";
@@ -598,8 +607,6 @@ serve(async (req) => {
       team_slug: team_slug || "default",
       kiosk_session_id: kiosk_session_id || null,
       payment_id: payment_id || null,
-      foregroundFilterApplied: Boolean(foregroundFilterApplied),
-      foregroundPeopleCount: typeof foregroundPeopleCount === "number" ? foregroundPeopleCount : null,
       source: requestSource,
     });
 
@@ -672,8 +679,8 @@ serve(async (req) => {
       kiosk_session_id: kiosk_session_id || null,
       payment_id: payment_id || null,
       source: requestSource,
-      foreground_filter_applied: Boolean(foregroundFilterApplied),
-      foreground_people_count: typeof foregroundPeopleCount === "number" ? foregroundPeopleCount : null,
+      foreground_filter_applied: false,
+      foreground_people_count: null,
     });
     console.log(`[${generationId}] Queue entry created`);
 
@@ -701,7 +708,7 @@ serve(async (req) => {
 
     // Get generation prompt (team-specific or fallback)
     stage = "fetch_prompt";
-    const textPrompt = await getGenerationPrompt(supabase, team_slug);
+    const textPrompt = withForegroundPeopleRule(await getGenerationPrompt(supabase, team_slug));
     console.log(`[${generationId}] Prompt length: ${textPrompt.length} chars`);
 
     // Resolve Replicate API token (team-specific or fallback)

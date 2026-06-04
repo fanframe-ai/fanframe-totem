@@ -19,7 +19,6 @@ import {
   KioskVisualShell,
 } from "@/shared/kiosk-ui/KioskVisual";
 import { cleanCpf, formatCpf, isValidCpf } from "@/lib/cpf";
-import { processForegroundPhoto } from "@/lib/personForeground/processForegroundPhoto";
 import {
   buildDeliveryUrl,
   classifyKioskError,
@@ -378,8 +377,6 @@ export default function KioskPage() {
   const [pixQrImage, setPixQrImage] = useState<string | null>(null);
   const [pixPayment, setPixPayment] = useState<KioskPaymentResponse | null>(null);
   const [userImage, setUserImage] = useState<string | null>(null);
-  const [photoValidationBusy, setPhotoValidationBusy] = useState(false);
-  const [photoValidationMessage, setPhotoValidationMessage] = useState<string | null>(null);
   const [queueId, setQueueId] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [deliveryUrl, setDeliveryUrl] = useState<string | null>(null);
@@ -1175,45 +1172,18 @@ export default function KioskPage() {
     if (!team || !selectedShirt || !backgroundForGeneration || !userImage || !sessionId || !paymentId) return;
     setSelectedBackground(backgroundForGeneration);
     setError(null);
-    setPhotoValidationBusy(true);
-    setPhotoValidationMessage(null);
-
-    let foregroundResult: Awaited<ReturnType<typeof processForegroundPhoto>>;
-    try {
-      foregroundResult = await processForegroundPhoto(userImage, {
-        enabled: team.kiosk_foreground_filter_enabled !== false,
-        maxPeople: 2,
-        minAreaRatio: Number(team.kiosk_foreground_min_area_ratio ?? 0.08),
-        centerWeight: 0.35,
-        warningText: team.kiosk_foreground_warning_text,
-      });
-    } catch (err) {
-      setPhotoValidationBusy(false);
-      setPhotoValidationMessage(err instanceof Error ? err.message : "Nao foi possivel analisar a foto. Tente novamente.");
-      return;
-    }
-
-    if (!foregroundResult.ok) {
-      setPhotoValidationBusy(false);
-      setPhotoValidationMessage(foregroundResult.message);
-      return;
-    }
-
-    setPhotoValidationBusy(false);
     generationSettledRef.current = false;
     setStep("generating");
 
     const { data, error: fnError } = await supabase.functions.invoke("generate-tryon", {
       body: {
-        userImageBase64: foregroundResult.processedImage,
+        userImageBase64: userImage,
         shirtAssetUrl: getAssetFullUrl(selectedShirt.assetPath),
         backgroundAssetUrl: getAssetFullUrl(backgroundForGeneration.assetPath),
         shirtId: selectedShirt.id,
         team_slug: team.slug,
         kiosk_session_id: sessionId,
         payment_id: paymentId,
-        foregroundFilterApplied: foregroundResult.filterApplied,
-        foregroundPeopleCount: foregroundResult.peopleCount,
         source: "kiosk",
       },
     });
@@ -1761,8 +1731,6 @@ export default function KioskPage() {
             captureLabel={copy("kiosk_camera_capture", "Capturar")}
             retakeLabel={copy("kiosk_camera_retake", "Refazer")}
             usePhotoLabel={copy("kiosk_camera_use", "Usar foto")}
-            validationBusy={photoValidationBusy}
-            validationMessage={photoValidationMessage}
             onCapture={startCaptureCountdown}
             onRetake={retakePhoto}
             onUsePhoto={startGeneration}

@@ -9,6 +9,14 @@ describe("edge functions architecture", () => {
     expect(source).not.toContain('aspect_ratio: "match_input_image"');
   });
 
+  it("keeps foreground people handling in the Replicate prompt instead of local image processing", () => {
+    const source = readFileSync("supabase/functions/generate-tryon/index.ts", "utf8");
+
+    expect(source).toContain("FOREGROUND_PEOPLE_PROMPT_RULE");
+    expect(source).toContain("Use only the 1 or 2 main people closest to the camera");
+    expect(source).toContain("withForegroundPeopleRule(await getGenerationPrompt");
+  });
+
   it("allows create-delivery-link POST requests from the kiosk flow", () => {
     const source = readFileSync("supabase/functions/create-delivery-link/index.ts", "utf8");
 
