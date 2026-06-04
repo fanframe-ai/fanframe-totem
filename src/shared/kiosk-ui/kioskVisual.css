@@ -34,7 +34,7 @@
 
 .ff-kiosk-bg-video-home {
   opacity: .62;
-  animation: ff-kiosk-bg-breathe 9000ms ease-in-out infinite alternate;
+  animation: ff-kiosk-bg-breathe 5200ms ease-in-out infinite alternate;
 }
 
 .ff-kiosk-bg-scrim {
@@ -264,6 +264,7 @@
     linear-gradient(135deg, rgb(255 0 0 / .08), transparent 30%, rgb(255 0 0 / .12) 72%, transparent);
   mix-blend-mode: screen;
   opacity: .9;
+  animation: ff-kiosk-attract-sweep 5200ms ease-in-out infinite alternate;
 }
 
 .ff-kiosk-home-copy {
@@ -290,7 +291,7 @@
   line-height: .92;
   letter-spacing: 0;
   text-transform: uppercase;
-  animation: ff-kiosk-title-presence 4200ms ease-in-out 900ms infinite;
+  animation: ff-kiosk-title-presence 2600ms ease-in-out 700ms infinite;
   will-change: transform, filter;
 }
 
@@ -310,7 +311,7 @@
     drop-shadow(0 0 28px rgb(255 0 0 / .22));
   animation:
     ff-kiosk-title-image-reveal 640ms var(--ff-motion-premium) both,
-    ff-kiosk-title-image-pulse 4600ms ease-in-out 1000ms infinite;
+    ff-kiosk-title-image-pulse 2800ms ease-in-out 900ms infinite;
   will-change: transform, filter;
 }
 
@@ -358,7 +359,7 @@
   text-shadow: 0 0 18px rgb(255 0 0 / .9);
   transform: translate(-50%, -50%);
   pointer-events: none;
-  animation: ff-kiosk-arrow-pulse 1800ms ease-in-out infinite;
+  animation: ff-kiosk-arrow-pulse 1250ms ease-in-out infinite;
 }
 
 .ff-kiosk-home-card {
@@ -378,11 +379,15 @@
     border-color var(--ff-motion-fast) var(--ff-motion-ease-out),
     box-shadow var(--ff-motion-fast) var(--ff-motion-ease-out),
     filter var(--ff-motion-fast) var(--ff-motion-ease-out);
-  animation: ff-kiosk-stagger-rise var(--ff-motion-slow) var(--ff-motion-premium) both;
+  animation:
+    ff-kiosk-stagger-rise var(--ff-motion-slow) var(--ff-motion-premium) both,
+    ff-kiosk-home-card-float 3600ms ease-in-out 900ms infinite;
 }
 
 .ff-kiosk-home-card.is-highlighted {
-  animation-delay: 80ms;
+  animation:
+    ff-kiosk-stagger-rise var(--ff-motion-slow) var(--ff-motion-premium) 80ms both,
+    ff-kiosk-home-card-float-highlight 3600ms ease-in-out 1100ms infinite;
 }
 
 .ff-kiosk-home-card:active {
@@ -539,6 +544,8 @@
 .ff-kiosk-home > .ff-kiosk-primary-action,
 .ff-kiosk-home.is-campaign-poster > button,
 .ff-kiosk-home.is-campaign-poster > .ff-kiosk-primary-action {
+  position: relative;
+  overflow: hidden;
   border: 2px solid #ff1b22;
   border-radius: 999px;
   background: rgb(0 0 0 / .9);
@@ -549,7 +556,21 @@
     0 0 58px rgb(255 0 0 / .32);
   animation:
     ff-kiosk-stagger-rise var(--ff-motion-slow) var(--ff-motion-premium) 220ms both,
-    ff-kiosk-cta-pulse 2600ms ease-in-out 900ms infinite;
+    ff-kiosk-cta-pulse 1700ms ease-in-out 900ms infinite;
+}
+
+.ff-kiosk-home > button::after,
+.ff-kiosk-home > .ff-kiosk-primary-action::after,
+.ff-kiosk-home.is-campaign-poster > button::after,
+.ff-kiosk-home.is-campaign-poster > .ff-kiosk-primary-action::after {
+  content: "";
+  position: absolute;
+  inset: -40% auto -40% -55%;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / .42), transparent);
+  transform: skewX(-18deg);
+  animation: ff-kiosk-cta-shine 2600ms ease-in-out 1200ms infinite;
+  pointer-events: none;
 }
 
 .ff-kiosk-home-card-label {
@@ -589,6 +610,10 @@
   font-size: 18px;
   font-weight: 950;
   text-transform: uppercase;
+}
+
+.ff-kiosk-home-card img {
+  animation: ff-kiosk-home-image-drift 5200ms ease-in-out infinite alternate;
 }
 
 .inline-kiosk-preview.ff-kiosk-shell {
@@ -2130,8 +2155,10 @@
     filter: drop-shadow(0 0 0 rgb(255 255 255 / 0));
   }
   50% {
-    transform: scale(1.012);
-    filter: drop-shadow(0 0 18px rgb(255 255 255 / .12));
+    transform: scale(1.026);
+    filter:
+      drop-shadow(0 0 22px rgb(255 255 255 / .2))
+      drop-shadow(0 0 34px rgb(255 0 0 / .16));
   }
 }
 
@@ -2152,37 +2179,106 @@
       drop-shadow(0 0 28px rgb(255 0 0 / .22));
   }
   50% {
-    transform: scale(1.015);
+    transform: scale(1.04);
     filter:
       drop-shadow(0 5px 0 rgb(0 0 0 / .88))
-      drop-shadow(0 0 38px rgb(255 0 0 / .38))
-      drop-shadow(0 0 14px rgb(232 195 109 / .18));
+      drop-shadow(0 0 54px rgb(255 0 0 / .58))
+      drop-shadow(0 0 24px rgb(232 195 109 / .28));
   }
 }
 
 @keyframes ff-kiosk-arrow-pulse {
   0%, 100% {
-    opacity: .82;
+    opacity: .74;
     transform: translate(-50%, -50%) scale(1);
   }
   50% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.08);
+    transform: translate(-50%, -50%) scale(1.24);
   }
 }
 
 @keyframes ff-kiosk-cta-pulse {
   0%, 100% {
+    transform: scale(1);
     box-shadow:
       0 0 0 1px rgb(255 255 255 / .14) inset,
       0 0 28px rgb(255 0 0 / .5),
       0 0 58px rgb(255 0 0 / .22);
   }
   50% {
+    transform: scale(1.018);
     box-shadow:
       0 0 0 1px rgb(255 255 255 / .2) inset,
-      0 0 36px rgb(255 0 0 / .74),
-      0 0 76px rgb(255 0 0 / .34);
+      0 0 52px rgb(255 0 0 / .9),
+      0 0 104px rgb(255 0 0 / .48),
+      0 0 22px rgb(232 195 109 / .32);
+  }
+}
+
+@keyframes ff-kiosk-cta-shine {
+  0%, 42% {
+    left: -55%;
+    opacity: 0;
+  }
+  54% {
+    opacity: 1;
+  }
+  72%, 100% {
+    left: 120%;
+    opacity: 0;
+  }
+}
+
+@keyframes ff-kiosk-home-card-float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotateZ(0deg);
+    box-shadow:
+      0 18px 42px rgb(0 0 0 / .26),
+      0 0 22px rgb(232 195 109 / .12);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) rotateZ(-.35deg);
+    box-shadow:
+      0 28px 58px rgb(0 0 0 / .42),
+      0 0 34px rgb(232 195 109 / .22);
+  }
+}
+
+@keyframes ff-kiosk-home-card-float-highlight {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) rotateZ(0deg);
+    box-shadow:
+      0 18px 54px rgb(0 0 0 / .52),
+      0 0 0 1px rgb(255 255 255 / .14) inset,
+      0 0 34px rgb(255 0 0 / .48);
+  }
+  50% {
+    transform: translate3d(0, -18px, 0) rotateZ(.35deg);
+    box-shadow:
+      0 30px 66px rgb(0 0 0 / .58),
+      0 0 0 1px rgb(255 255 255 / .2) inset,
+      0 0 54px rgb(255 0 0 / .72);
+  }
+}
+
+@keyframes ff-kiosk-home-image-drift {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.035);
+  }
+}
+
+@keyframes ff-kiosk-attract-sweep {
+  from {
+    opacity: .75;
+    transform: translate3d(-18px, 0, 0) scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(18px, 0, 0) scale(1.035);
   }
 }
 
@@ -2318,8 +2414,8 @@
     filter: saturate(1);
   }
   to {
-    transform: scale(1.025);
-    filter: saturate(1.08);
+    transform: scale(1.045);
+    filter: saturate(1.16) brightness(1.08);
   }
 }
 
