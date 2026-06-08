@@ -2,9 +2,10 @@ import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
-const { findLatestLocalInstaller, getUpdateReadiness } = require("./kiosk-updates.cjs") as {
+const { defaultRemoteInstallerUrl, findLatestLocalInstaller, getUpdateReadiness } = require("./kiosk-updates.cjs") as {
+  defaultRemoteInstallerUrl: string;
   findLatestLocalInstaller: (searchDirs: string[]) => string;
-  getUpdateReadiness: (config: Record<string, unknown>, options?: { searchDirs?: string[]; fileExists?: (path: string) => boolean }) => {
+  getUpdateReadiness: (config: Record<string, unknown>, options?: { searchDirs?: string[]; fileExists?: (path: string) => boolean; defaultInstallerUrl?: string }) => {
     ready: boolean;
     mode: string;
     message: string;
@@ -101,18 +102,38 @@ describe("kiosk update readiness", () => {
     expect(readiness.installerPath).toBe("");
   });
 
-  it("prefers a local installer found in Downloads when no url is configured", () => {
+  it("uses the GitHub latest installer when no update source is configured", () => {
+    expect(getUpdateReadiness({ updates: {} }, { searchDirs: [], fileExists: () => false })).toMatchObject({
+      ready: true,
+      mode: "remote_installer",
+      installerUrl: defaultRemoteInstallerUrl,
+      message: "Atualizacao pronta para baixar e instalar.",
+    });
+  });
+
+  it("prefers the default GitHub latest installer over a downloaded local installer", () => {
     expect(getUpdateReadiness(
       { updates: {} },
       { searchDirs: ["D:/Downloads"], fileExists: (filePath) => filePath.endsWith("FanFrame Kiosk Setup.exe") },
+    )).toMatchObject({
+      ready: true,
+      mode: "remote_installer",
+      installerUrl: defaultRemoteInstallerUrl,
+    });
+  });
+
+  it("can still use a local installer when the default remote installer is disabled", () => {
+    expect(getUpdateReadiness(
+      { updates: {} },
+      { searchDirs: ["D:/Downloads"], fileExists: (filePath) => filePath.endsWith("FanFrame Kiosk Setup.exe"), defaultInstallerUrl: "" },
     )).toMatchObject({
       ready: true,
       mode: "local_installer",
     });
   });
 
-  it("returns a clear message when no update source exists", () => {
-    expect(getUpdateReadiness({ updates: {} }, { searchDirs: [], fileExists: () => false })).toMatchObject({
+  it("returns a clear message when no update source exists and default remote installer is disabled", () => {
+    expect(getUpdateReadiness({ updates: {} }, { searchDirs: [], fileExists: () => false, defaultInstallerUrl: "" })).toMatchObject({
       ready: false,
       mode: "not_configured",
       message: "Nenhum instalador de atualizacao configurado neste PC.",
@@ -131,7 +152,7 @@ describe("kiosk update readiness", () => {
     await fs.writeFile(newInstaller, "");
 
     expect(findLatestLocalInstaller([dir])).toBe(newInstaller);
-    expect(getUpdateReadiness({}, { searchDirs: [dir] })).toMatchObject({
+    expect(getUpdateReadiness({}, { searchDirs: [dir], defaultInstallerUrl: "" })).toMatchObject({
       ready: true,
       mode: "local_installer",
       installerPath: newInstaller,

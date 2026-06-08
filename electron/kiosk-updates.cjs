@@ -13,6 +13,7 @@ const knownInstallerFileNames = [
 ];
 
 const defaultInstallerArgs = ["/S"];
+const defaultRemoteInstallerUrl = "https://github.com/fanframe-ai/fanframe-totem/releases/latest/download/FanFrame-Kiosk-Setup-latest.exe";
 
 function findLatestLocalInstaller(searchDirs = [], options = {}) {
   const candidates = [];
@@ -52,11 +53,17 @@ function normalizeUpdateConfig(config, options = {}) {
     : [];
   const updateArgs = configuredUpdateArgs.length > 0 ? configuredUpdateArgs : defaultInstallerArgs;
   const discoveredInstallerPath = findLatestLocalInstaller(options.searchDirs || [], options);
+  const configuredInstallerPath = hasText(updates.installerPath) ? updates.installerPath.trim() : "";
+  const configuredUpdateCommand = hasText(updates.updateCommand) ? updates.updateCommand.trim() : "";
+  const fallbackInstallerUrl = Object.prototype.hasOwnProperty.call(options, "defaultInstallerUrl")
+    ? (hasText(options.defaultInstallerUrl) ? options.defaultInstallerUrl.trim() : "")
+    : defaultRemoteInstallerUrl;
+  const shouldUseFallbackInstallerUrl = !hasText(updates.installerUrl) && !configuredInstallerPath && !configuredUpdateCommand;
 
   return {
-    installerUrl: hasText(updates.installerUrl) ? updates.installerUrl.trim() : "",
-    installerPath: hasText(updates.installerPath) ? updates.installerPath.trim() : discoveredInstallerPath,
-    updateCommand: hasText(updates.updateCommand) ? updates.updateCommand.trim() : "",
+    installerUrl: hasText(updates.installerUrl) ? updates.installerUrl.trim() : shouldUseFallbackInstallerUrl ? fallbackInstallerUrl : "",
+    installerPath: configuredInstallerPath || discoveredInstallerPath,
+    updateCommand: configuredUpdateCommand,
     updateArgs,
   };
 }
@@ -101,6 +108,7 @@ function getUpdateReadiness(config, options = {}) {
 }
 
 module.exports = {
+  defaultRemoteInstallerUrl,
   findLatestLocalInstaller,
   getUpdateReadiness,
   normalizeUpdateConfig,
