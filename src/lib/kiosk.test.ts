@@ -60,4 +60,11 @@ describe("kiosk helpers", () => {
     expect(shouldResetKioskForInactivity("generating")).toBe(false);
     expect(shouldResetKioskForInactivity("result")).toBe(false);
   });
+
+  it("treats photo recovery as an active customer flow", () => {
+    expect(isSafeKioskReloadStep("recovery-cpf")).toBe(false);
+    expect(isSafeKioskReloadStep("recovery-results")).toBe(false);
+    expect(shouldResetKioskForInactivity("recovery-cpf")).toBe(true);
+    expect(shouldResetKioskForInactivity("recovery-results")).toBe(true);
+  });
 });

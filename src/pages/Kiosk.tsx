@@ -14,6 +14,7 @@ import {
   KioskGeneratingVisual,
   KioskHomeVisual,
   KioskPaymentVisual,
+  KioskRecoveryResultsVisual,
   KioskResultVisual,
   KioskSelectionVisual,
   KioskVisualShell,
@@ -22,11 +23,13 @@ import { cleanCpf, formatCpf, isValidCpf } from "@/lib/cpf";
 import {
   buildDeliveryUrl,
   classifyKioskError,
+  createRecoveredPhotoLink,
   friendlyPaymentError,
   pollKioskCommand,
   pollKioskState,
   redeemInstallCode,
   reportKioskHealth,
+  searchKioskPhotos,
   filterVisibleAssets,
   formatCurrencyFromCents,
   isSafeKioskReloadStep,
@@ -35,6 +38,7 @@ import {
   shouldReloadForRemoteKioskState,
   shouldResetKioskForInactivity,
   verifyTechnicalPin,
+  type RecoveredKioskPhoto,
 } from "@/lib/kiosk";
 import type { KioskRuntimeConfig, KioskTechnicalStatus, KioskUpdateStatus, StoredDeviceIdentity } from "@/types/kiosk";
 
@@ -63,6 +67,9 @@ type KioskStep =
   | "shirt"
   | "background"
   | "cpf"
+  | "recovery-cpf"
+  | "recovery-results"
+  | "recovery-result"
   | "payment"
   | "camera"
   | "generating"
@@ -371,6 +378,12 @@ export default function KioskPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [customerCpf, setCustomerCpf] = useState("");
   const [customerCpfTouched, setCustomerCpfTouched] = useState(false);
+  const [recoveryCpf, setRecoveryCpf] = useState("");
+  const [recoveryCpfTouched, setRecoveryCpfTouched] = useState(false);
+  const [recoveryPhotos, setRecoveryPhotos] = useState<RecoveredKioskPhoto[]>([]);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [recoveryBusySessionId, setRecoveryBusySessionId] = useState<string | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [paymentBusy, setPaymentBusy] = useState(false);
@@ -481,6 +494,12 @@ export default function KioskPage() {
     setPaymentMethod(null);
     setCustomerCpf("");
     setCustomerCpfTouched(false);
+    setRecoveryCpf("");
+    setRecoveryCpfTouched(false);
+    setRecoveryPhotos([]);
+    setRecoveryBusy(false);
+    setRecoveryBusySessionId(null);
+    setRecoveryError(null);
     setSessionId(null);
     setPaymentId(null);
     setPixQrImage(null);
@@ -511,6 +530,12 @@ export default function KioskPage() {
     setPaymentMethod(null);
     setCustomerCpf("");
     setCustomerCpfTouched(false);
+    setRecoveryCpf("");
+    setRecoveryCpfTouched(false);
+    setRecoveryPhotos([]);
+    setRecoveryBusy(false);
+    setRecoveryBusySessionId(null);
+    setRecoveryError(null);
     setSessionId(null);
     setPaymentId(null);
     setPaymentBusy(false);
@@ -1032,6 +1057,64 @@ export default function KioskPage() {
     setStep("payment");
   };
 
+  const openPhotoRecovery = () => {
+    setRecoveryCpf("");
+    setRecoveryCpfTouched(false);
+    setRecoveryPhotos([]);
+    setRecoveryBusy(false);
+    setRecoveryBusySessionId(null);
+    setRecoveryError(null);
+    setStep("recovery-cpf");
+  };
+
+  const addRecoveryCpfDigit = (digit: string) => {
+    setRecoveryCpf((current) => formatCpf(`${cleanCpf(current)}${digit}`));
+    setRecoveryCpfTouched(false);
+    setRecoveryError(null);
+  };
+
+  const removeRecoveryCpfDigit = () => {
+    setRecoveryCpf((current) => formatCpf(cleanCpf(current).slice(0, -1)));
+    setRecoveryCpfTouched(false);
+    setRecoveryError(null);
+  };
+
+  const searchRecoveredPhotos = async () => {
+    setRecoveryCpfTouched(true);
+    if (!isValidCpf(recoveryCpf) || !hasDeviceAuth) return;
+    setRecoveryBusy(true);
+    setRecoveryError(null);
+    try {
+      const photos = await searchKioskPhotos(activeDevice, cleanCpf(recoveryCpf));
+      setRecoveryPhotos(photos);
+      if (photos.length === 0) {
+        setRecoveryError("Nenhuma foto concluida foi encontrada neste totem nos ultimos 7 dias.");
+        return;
+      }
+      setStep("recovery-results");
+    } catch (recoverySearchError) {
+      setRecoveryError(recoverySearchError instanceof Error ? recoverySearchError.message : "Nao foi possivel buscar as fotos.");
+    } finally {
+      setRecoveryBusy(false);
+    }
+  };
+
+  const recoverPhoto = async (photo: RecoveredKioskPhoto) => {
+    if (!isValidCpf(recoveryCpf) || !hasDeviceAuth) return;
+    setRecoveryBusySessionId(photo.sessionId);
+    setRecoveryError(null);
+    try {
+      const recovered = await createRecoveredPhotoLink(activeDevice, cleanCpf(recoveryCpf), photo.sessionId);
+      setGeneratedImage(recovered.imageUrl);
+      setDeliveryUrl(recovered.deliveryUrl);
+      setStep("recovery-result");
+    } catch (photoError) {
+      setRecoveryError(photoError instanceof Error ? photoError.message : "Nao foi possivel abrir esta foto.");
+    } finally {
+      setRecoveryBusySessionId(null);
+    }
+  };
+
   const startPayment = async (method: PaymentMethod) => {
     const backgroundForGeneration = selectedBackground || visibleBackgrounds[0] || null;
     if (!team || !config || !selectedShirt || !backgroundForGeneration || !hasDeviceAuth || !isValidCpf(customerCpf)) {
@@ -1156,6 +1239,8 @@ export default function KioskPage() {
     if (step === "shirt") return goBackFromShirt;
     if (step === "payment") return goBackFromPayment;
     if (step === "cpf") return goBackFromCpf;
+    if (step === "recovery-cpf") return resetFlow;
+    if (step === "recovery-results") return () => setStep("recovery-cpf");
     if (step === "camera") return goBackFromCamera;
     return null;
   };
@@ -1651,7 +1736,12 @@ export default function KioskPage() {
               { icon: "camera", label: copy("kiosk_home_benefit_2", "Entre no clima da Nacao") },
               { icon: "qr", label: copy("kiosk_home_benefit_3", "Receba sua foto por QR Code") },
             ]}
-            cta={<KioskButton onClick={startSelection} className="mx-auto w-full max-w-4xl">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>}
+            cta={(
+              <div className="ff-kiosk-home-actions">
+                <KioskButton onClick={startSelection} className="w-full">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>
+                <button type="button" className="ff-kiosk-home-recovery-action" onClick={openPhotoRecovery}>Recuperar minha foto</button>
+              </div>
+            )}
           />
         )}
 
@@ -1695,6 +1785,37 @@ export default function KioskPage() {
             onBackspace={removeCpfDigit}
             onClear={clearCpf}
             onContinue={continueAfterCpf}
+          />
+        )}
+
+        {step === "recovery-cpf" && (
+          <KioskCpfVisual
+            stepLabel="Recuperacao de foto"
+            title="Digite o CPF usado no pagamento"
+            hint="Buscaremos as fotos feitas neste totem nos ultimos 7 dias."
+            value={recoveryCpf}
+            error={recoveryError || (recoveryCpfTouched && !isValidCpf(recoveryCpf) ? "CPF invalido" : null)}
+            continueLabel={recoveryBusy ? "Buscando..." : "Buscar minhas fotos"}
+            disabled={recoveryBusy || !isValidCpf(recoveryCpf)}
+            onDigit={addRecoveryCpfDigit}
+            onBackspace={removeRecoveryCpfDigit}
+            onClear={() => {
+              setRecoveryCpf("");
+              setRecoveryCpfTouched(false);
+              setRecoveryError(null);
+            }}
+            onContinue={searchRecoveredPhotos}
+          />
+        )}
+
+        {step === "recovery-results" && (
+          <KioskRecoveryResultsVisual
+            title="Escolha sua foto"
+            hint="Toque na foto para gerar um novo QR Code."
+            photos={recoveryPhotos}
+            busySessionId={recoveryBusySessionId}
+            error={recoveryError}
+            onSelect={recoverPhoto}
           />
         )}
 
@@ -1750,7 +1871,7 @@ export default function KioskPage() {
           />
         )}
 
-        {step === "result" && (
+        {(step === "result" || step === "recovery-result") && (
           <KioskResultVisual
             title={copy("kiosk_result_title", "Imagem pronta")}
             image={generatedImage}

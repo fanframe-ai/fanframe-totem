@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.poll-kiosk-commands]
 verify_jwt = false
+
+[functions.recover-kiosk-photos]
+verify_jwt = false

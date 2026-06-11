@@ -86,7 +86,33 @@ export function isSafeKioskReloadStep(step: string) {
 }
 
 export function shouldResetKioskForInactivity(step: string) {
-  return ["shirt", "cpf", "camera"].includes(step);
+  return ["shirt", "cpf", "camera", "recovery-cpf", "recovery-results"].includes(step);
+}
+
+export type RecoveredKioskPhoto = {
+  sessionId: string;
+  imageUrl: string;
+  completedAt: string;
+};
+
+export async function searchKioskPhotos(identity: DeviceIdentity, cpf: string) {
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data, error } = await supabase.functions.invoke("recover-kiosk-photos", {
+    headers: buildDeviceAuthHeaders(identity),
+    body: { action: "search", cpf },
+  });
+  if (error || data?.error) throw new Error(data?.error || error?.message || "Nao foi possivel buscar as fotos.");
+  return (data?.photos || []) as RecoveredKioskPhoto[];
+}
+
+export async function createRecoveredPhotoLink(identity: DeviceIdentity, cpf: string, sessionId: string) {
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data, error } = await supabase.functions.invoke("recover-kiosk-photos", {
+    headers: buildDeviceAuthHeaders(identity),
+    body: { action: "recover", cpf, session_id: sessionId },
+  });
+  if (error || data?.error) throw new Error(data?.error || error?.message || "Nao foi possivel recuperar a foto.");
+  return data as { deliveryUrl: string; imageUrl: string; expiresAt: string };
 }
 
 export function classifyKioskError(message: string): KioskFriendlyError {

@@ -96,6 +96,21 @@ type KioskCpfVisualProps = {
   onContinue: () => void;
 };
 
+type KioskRecoveryPhoto = {
+  sessionId: string;
+  imageUrl: string;
+  completedAt: string;
+};
+
+type KioskRecoveryResultsVisualProps = {
+  title: ReactNode;
+  hint: ReactNode;
+  photos: KioskRecoveryPhoto[];
+  busySessionId?: string | null;
+  error?: ReactNode;
+  onSelect: (photo: KioskRecoveryPhoto) => void;
+};
+
 type KioskCameraVisualProps = {
   title: ReactNode;
   media: ReactNode;
@@ -536,6 +551,40 @@ export function KioskCpfVisual({
         <button type="button" className="ff-kiosk-primary-action" disabled={disabled} onClick={onContinue}>
           {continueLabel}
         </button>
+      </div>
+    </section>
+  );
+}
+
+export function KioskRecoveryResultsVisual({
+  title,
+  hint,
+  photos,
+  busySessionId,
+  error,
+  onSelect,
+}: KioskRecoveryResultsVisualProps) {
+  return (
+    <section className="ff-kiosk-recovery-results">
+      <div className="ff-kiosk-recovery-results-inner">
+        <h2>{title}</h2>
+        <p>{hint}</p>
+        {error && <p className="ff-kiosk-error">{error}</p>}
+        <div className="ff-kiosk-recovery-grid">
+          {photos.map((photo) => (
+            <button
+              type="button"
+              key={photo.sessionId}
+              className="ff-kiosk-recovery-card"
+              disabled={Boolean(busySessionId)}
+              onClick={() => onSelect(photo)}
+            >
+              <img src={photo.imageUrl} alt="Foto gerada anteriormente" />
+              <span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(photo.completedAt))}</span>
+              <strong>{busySessionId === photo.sessionId ? "Preparando QR Code..." : "Abrir esta foto"}</strong>
+            </button>
+          ))}
+        </div>
       </div>
     </section>
   );

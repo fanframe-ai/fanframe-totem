@@ -31,4 +31,17 @@ describe("edge functions architecture", () => {
     expect(source).not.toContain('if (body?.action !== "share_consent")');
     expect(source.match(/await req\.json/g)?.length).toBe(1);
   });
+
+  it("recovers recent photos only for an authenticated kiosk and an exact CPF", () => {
+    const source = readFileSync("supabase/functions/recover-kiosk-photos/index.ts", "utf8");
+
+    expect(source).toContain('req.headers.get("x-device-code")');
+    expect(source).toContain('req.headers.get("x-device-secret")');
+    expect(source).toContain('device.device_secret_hash !== await sha256(deviceSecret)');
+    expect(source).toContain('.eq("device_id", device.id)');
+    expect(source).toContain('.eq("customer_tax_id", cpf)');
+    expect(source).toContain("RECOVERY_WINDOW_DAYS");
+    expect(source).toContain("photo_recovery_rate_limited");
+    expect(source).toContain("kiosk_delivery_links");
+  });
 });
