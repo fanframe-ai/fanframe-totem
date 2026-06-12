@@ -55,6 +55,9 @@ export interface TeamTextOverrides {
   kiosk_payment_pix_hint?: string;
   kiosk_payment_waiting?: string;
   kiosk_payment_qr_hint?: string;
+  kiosk_camera_ready_title?: string;
+  kiosk_camera_ready_hint?: string;
+  kiosk_camera_ready_button?: string;
   kiosk_camera_title?: string;
   kiosk_camera_capture?: string;
   kiosk_camera_retake?: string;
@@ -207,6 +210,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           subdomain,
           shirts,
           backgrounds,
+          generation_prompt,
           tutorial_assets,
           primary_color,
           secondary_color,

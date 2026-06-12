@@ -1721,6 +1721,68 @@
   animation: ff-kiosk-screen-in var(--ff-motion-slow) var(--ff-motion-premium) both;
 }
 
+.ff-kiosk-camera-ready {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  place-items: center;
+  animation: ff-kiosk-screen-in var(--ff-motion-slow) var(--ff-motion-premium) both;
+}
+
+.ff-kiosk-camera-ready-card {
+  width: min(760px, 100%);
+  padding: 56px;
+  border: 1px solid rgb(238 211 146 / .42);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 0%, rgb(232 195 109 / .16), transparent 42%),
+    rgb(0 0 0 / .72);
+  box-shadow:
+    0 28px 78px rgb(0 0 0 / .56),
+    0 0 0 1px rgb(255 255 255 / .06) inset;
+  text-align: center;
+}
+
+.ff-kiosk-camera-ready-card > svg {
+  width: 74px;
+  height: 74px;
+  margin-bottom: 18px;
+  color: #e8c36d;
+  filter: drop-shadow(0 0 18px rgb(232 195 109 / .32));
+}
+
+.ff-kiosk-camera-ready-card > span {
+  display: inline-grid;
+  min-width: 96px;
+  min-height: 48px;
+  margin-bottom: 22px;
+  place-items: center;
+  border: 1px solid rgb(232 195 109 / .7);
+  border-radius: 999px;
+  color: #e8c36d;
+  font-size: 24px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.ff-kiosk-camera-ready-card h2 {
+  margin: 0;
+  font-size: 68px;
+  font-weight: 950;
+  line-height: .95;
+  text-transform: uppercase;
+  text-shadow: 0 5px 0 rgb(0 0 0 / .88), 0 0 28px rgb(255 255 255 / .12);
+}
+
+.ff-kiosk-camera-ready-card p {
+  max-width: 560px;
+  margin: 22px auto 36px;
+  color: rgb(255 255 255 / .74);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.32;
+}
+
 .ff-kiosk-camera h2 {
   flex-shrink: 0;
   margin: 0 0 28px;
@@ -1775,6 +1837,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.ff-kiosk-camera-frame video {
+  object-fit: contain;
 }
 
 .ff-kiosk-camera-frame img {

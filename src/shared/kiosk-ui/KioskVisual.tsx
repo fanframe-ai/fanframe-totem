@@ -124,6 +124,14 @@ type KioskCameraVisualProps = {
   onUsePhoto?: () => void;
 };
 
+type KioskCameraReadyVisualProps = {
+  title: ReactNode;
+  hint: ReactNode;
+  buttonLabel: ReactNode;
+  countdownSeconds: number;
+  onStart?: () => void;
+};
+
 type KioskGeneratingVisualProps = {
   teamName?: ReactNode;
   slideImage?: string;
@@ -447,7 +455,7 @@ export function KioskSelectionVisual({
           </>
         )}
       </div>
-      <footer className="ff-kiosk-selection-footer">{cta}</footer>
+      {cta && <footer className="ff-kiosk-selection-footer">{cta}</footer>}
     </section>
   );
 }
@@ -630,6 +638,29 @@ export function KioskCameraVisual({
             {countdown !== null && countdown !== undefined ? `${captureLabel} ${countdown}` : captureLabel}
           </button>
         )}
+      </div>
+    </section>
+  );
+}
+
+export function KioskCameraReadyVisual({
+  title,
+  hint,
+  buttonLabel,
+  countdownSeconds,
+  onStart,
+}: KioskCameraReadyVisualProps) {
+  return (
+    <section className="ff-kiosk-camera-ready">
+      <div className="ff-kiosk-camera-ready-card">
+        <Camera />
+        <span>{countdownSeconds}s</span>
+        <h2>{title}</h2>
+        <p>{hint}</p>
+        <button type="button" className="ff-kiosk-primary-action is-wide" onClick={onStart}>
+          <Camera />
+          {buttonLabel}
+        </button>
       </div>
     </section>
   );

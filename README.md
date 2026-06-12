@@ -2,6 +2,13 @@
 
 Sistema FanFrame adaptado para rede de totens Windows multi-time.
 
+## Comece Aqui
+
+- Mapa para desenvolvimento e manutencao: `docs/architecture/INDEX.md`
+- Regras para agentes/Codex: `AGENTS.md`
+- Guia de operacao: `docs/kiosk-totem.md`
+- Release Windows: `docs/release-automation.md`
+
 ## Apps
 
 - App principal: fluxo do provador/totem e build Electron.
@@ -14,6 +21,12 @@ Sistema FanFrame adaptado para rede de totens Windows multi-time.
 npm install
 npm run dev
 npm run admin:dev
+```
+
+Para validar somente o que mudou:
+
+```bash
+npm run check:affected
 ```
 
 ## Builds

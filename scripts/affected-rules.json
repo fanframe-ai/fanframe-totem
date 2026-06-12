@@ -1,0 +1,58 @@
+[
+  {
+    "name": "global config",
+    "patterns": [
+      "package.json",
+      "package-lock.json",
+      "tsconfig*.json",
+      "vite.config.ts",
+      "eslint.config.js",
+      "apps/admin/package.json",
+      "apps/admin/package-lock.json",
+      "apps/admin/tsconfig.json",
+      "apps/admin/vite.config.ts"
+    ],
+    "checks": ["check:all"],
+    "exclusive": true
+  },
+  {
+    "name": "shared kiosk UI",
+    "patterns": ["src/shared/kiosk-ui/**"],
+    "checks": ["check:kiosk", "check:admin"]
+  },
+  {
+    "name": "admin remoto",
+    "patterns": ["apps/admin/**"],
+    "checks": ["check:admin"]
+  },
+  {
+    "name": "kiosk runtime",
+    "patterns": ["src/pages/Kiosk.tsx", "src/features/**", "src/contexts/**", "src/lib/**", "src/hooks/**", "src/integrations/supabase/types.ts"],
+    "checks": ["check:kiosk"]
+  },
+  {
+    "name": "electron",
+    "patterns": ["electron/**", "scripts/release-kiosk.ps1", "scripts/verify-kiosk-release.ps1"],
+    "checks": ["check:electron"]
+  },
+  {
+    "name": "supabase",
+    "patterns": ["supabase/**"],
+    "checks": ["check:functions"]
+  },
+  {
+    "name": "context tooling",
+    "patterns": ["AGENTS.md", "**/AGENTS.md", ".codex/**", "docs/architecture/**", "scripts/generate-context-map.mjs", "scripts/generate-context-map.test.ts", "scripts/check-affected.mjs", "scripts/check-affected.test.ts", "scripts/affected-rules.json"],
+    "checks": ["context:check", "test:tooling"]
+  },
+  {
+    "name": "function tooling",
+    "patterns": ["scripts/check-edge-functions.mjs", "scripts/check-kiosk-package-security.mjs"],
+    "checks": ["check:functions"]
+  },
+  {
+    "name": "documentation",
+    "patterns": ["README.md", "docs/**"],
+    "checks": ["context:check"]
+  }
+]

@@ -672,9 +672,14 @@ export type Database = {
           id: string
           is_active: boolean | null
           kiosk_currency: string
+          kiosk_camera_countdown_seconds: number
           kiosk_default_mode: string
           kiosk_enabled: boolean
           kiosk_font_family: string | null
+          kiosk_foreground_filter_enabled: boolean
+          kiosk_foreground_min_area_ratio: number
+          kiosk_foreground_warning_text: string | null
+          kiosk_max_foreground_people: number
           kiosk_price_cents: number
           kiosk_show_background_step: boolean
           kiosk_show_shirt_step: boolean
@@ -703,9 +708,14 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           kiosk_currency?: string
+          kiosk_camera_countdown_seconds?: number
           kiosk_default_mode?: string
           kiosk_enabled?: boolean
           kiosk_font_family?: string | null
+          kiosk_foreground_filter_enabled?: boolean
+          kiosk_foreground_min_area_ratio?: number
+          kiosk_foreground_warning_text?: string | null
+          kiosk_max_foreground_people?: number
           kiosk_price_cents?: number
           kiosk_show_background_step?: boolean
           kiosk_show_shirt_step?: boolean
@@ -734,9 +744,14 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           kiosk_currency?: string
+          kiosk_camera_countdown_seconds?: number
           kiosk_default_mode?: string
           kiosk_enabled?: boolean
           kiosk_font_family?: string | null
+          kiosk_foreground_filter_enabled?: boolean
+          kiosk_foreground_min_area_ratio?: number
+          kiosk_foreground_warning_text?: string | null
+          kiosk_max_foreground_people?: number
           kiosk_price_cents?: number
           kiosk_show_background_step?: boolean
           kiosk_show_shirt_step?: boolean

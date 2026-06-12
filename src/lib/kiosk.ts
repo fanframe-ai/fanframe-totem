@@ -9,8 +9,8 @@ export function formatCurrencyFromCents(amountCents: number, currency = "BRL") {
   }).format(amountCents / 100).replace(/\u00a0/g, " ");
 }
 
-export function filterVisibleAssets<T extends VisibleAsset>(assets: T[]) {
-  return assets.filter((asset) => asset.visible !== false);
+export function filterVisibleAssets<T>(assets: T[]) {
+  return assets.filter((asset) => (asset as T & VisibleAsset).visible !== false);
 }
 
 export function normalizeKioskTimeout(seconds: number | null | undefined) {

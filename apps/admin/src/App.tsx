@@ -247,6 +247,9 @@ const kioskTextGroups: Array<{ title: string; description: string; fields: Kiosk
     title: "Foto e resultado",
     description: "Textos da camera, geracao da imagem e entrega final.",
     fields: [
+      { key: "kiosk_camera_ready_title", label: "Titulo antes da camera", placeholder: "Prepare-se para a foto" },
+      { key: "kiosk_camera_ready_hint", label: "Ajuda antes da camera", placeholder: "Toque no botao e fique em posicao. A foto sera tirada automaticamente em 10 segundos.", long: true },
+      { key: "kiosk_camera_ready_button", label: "Botao antes da camera", placeholder: "Capturar em 10s" },
       { key: "kiosk_camera_title", label: "Titulo da camera", placeholder: "Sua foto" },
       { key: "kiosk_camera_capture", label: "Botao capturar", placeholder: "Capturar" },
       { key: "kiosk_camera_retake", label: "Botao refazer", placeholder: "Refazer" },
@@ -636,6 +639,7 @@ function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode
     { href: "/times", Icon: Shirt, label: "Times", roles: ["super_admin", "admin"] as Role[] },
     { href: "/totens", Icon: Monitor, label: "Totens", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/sessoes", Icon: Activity, label: "Vendas", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
+    { href: "/fotos", Icon: ImageIcon, label: "Fotos", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
     { href: "/sorteio", Icon: Gift, label: "Sorteio", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/problemas", Icon: AlertTriangle, label: "Problemas", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/usuarios", Icon: Users, label: "Usuarios", roles: ["super_admin"] as Role[] },
@@ -977,20 +981,26 @@ function KioskOnlinePreview() {
       return;
     }
 
-    supabase
-      .from("teams")
-      .select("*")
-      .eq("slug", teamSlug)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    const loadPreviewTeam = async () => {
+      const { data, error } = await supabase
+        .from("teams")
+        .select("*")
+        .eq("slug", teamSlug)
+        .maybeSingle();
+
         if (!active) return;
         if (error) setMessage(error.message);
         setTeam((data || null) as TeamRow | null);
         if (!data && !error) setMessage("Time nao encontrado.");
-      })
-      .finally(() => {
         if (active) setLoading(false);
-      });
+    };
+
+    loadPreviewTeam().catch((error: unknown) => {
+      if (active) {
+        setMessage(error instanceof Error ? error.message : "Nao foi possivel carregar o time.");
+        if (active) setLoading(false);
+      }
+    });
 
     return () => {
       active = false;
@@ -1195,6 +1205,9 @@ const builderTextFields: Record<string, Omit<Extract<BuilderSelection, { type: "
   kiosk_payment_waiting: { key: "kiosk_payment_waiting", label: "Texto aguardando pagamento", fallback: "Aguardando pagamento" },
   kiosk_payment_pix_cta: { key: "kiosk_payment_pix_cta", label: "Botao PIX", fallback: "Pagar com PIX" },
   kiosk_payment_qr_hint: { key: "kiosk_payment_qr_hint", label: "Ajuda abaixo do QR Code", fallback: "Aponte a camera do celular para pagar com PIX.", long: true },
+  kiosk_camera_ready_title: { key: "kiosk_camera_ready_title", label: "Titulo antes da camera", fallback: "Prepare-se para a foto" },
+  kiosk_camera_ready_hint: { key: "kiosk_camera_ready_hint", label: "Ajuda antes da camera", fallback: "Toque no botao e fique em posicao. A foto sera tirada automaticamente em 10 segundos.", long: true },
+  kiosk_camera_ready_button: { key: "kiosk_camera_ready_button", label: "Botao antes da camera", fallback: "Capturar em 10s" },
   kiosk_camera_title: { key: "kiosk_camera_title", label: "Titulo da camera", fallback: "Sua foto" },
   kiosk_camera_capture: { key: "kiosk_camera_capture", label: "Botao capturar", fallback: "Capturar" },
   kiosk_camera_retake: { key: "kiosk_camera_retake", label: "Botao refazer", fallback: "Refazer" },
@@ -3154,6 +3167,127 @@ function Sessions() {
   );
 }
 
+function PhotosPage() {
+  const { teams } = useTeams();
+  const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 7 });
+  const [sessions, setSessions] = useState<KioskSession[]>([]);
+  const [payments, setPayments] = useState<KioskPayment[]>([]);
+  const [generations, setGenerations] = useState<GenerationQueueRow[]>([]);
+  const [busySessionId, setBusySessionId] = useState("");
+  const [message, setMessage] = useState("");
+
+  const load = useCallback(async () => {
+    const since = new Date(Date.now() - filters.days * 86400000).toISOString();
+    let sessionQuery = supabase
+      .from("kiosk_sessions")
+      .select("*, teams(name, slug), kiosk_devices(device_code,label,location)")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(300);
+    let paymentQuery = supabase
+      .from("kiosk_payments")
+      .select("*, teams(name, slug)")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(300);
+    let generationQuery = supabase
+      .from("generation_queue")
+      .select("*, teams(name, slug)")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(300);
+
+    if (filters.teamId) {
+      sessionQuery = sessionQuery.eq("team_id", filters.teamId);
+      paymentQuery = paymentQuery.eq("team_id", filters.teamId);
+      generationQuery = generationQuery.eq("team_id", filters.teamId);
+    }
+
+    const [sessionRes, paymentRes, generationRes] = await Promise.all([sessionQuery, paymentQuery, generationQuery]);
+    const loadedSessions = (sessionRes.data || []) as KioskSession[];
+    const loadedGenerations = (generationRes.data || []) as GenerationQueueRow[];
+    const withPhotos = loadedSessions.filter((session) => {
+      const generation = loadedGenerations.find((item) => item.id === session.generation_queue_id);
+      const photoStatus = session.status === "completed" || generation?.status === "completed";
+      const hasPhoto = Boolean(session.result_image_url || generation?.result_image_url);
+      if (filters.status && session.status !== filters.status && generation?.status !== filters.status) return false;
+      return photoStatus && hasPhoto;
+    });
+
+    setSessions(withPhotos);
+    setPayments((paymentRes.data || []) as KioskPayment[]);
+    setGenerations(loadedGenerations);
+  }, [filters.days, filters.status, filters.teamId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function createNewLink(session: KioskSession) {
+    if (!session.generation_queue_id) {
+      setMessage("Essa foto nao tem registro de geracao vinculado.");
+      return;
+    }
+
+    setBusySessionId(session.id);
+    setMessage("");
+    const { data, error } = await supabase.functions.invoke("create-delivery-link", {
+      body: { session_id: session.id, queue_id: session.generation_queue_id },
+    });
+    setBusySessionId("");
+
+    if (error || data?.error) {
+      setMessage(data?.error || error?.message || "Nao foi possivel gerar novo link.");
+      return;
+    }
+
+    const link = String(data.deliveryUrl || "");
+    if (link) await navigator.clipboard?.writeText(link).catch(() => undefined);
+    setMessage(link ? `Novo link copiado: ${link}` : "Novo link gerado.");
+    load();
+  }
+
+  return (
+    <>
+      <PageHeader title="Fotos" subtitle="Fotos geradas nos totens, com download e novo link para recuperar envio." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
+      <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
+      {message && <div className="panel message-panel">{message}</div>}
+      <div className="photo-card-list">
+        {sessions.map((session) => {
+          const generation = generations.find((item) => item.id === session.generation_queue_id);
+          const payment = payments.find((item) => item.session_id === session.id);
+          const imageUrl = session.result_image_url || generation?.result_image_url || "";
+          const deviceLabel = session.kiosk_devices?.label || session.kiosk_devices?.device_code || "Totem nao informado";
+          return (
+            <article className="panel photo-card" key={session.id}>
+              <a className="photo-card-image" href={imageUrl} target="_blank">
+                <img src={imageUrl} alt="Foto gerada" />
+              </a>
+              <div className="photo-card-body">
+                <div>
+                  <h2>{session.teams?.name || generation?.teams?.name || "Time nao informado"}</h2>
+                  <p>{deviceLabel} - {dateTime(session.completed_at || generation?.created_at || session.created_at)}</p>
+                </div>
+                <div className="photo-card-meta">
+                  <div><span>Pagamento</span><strong>{payment ? friendly(payment.status) : "Nao encontrado"}</strong></div>
+                  <div><span>Valor</span><strong>{money(payment?.amount_cents ?? session.amount_cents, payment?.currency || session.currency)}</strong></div>
+                  <div><span>CPF</span><strong>{payment?.customer_tax_id_last4 ? `final ${payment.customer_tax_id_last4}` : "-"}</strong></div>
+                  <div><span>Camisa</span><strong>{session.selected_shirt_id || generation?.shirt_id || "-"}</strong></div>
+                </div>
+              </div>
+              <div className="photo-card-actions">
+                <a className="secondary link-button" href={imageUrl} download target="_blank">Baixar</a>
+                <button className="primary" type="button" disabled={busySessionId === session.id} onClick={() => createNewLink(session)}>
+                  {busySessionId === session.id ? "Gerando..." : "Gerar novo link"}
+                </button>
+              </div>
+            </article>
+          );
+        })}
+        {sessions.length === 0 && <div className="panel empty-state">Nenhuma foto encontrada neste filtro.</div>}
+      </div>
+    </>
+  );
+}
+
 function StoryDrawPage() {
   const { teams } = useTeams();
   const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 30 });
@@ -3678,6 +3812,7 @@ function App() {
               <Route path="/totens" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><Devices role={auth.role} /></RoleGate>} />
               <Route path="/totens/:id" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><DeviceDetail role={auth.role} /></RoleGate>} />
               <Route path="/sessoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support", "finance"]}><Sessions /></RoleGate>} />
+              <Route path="/fotos" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support", "finance"]}><PhotosPage /></RoleGate>} />
               <Route path="/sorteio" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><StoryDrawPage /></RoleGate>} />
               <Route path="/pagamentos" element={<Navigate to="/sessoes" replace />} />
               <Route path="/geracoes" element={<Navigate to="/sessoes" replace />} />

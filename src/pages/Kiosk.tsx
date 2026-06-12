@@ -9,6 +9,7 @@ import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations
 import beforeExampleImage from "@/assets/before-example.jpg";
 import afterExampleImage from "@/assets/after-example.png";
 import {
+  KioskCameraReadyVisual,
   KioskCameraVisual,
   KioskCpfVisual,
   KioskGeneratingVisual,
@@ -71,6 +72,7 @@ type KioskStep =
   | "recovery-results"
   | "recovery-result"
   | "payment"
+  | "camera-ready"
   | "camera"
   | "generating"
   | "result";
@@ -401,6 +403,7 @@ export default function KioskPage() {
     return normalizeCameraOrientation(localStorage.getItem(cameraMirrorStorageKey));
   });
   const [cameraCountdown, setCameraCountdown] = useState<number | null>(null);
+  const [autoStartCameraCountdown, setAutoStartCameraCountdown] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const technicalCameraVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -997,7 +1000,7 @@ export default function KioskPage() {
   useEffect(() => {
     if (paymentMethod !== "pix" || !paymentId || !pixPayment) return;
     if (pixPayment.paid) {
-      setStep("camera");
+      setStep("camera-ready");
       return;
     }
 
@@ -1009,7 +1012,7 @@ export default function KioskPage() {
 
       if (data?.paid) {
         clearInterval(interval);
-        setStep("camera");
+        setStep("camera-ready");
       }
     }, 3000);
 
@@ -1155,7 +1158,7 @@ export default function KioskPage() {
     setPixPayment(payment);
     setPaymentBusy(false);
     if (payment.paid) {
-      setStep("camera");
+      setStep("camera-ready");
       return;
     }
   };
@@ -1179,7 +1182,7 @@ export default function KioskPage() {
     stopCamera();
   }, [cameraOrientation, stopCamera, stopCameraCountdown]);
 
-  const startCaptureCountdown = () => {
+  const startCaptureCountdown = useCallback(() => {
     if (cameraCountdown !== null) return;
     if (cameraCountdownSeconds <= 0) {
       capturePhoto();
@@ -1197,11 +1200,45 @@ export default function KioskPage() {
       }
       setCameraCountdown(nextValue);
     }, 1000);
+  }, [cameraCountdown, cameraCountdownSeconds, capturePhoto, stopCameraCountdown]);
+
+  useEffect(() => {
+    if (step !== "camera" || userImage || !autoStartCameraCountdown) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    let cancelled = false;
+    const begin = () => {
+      if (cancelled) return;
+      setAutoStartCameraCountdown(false);
+      startCaptureCountdown();
+    };
+
+    if (video.readyState >= 2) {
+      begin();
+      return () => { cancelled = true; };
+    }
+
+    video.addEventListener("playing", begin, { once: true });
+    return () => {
+      cancelled = true;
+      video.removeEventListener("playing", begin);
+    };
+  }, [autoStartCameraCountdown, startCaptureCountdown, step, userImage]);
+
+  const startCameraCapture = () => {
+    stopCameraCountdown();
+    setUserImage(null);
+    setAutoStartCameraCountdown(true);
+    setStep("camera");
   };
 
   const retakePhoto = () => {
     stopCameraCountdown();
     setUserImage(null);
+    stopCamera();
+    setAutoStartCameraCountdown(false);
+    setStep("camera-ready");
   };
 
   const goBackFromShirt = () => {
@@ -1231,6 +1268,7 @@ export default function KioskPage() {
 
   const goBackFromCamera = () => {
     stopCameraCountdown();
+    setAutoStartCameraCountdown(false);
     setUserImage(null);
     resetFlow();
   };
@@ -1241,6 +1279,7 @@ export default function KioskPage() {
     if (step === "cpf") return goBackFromCpf;
     if (step === "recovery-cpf") return resetFlow;
     if (step === "recovery-results") return () => setStep("recovery-cpf");
+    if (step === "camera-ready") return goBackFromCamera;
     if (step === "camera") return goBackFromCamera;
     return null;
   };
@@ -1766,9 +1805,12 @@ export default function KioskPage() {
             onNext={() => scrollRail(shirtRailRef.current, "next")}
             onSelect={(shirt) => {
               const fullShirt = visibleShirts.find((item) => item.id === shirt.id);
-              if (fullShirt) setSelectedShirt(fullShirt);
+              if (fullShirt) {
+                setSelectedShirt(fullShirt);
+                goAfterShirt();
+              }
             }}
-            cta={<KioskButton onClick={goAfterShirt} disabled={!selectedShirt} className="w-full">{copy("kiosk_continue", "Continuar")}</KioskButton>}
+            cta={null}
           />
         )}
 
@@ -1834,6 +1876,16 @@ export default function KioskPage() {
             error={error}
             onStartPix={() => startPayment("pix")}
             onCancel={resetFlow}
+          />
+        )}
+
+        {step === "camera-ready" && (
+          <KioskCameraReadyVisual
+            title={copy("kiosk_camera_ready_title", "Prepare-se para a foto")}
+            hint={copy("kiosk_camera_ready_hint", `Toque no botao e fique em posicao. A foto sera tirada automaticamente em ${cameraCountdownSeconds} segundos.`)}
+            countdownSeconds={cameraCountdownSeconds}
+            buttonLabel={copy("kiosk_camera_ready_button", `Capturar em ${cameraCountdownSeconds}s`)}
+            onStart={startCameraCapture}
           />
         )}
 

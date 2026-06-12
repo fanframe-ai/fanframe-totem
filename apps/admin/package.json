@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5174",
     "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 4174"
+    "preview": "vite preview --host 127.0.0.1 --port 4174",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+    "test": "node ../../node_modules/vitest/vitest.mjs run src",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js src",
+    "check": "npm run typecheck && npm run test && npm run lint && npm run build"
   },
   "dependencies": {
     "@fontsource-variable/zalando-sans-expanded": "^5.2.2",

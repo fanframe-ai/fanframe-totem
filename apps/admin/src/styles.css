@@ -381,8 +381,21 @@ tbody tr:hover { background: #f9fafb; }
 .remote-secondary-actions { grid-column: 1 / -1; }
 .remote-secondary-actions summary { cursor: pointer; color: #475569; font-size: 13px; font-weight: 900; }
 .remote-secondary-actions[open] summary { margin-bottom: 12px; }
-.sales-card-list, .issue-card-list, .authorized-photo-list { display: grid; gap: 12px; }
+.sales-card-list, .issue-card-list, .authorized-photo-list, .photo-card-list { display: grid; gap: 12px; }
 .sales-card, .issue-card { border: 1px solid var(--border); border-radius: 16px; background: #ffffff; padding: 16px; box-shadow: 0 8px 28px rgba(15, 23, 42, .035); }
+.message-panel { color: #334155; font-size: 13px; font-weight: 800; overflow-wrap: anywhere; }
+.photo-card { display: grid; grid-template-columns: 132px minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.photo-card-image { display: block; width: 132px; aspect-ratio: 2 / 3; border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: #0f172a; }
+.photo-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-card-body { display: grid; gap: 12px; min-width: 0; }
+.photo-card-body h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
+.photo-card-body p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.photo-card-meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.photo-card-meta div { border: 1px solid var(--border); background: #f8fafc; border-radius: 12px; padding: 10px; min-width: 0; }
+.photo-card-meta span, .photo-card-meta strong { display: block; overflow-wrap: anywhere; }
+.photo-card-meta span { color: var(--muted); font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.photo-card-meta strong { margin-top: 3px; font-size: 13px; }
+.photo-card-actions { display: grid; gap: 8px; min-width: 150px; }
 .authorized-photo-card { border: 1px solid var(--border); border-radius: 16px; background: #ffffff; padding: 12px; display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 14px; align-items: center; box-shadow: 0 8px 28px rgba(15, 23, 42, .035); }
 .authorized-photo-card img, .authorized-photo-placeholder { width: 120px; aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--border); background: #f8fafc; object-fit: cover; display: grid; place-items: center; color: var(--muted); font-size: 12px; font-weight: 900; text-align: center; }
 .authorized-photo-card strong, .authorized-photo-card span { display: block; }
@@ -656,11 +669,13 @@ tbody tr:hover { background: #f9fafb; }
   .sidebar nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sidebar-footer { display: none; }
   .content { padding: 18px; }
-  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .experience-grid, .waiting-slide-card, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card, .list-toolbar, .list-toolbar.embedded { grid-template-columns: 1fr; }
+  .stats-grid, .compact-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .experience-grid, .waiting-slide-card, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card, .list-toolbar, .list-toolbar.embedded, .photo-card, .photo-card-meta { grid-template-columns: 1fr; }
   .experience-grid > .wide-field { grid-column: 1 / -1; }
   .waiting-slide-preview { width: 100%; }
   .device-hero-panel { min-width: 0; }
   .issue-card, .sales-main, .compact-row, .authorized-photo-card { display: grid; grid-template-columns: 1fr; }
+  .photo-card-image { width: 100%; max-width: 220px; }
+  .photo-card-actions { min-width: 0; }
   .authorized-photo-card img, .authorized-photo-placeholder { width: 100%; max-width: 220px; }
   .compact-row > div:last-child { text-align: left; justify-items: start; }
   .team-card-top { grid-template-columns: auto 1fr; }
