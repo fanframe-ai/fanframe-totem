@@ -882,9 +882,11 @@
 }
 
 .ff-kiosk-selection-3d .ff-kiosk-selection-rail {
+  position: relative;
   align-items: center;
   gap: 0;
-  padding: 34px 260px 86px;
+  overflow: hidden;
+  padding: 34px 0 86px;
   transform-style: preserve-3d;
 }
 
@@ -949,9 +951,12 @@
 }
 
 .ff-kiosk-selection-3d.ff-kiosk-selection-shirt .ff-kiosk-selection-card {
+  position: absolute;
+  top: 47%;
+  left: 50%;
   width: 430px;
   height: 610px;
-  margin: 0 -56px;
+  margin: 0;
   padding: 22px;
   border-radius: 22px;
   background:
@@ -990,7 +995,7 @@
   opacity: 1;
   filter: none;
   border-color: rgb(238 211 146 / .88);
-  transform: translate3d(0, 0, 80px) rotateY(0deg) scale(1);
+  transform: translate3d(-50%, -50%, 80px) rotateY(0deg) scale(1);
   box-shadow:
     0 28px 74px rgb(0 0 0 / .72),
     0 0 0 1px rgb(255 255 255 / .16) inset,
@@ -1002,14 +1007,14 @@
   z-index: 4;
   opacity: .55;
   filter: blur(3px) saturate(.72) brightness(.72);
-  transform: translate3d(-26px, 8px, -150px) rotateY(24deg) scale(.84);
+  transform: translate3d(calc(-50% - 360px), calc(-50% + 8px), -150px) rotateY(24deg) scale(.84);
 }
 
 .ff-kiosk-selection-3d .ff-kiosk-selection-card.is-next {
   z-index: 4;
   opacity: .55;
   filter: blur(3px) saturate(.72) brightness(.72);
-  transform: translate3d(26px, 8px, -150px) rotateY(-24deg) scale(.84);
+  transform: translate3d(calc(-50% + 360px), calc(-50% + 8px), -150px) rotateY(-24deg) scale(.84);
 }
 
 .ff-kiosk-selection-3d .ff-kiosk-selection-card.is-far-prev {
@@ -1017,7 +1022,7 @@
   opacity: .22;
   filter: blur(9px) saturate(.45) brightness(.48);
   pointer-events: none;
-  transform: translate3d(-80px, 18px, -320px) rotateY(42deg) scale(.72);
+  transform: translate3d(calc(-50% - 640px), calc(-50% + 18px), -320px) rotateY(42deg) scale(.72);
 }
 
 .ff-kiosk-selection-3d .ff-kiosk-selection-card.is-far-next {
@@ -1025,7 +1030,7 @@
   opacity: .22;
   filter: blur(9px) saturate(.45) brightness(.48);
   pointer-events: none;
-  transform: translate3d(80px, 18px, -320px) rotateY(-42deg) scale(.72);
+  transform: translate3d(calc(-50% + 640px), calc(-50% + 18px), -320px) rotateY(-42deg) scale(.72);
 }
 
 .ff-kiosk-selection-image {
