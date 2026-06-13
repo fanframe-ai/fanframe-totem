@@ -134,6 +134,7 @@ tbody tr:hover { background: #f9fafb; }
 .hint { color: var(--muted); font-size: 13px; line-height: 1.5; }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .period-select { width: auto; min-width: 180px; }
+.dashboard-filters { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
 .filter-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 220px); gap: 12px; align-items: end; }
 .cpf-filter { min-width: 0; }
 .mini-chart { display: grid; gap: 12px; }
@@ -466,6 +467,14 @@ tbody tr:hover { background: #f9fafb; }
 .settings-card { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: grid; gap: 8px; box-shadow: var(--shadow); }
 .settings-card strong { font-size: 17px; }
 .settings-card span { color: var(--muted); line-height: 1.5; }
+.danger-zone { border-color: #fecaca; background: linear-gradient(180deg, #ffffff, #fff7f7); }
+.usage-reset-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.usage-reset-grid div { border: 1px solid var(--border); background: white; border-radius: 12px; padding: 12px; display: grid; gap: 3px; }
+.usage-reset-grid span { color: var(--muted); font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.usage-reset-grid strong { font-size: 22px; letter-spacing: -.02em; }
+.danger-zone-action { margin-top: 14px; display: flex; justify-content: space-between; gap: 14px; align-items: center; border: 1px solid #fecaca; border-radius: 14px; padding: 14px; background: #fff1f2; color: #7f1d1d; }
+.danger-zone-action strong, .danger-zone-action span { display: block; }
+.danger-zone-action span { margin-top: 4px; font-size: 13px; line-height: 1.45; color: #991b1b; }
 .filters { display: flex; gap: 12px; }
 .filters select { max-width: 220px; }
 
@@ -704,7 +713,7 @@ tbody tr:hover { background: #f9fafb; }
   .page-header h1 { font-size: 26px; }
   .dashboard-hero { padding: 20px; border-radius: 18px; }
   .dashboard-hero h2 { font-size: 28px; }
-  .stats-grid, .compact-stats, .executive-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .experience-grid, .waiting-slide-card, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .user-card, .list-toolbar, .list-toolbar.embedded, .photo-card, .photo-card-meta, .filter-panel, .sales-funnel { grid-template-columns: 1fr; }
+  .stats-grid, .compact-stats, .executive-stats, .form-grid, .compact-grid, .owner-grid, .asset-grid, .experience-grid, .waiting-slide-card, .remote-team-switch, .text-override-grid, .team-card-grid, .team-card-summary, .preview-list, .device-card-grid, .device-card-meta, .device-hero-facts, .sales-steps, .sales-detail-grid, .settings-card-grid, .usage-reset-grid, .user-card, .list-toolbar, .list-toolbar.embedded, .photo-card, .photo-card-meta, .filter-panel, .sales-funnel { grid-template-columns: 1fr; }
   .experience-grid > .wide-field { grid-column: 1 / -1; }
   .waiting-slide-preview { width: 100%; }
   .device-hero-panel { min-width: 0; }
@@ -722,6 +731,7 @@ tbody tr:hover { background: #f9fafb; }
   .filters select { max-width: none; }
   .filters { display: grid; grid-template-columns: 1fr; }
   .period-select { width: 100%; }
+  .dashboard-filters, .danger-zone-action { display: grid; grid-template-columns: 1fr; width: 100%; }
   .mini-chart-row { grid-template-columns: 54px minmax(0, 1fr); }
   .mini-chart-row strong { grid-column: 2; text-align: left; }
   .table-wrap table { min-width: 620px; }

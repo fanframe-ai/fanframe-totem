@@ -98,6 +98,7 @@ type GenerationQueueRow = {
   source: string | null;
   status: string;
   shirt_id: string | null;
+  kiosk_session_id?: string | null;
   error_message: string | null;
   created_at: string;
   result_image_url: string | null;
@@ -731,6 +732,7 @@ function Dashboard() {
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [generations, setGenerations] = useState<GenerationQueueRow[]>([]);
   const [rangeDays, setRangeDays] = useState(7);
+  const [deviceFilter, setDeviceFilter] = useState("");
 
   useEffect(() => {
     const since = new Date(Date.now() - rangeDays * 86400000).toISOString();
@@ -749,22 +751,27 @@ function Dashboard() {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const paidToday = payments.filter((p) => p.status === "paid" && new Date(p.paid_at || p.created_at) >= today);
-  const paid = payments.filter((p) => p.status === "paid");
+  const filteredSessions = deviceFilter ? sessions.filter((session) => session.device_id === deviceFilter) : sessions;
+  const filteredPayments = deviceFilter ? payments.filter((payment) => payment.device_id === deviceFilter) : payments;
+  const filteredGenerations = deviceFilter ? generations.filter((row) => filteredSessions.some((session) => session.generation_queue_id === row.id || session.id === row.kiosk_session_id)) : generations;
+  const selectedDevice = devices.find((device) => device.id === deviceFilter);
+  const paidToday = filteredPayments.filter((p) => p.status === "paid" && new Date(p.paid_at || p.created_at) >= today);
+  const paid = filteredPayments.filter((p) => p.status === "paid");
   const revenue = paid.reduce((sum, p) => sum + p.amount_cents, 0);
   const todayRevenue = paidToday.reduce((sum, p) => sum + p.amount_cents, 0);
-  const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
+  const visibleDevices = selectedDevice ? [selectedDevice] : devices;
+  const operationalIssues = visibleDevices.flatMap((device) => getOperationalIssues(device));
   const onlineDevices = devices.filter((d) => deviceHealthLabel(d) === "online").length;
   const offlineDevices = devices.filter((d) => isOffline(d.last_seen_at)).length;
   const paymentIssueCount = operationalIssues.filter((issue) => issue.type === "payment").length;
   const aiIssueCount = operationalIssues.filter((issue) => issue.type === "ai").length;
   const versionIssueCount = operationalIssues.filter((issue) => issue.type === "version").length;
-  const pendingPayments = payments.filter((payment) => payment.status === "pending").length;
-  const completedGenerations = generations.filter((row) => row.status === "completed").length;
-  const failedGenerations = generations.filter((row) => row.status === "failed").length;
-  const funnel = buildSalesFunnel(sessions, payments, generations);
-  const revenueSeries = buildRevenueSeries(payments);
-  const topDevices = buildTopBy(sessions, getDeviceLabel);
+  const pendingPayments = filteredPayments.filter((payment) => payment.status === "pending").length;
+  const completedGenerations = filteredGenerations.filter((row) => row.status === "completed").length;
+  const failedGenerations = filteredGenerations.filter((row) => row.status === "failed").length;
+  const funnel = buildSalesFunnel(filteredSessions, filteredPayments, filteredGenerations);
+  const revenueSeries = buildRevenueSeries(filteredPayments);
+  const topDevices = buildTopBy(filteredSessions, getDeviceLabel);
   const topTeams = buildTopBy(paid, (payment) => payment.teams?.name || "Time nao informado", (payment) => payment.amount_cents);
   const attentionTitle = operationalIssues.length
     ? `${operationalIssues.length} ponto${operationalIssues.length > 1 ? "s" : ""} para revisar`
@@ -774,14 +781,22 @@ function Dashboard() {
     <>
       <PageHeader
         title="Visao geral"
-        subtitle="Resumo de vendas, fotos e problemas dos totens."
+        subtitle={selectedDevice ? `Resumo filtrado por ${selectedDevice.label || selectedDevice.device_code}.` : "Resumo de vendas, fotos e problemas dos totens."}
         action={
-          <select className="period-select" value={rangeDays} onChange={(event) => setRangeDays(Number(event.target.value))}>
-            <option value="1">Hoje</option>
-            <option value="7">Ultimos 7 dias</option>
-            <option value="30">Ultimos 30 dias</option>
-            <option value="90">Ultimos 90 dias</option>
-          </select>
+          <div className="page-actions dashboard-filters">
+            <select className="period-select" value={rangeDays} onChange={(event) => setRangeDays(Number(event.target.value))}>
+              <option value="1">Hoje</option>
+              <option value="7">Ultimos 7 dias</option>
+              <option value="30">Ultimos 30 dias</option>
+              <option value="90">Ultimos 90 dias</option>
+            </select>
+            <select className="period-select" value={deviceFilter} onChange={(event) => setDeviceFilter(event.target.value)}>
+              <option value="">Todos os totens</option>
+              {devices.map((device) => (
+                <option key={device.id} value={device.id}>{device.label || device.device_code}</option>
+              ))}
+            </select>
+          </div>
         }
       />
       <section className="dashboard-hero operations-hero">
@@ -833,7 +848,7 @@ function Dashboard() {
             <Link className="secondary link-button" to="/sessoes">Abrir vendas</Link>
           </div>
           <div className="compact-list">
-            {sessions.slice(0, 10).map((s) => (
+            {filteredSessions.slice(0, 10).map((s) => (
               <div className="compact-row" key={s.id}>
                 <div>
                   <strong>{s.teams?.name || "-"}</strong>
@@ -845,7 +860,7 @@ function Dashboard() {
                 </div>
               </div>
             ))}
-            {sessions.length === 0 && <div className="empty-state">Nenhuma venda recente.</div>}
+            {filteredSessions.length === 0 && <div className="empty-state">Nenhuma venda recente.</div>}
           </div>
         </div>
         <div className="panel">
@@ -923,6 +938,10 @@ function Teams() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [message, setMessage] = useState("");
+  const activeTeams = teams.filter((team) => team.kiosk_enabled !== false && team.is_active !== false).length;
+  const pausedTeams = teams.filter((team) => team.kiosk_enabled === false || team.is_active === false).length;
+  const teamsMissingAssets = teams.filter((team) => (team.shirts || []).length === 0 || !(team.backgrounds || []).some((asset) => asset.visible !== false)).length;
+  const averagePrice = teams.length ? Math.round(teams.reduce((sum, team) => sum + (team.kiosk_price_cents || 0), 0) / teams.length) : 0;
   const filteredTeams = teams.filter((team) => {
     const haystack = [team.name, team.slug, team.subdomain].join(" ").toLowerCase();
     const matchesSearch = haystack.includes(search.trim().toLowerCase());
@@ -974,6 +993,12 @@ function Teams() {
         subtitle="Configure o que cada torcida vai ver no totem."
         action={<Link className="primary link-button" to="/times/novo"><Plus size={16} /> Novo time</Link>}
       />
+      <section className="stats-grid compact-stats">
+        <StatCard label="Vendendo" value={activeTeams} tone="success" />
+        <StatCard label="Pausados" value={pausedTeams} tone={pausedTeams ? "warning" : undefined} />
+        <StatCard label="Falta revisar" value={teamsMissingAssets} tone={teamsMissingAssets ? "warning" : "success"} />
+        <StatCard label="Preco medio" value={money(averagePrice)} />
+      </section>
       <section className="list-toolbar">
         <label>
           Buscar time
@@ -1013,7 +1038,7 @@ function Teams() {
               <div><span>Cenario IA</span><strong>{(team.backgrounds || []).some((asset) => asset.visible !== false) ? "OK" : "Falta"}</strong></div>
             </div>
             <div className="team-card-footer">
-              <span>{team.slug ? `/${team.slug}` : "Sem codigo"}</span>
+              <span>{team.slug ? `Codigo: ${team.slug}` : "Sem codigo"}</span>
               <div className="team-card-actions">
                 <Link className="secondary link-button" to={getKioskPreviewUrl(team.slug)}>Ver kiosk online</Link>
                 <Link className="primary link-button" to={`/times/${team.slug}`}>Editar time</Link>
@@ -3871,7 +3896,51 @@ function UsersPage({ role }: { role: Role | null }) {
   );
 }
 
-function SettingsPage() {
+function SettingsPage({ role }: { role: Role | null }) {
+  const [usageCounts, setUsageCounts] = useState<Record<string, number> | null>(null);
+  const [usageMessage, setUsageMessage] = useState("");
+  const [clearingUsage, setClearingUsage] = useState(false);
+  const canClearUsage = role === "super_admin";
+
+  async function loadUsageCounts() {
+    const { data, error } = await supabase.functions.invoke("admin-maintenance", { body: { action: "usage_counts" } });
+    if (error || data?.error) {
+      setUsageMessage(data?.error || error?.message || "Nao foi possivel carregar os dados de uso.");
+      return;
+    }
+    setUsageCounts(data.counts || {});
+  }
+
+  useEffect(() => { if (canClearUsage) loadUsageCounts(); }, [canClearUsage]);
+
+  async function clearUsageData() {
+    const confirmation = window.prompt("Esta acao apaga vendas, pagamentos, funil, links e historico de geracao do totem. Para confirmar, digite: LIMPAR DADOS");
+    if (confirmation !== "LIMPAR DADOS") {
+      if (confirmation !== null) setUsageMessage("Limpeza cancelada: confirmacao diferente de LIMPAR DADOS.");
+      return;
+    }
+
+    setClearingUsage(true);
+    setUsageMessage("");
+    const { data, error } = await supabase.functions.invoke("admin-maintenance", {
+      body: { action: "clear_usage", confirmation },
+    });
+    setClearingUsage(false);
+    if (error || data?.error) {
+      setUsageMessage(data?.error || error?.message || "Nao foi possivel limpar os dados.");
+      return;
+    }
+    setUsageCounts(data.after || {});
+    setUsageMessage("Dados de uso limpos. Times, totens, usuarios, imagens e configuracoes foram mantidos.");
+  }
+
+  const usageTotal =
+    (usageCounts?.kiosk_sessions || 0) +
+    (usageCounts?.kiosk_payments || 0) +
+    (usageCounts?.kiosk_delivery_links || 0) +
+    (usageCounts?.generation_queue || 0) +
+    (usageCounts?.generations || 0);
+
   return (
     <>
       <PageHeader title="Ajustes" subtitle="Informacoes simples sobre publicacao e integracoes." />
@@ -3893,6 +3962,35 @@ function SettingsPage() {
           <span>Replicate, PagBank e chaves sensiveis ficam no Supabase, fora da tela do operador.</span>
         </div>
       </section>
+      {canClearUsage && (
+        <section className="panel danger-zone">
+          <div className="section-heading">
+            <div>
+              <h2>Limpar dados de uso</h2>
+              <p>Use quando quiser zerar dashboard, receita, funil e historico operacional antes de iniciar uma nova operacao.</p>
+            </div>
+            <button className="secondary" type="button" onClick={loadUsageCounts}><RefreshCw size={16} /> Atualizar contagem</button>
+          </div>
+          <div className="usage-reset-grid">
+            <div><span>Atendimentos</span><strong>{usageCounts?.kiosk_sessions ?? "-"}</strong></div>
+            <div><span>Pagamentos</span><strong>{usageCounts?.kiosk_payments ?? "-"}</strong></div>
+            <div><span>Links de foto</span><strong>{usageCounts?.kiosk_delivery_links ?? "-"}</strong></div>
+            <div><span>Fila de IA</span><strong>{usageCounts?.generation_queue ?? "-"}</strong></div>
+            <div><span>Historico IA</span><strong>{usageCounts?.generations ?? "-"}</strong></div>
+            <div><span>Total</span><strong>{usageCounts ? usageTotal : "-"}</strong></div>
+          </div>
+          <div className="danger-zone-action">
+            <div>
+              <strong>Essa limpeza nao apaga times nem totens.</strong>
+              <span>Ela remove dados de uso: vendas, pagamentos, funil, fotos entregues e registros de IA ligados ao totem.</span>
+            </div>
+            <button className="danger" type="button" onClick={clearUsageData} disabled={clearingUsage}>
+              <Trash2 size={16} /> {clearingUsage ? "Limpando..." : "Limpar dados de uso"}
+            </button>
+          </div>
+          {usageMessage && <p className="hint">{usageMessage}</p>}
+        </section>
+      )}
     </>
   );
 }
@@ -4143,7 +4241,7 @@ function App() {
               <Route path="/status" element={<Navigate to="/problemas" replace />} />
               <Route path="/problemas" element={<RoleGate role={auth.role} allowed={["super_admin", "admin", "support"]}><ProblemsPage /></RoleGate>} />
               <Route path="/usuarios" element={<RoleGate role={auth.role} allowed={["super_admin"]}><UsersPage role={auth.role} /></RoleGate>} />
-              <Route path="/configuracoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin"]}><SettingsPage /></RoleGate>} />
+              <Route path="/configuracoes" element={<RoleGate role={auth.role} allowed={["super_admin", "admin"]}><SettingsPage role={auth.role} /></RoleGate>} />
             </Routes>
           </Layout>
         </Protected>
