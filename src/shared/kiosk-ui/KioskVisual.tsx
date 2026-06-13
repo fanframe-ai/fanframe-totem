@@ -455,7 +455,7 @@ export function KioskSelectionVisual({
           </>
         )}
       </div>
-      {cta && <footer className="ff-kiosk-selection-footer">{cta}</footer>}
+      {cta && !isShirtCarousel && <footer className="ff-kiosk-selection-footer">{cta}</footer>}
     </section>
   );
 }

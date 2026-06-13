@@ -1488,12 +1488,7 @@ function TeamVisualBuilder({
           selectedId={selection.type === "shirt" ? shirts[selection.index]?.id : undefined}
           emptyLabel="Adicionar camisa"
           onSelect={(_, index) => setSelection({ type: "shirt", index } as BuilderSelection)}
-          cta={
-            <div className="builder-preview-actions">
-              <EditablePreviewText fieldKey="kiosk_cancel" texts={textOverrides} selected={selectedTextKey === "kiosk_cancel"} variant="ghost-action" onSelect={() => selectText("kiosk_cancel")} onChange={setTextOverride} />
-              <EditablePreviewText fieldKey="kiosk_continue" texts={textOverrides} selected={selectedTextKey === "kiosk_continue"} variant="cta compact" onSelect={() => selectText("kiosk_continue")} onChange={setTextOverride} />
-            </div>
-          }
+          cta={null}
         />
       );
     }
@@ -2569,6 +2564,17 @@ function DeviceDetail({ role }: { role: Role | null }) {
     expectedAppVersion: "",
     updateChannel: "stable" as NonNullable<KioskDevice["update_channel"]>,
   });
+  const [deviceInfoForm, setDeviceInfoForm] = useState({
+    label: "",
+    city: "",
+    venue: "",
+    location: "",
+    owner_name: "",
+    owner_phone: "",
+    owner_email: "",
+    installation_notes: "",
+    status: "active",
+  });
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
 
@@ -2610,6 +2616,17 @@ function DeviceDetail({ role }: { role: Role | null }) {
           : "",
       expectedAppVersion: device.expected_app_version || "",
       updateChannel: device.update_channel || "stable",
+    });
+    setDeviceInfoForm({
+      label: device.label || "",
+      city: device.city || "",
+      venue: device.venue || "",
+      location: device.location || "",
+      owner_name: device.owner_name || "",
+      owner_phone: device.owner_phone || "",
+      owner_email: device.owner_email || "",
+      installation_notes: device.installation_notes || "",
+      status: device.status || "active",
     });
   }, [device]);
 
@@ -2686,6 +2703,41 @@ function DeviceDetail({ role }: { role: Role | null }) {
       load();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Erro ao enviar comando.");
+    }
+  }
+
+  async function saveDeviceInfo(event: FormEvent) {
+    event.preventDefault();
+    if (!device) return;
+    setMessage("");
+    try {
+      const { error } = await supabase
+        .from("kiosk_devices")
+        .update({
+          label: deviceInfoForm.label.trim() || device.device_code,
+          city: deviceInfoForm.city.trim() || null,
+          venue: deviceInfoForm.venue.trim() || null,
+          location: deviceInfoForm.location.trim() || null,
+          owner_name: deviceInfoForm.owner_name.trim() || null,
+          owner_phone: deviceInfoForm.owner_phone.trim() || null,
+          owner_email: deviceInfoForm.owner_email.trim() || null,
+          installation_notes: deviceInfoForm.installation_notes.trim() || null,
+          status: deviceInfoForm.status,
+          config_version: (device.config_version || 0) + 1,
+        })
+        .eq("id", device.id);
+      if (error) throw error;
+
+      await logAdminAudit("kiosk_devices", device.id, "device_info_updated", {
+        deviceCode: device.device_code,
+        label: deviceInfoForm.label,
+        status: deviceInfoForm.status,
+      });
+      await enqueueDeviceCommand(device.id, "sync_config", { reason: "device_info_updated" });
+      setMessage("Informacoes do totem salvas.");
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao salvar informacoes do totem.");
     }
   }
 
@@ -2805,6 +2857,61 @@ function DeviceDetail({ role }: { role: Role | null }) {
           <div><span>Acoes em fila</span><strong>{pendingCommandCount}</strong></div>
         </div>
       </section>
+
+      {canEditDevices && (
+        <section className="panel">
+          <div className="section-heading">
+            <div>
+              <h2>Informacoes do totem</h2>
+              <p>Edite o nome, local e responsavel sem reinstalar o app.</p>
+            </div>
+            <button className="primary" form="device-info-form"><Save size={16} /> Salvar informacoes</button>
+          </div>
+          <form id="device-info-form" className="simple-device-form" onSubmit={saveDeviceInfo}>
+            <div className="form-block">
+              <div className="form-block-title">Identificacao</div>
+              <div className="compact-grid">
+                <label>Nome do totem
+                  <input value={deviceInfoForm.label} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, label: event.target.value })} placeholder="Ex: Shopping Tatuape - Entrada A" />
+                </label>
+                <label>Status
+                  <select value={deviceInfoForm.status} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, status: event.target.value })}>
+                    <option value="active">Funcionando</option>
+                    <option value="maintenance">Em manutencao</option>
+                    <option value="disabled">Desabilitado</option>
+                  </select>
+                </label>
+                <label>Cidade
+                  <input value={deviceInfoForm.city} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, city: event.target.value })} placeholder="Ex: Rio de Janeiro" />
+                </label>
+                <label>Ponto
+                  <input value={deviceInfoForm.venue} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, venue: event.target.value })} placeholder="Ex: shopping, loja, estadio" />
+                </label>
+                <label>Local dentro do ponto
+                  <input value={deviceInfoForm.location} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, location: event.target.value })} placeholder="Ex: perto da entrada principal" />
+                </label>
+              </div>
+            </div>
+            <div className="form-block">
+              <div className="form-block-title">Responsavel no local</div>
+              <div className="compact-grid owner-grid">
+                <label>Nome
+                  <input value={deviceInfoForm.owner_name} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, owner_name: event.target.value })} placeholder="Nome do dono ou gerente" />
+                </label>
+                <label>WhatsApp
+                  <input value={deviceInfoForm.owner_phone} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, owner_phone: event.target.value })} placeholder="Telefone para suporte" />
+                </label>
+                <label>Email
+                  <input value={deviceInfoForm.owner_email} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, owner_email: event.target.value })} placeholder="Opcional" />
+                </label>
+              </div>
+            </div>
+            <label>Observacoes
+              <textarea rows={3} value={deviceInfoForm.installation_notes} onChange={(event) => setDeviceInfoForm({ ...deviceInfoForm, installation_notes: event.target.value })} placeholder="Informacoes importantes para suporte e manutencao" />
+            </label>
+          </form>
+        </section>
+      )}
 
       <section className="panel device-actions">
         <div>
