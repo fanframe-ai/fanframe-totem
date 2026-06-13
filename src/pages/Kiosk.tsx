@@ -1888,8 +1888,10 @@ export default function KioskPage() {
         {step === "camera-ready" && (
           <KioskCameraReadyVisual
             title={copy("kiosk_camera_ready_title", "Prepare-se para a foto")}
-            hint={copy("kiosk_camera_ready_hint", `Toque no botao e fique em posicao. A foto sera tirada automaticamente em ${cameraCountdownSeconds} segundos.`)}
-            countdownSeconds={cameraCountdownSeconds}
+            hint={copy("kiosk_camera_ready_hint", `Toque no botão e fique em posição. A foto será tirada automaticamente em ${cameraCountdownSeconds} segundos.`)
+              .replace(/\bbotao\b/gi, "botão")
+              .replace(/\bposicao\b/gi, "posição")
+              .replace(/\bsera\b/gi, "será")}
             buttonLabel={copy("kiosk_camera_ready_button", `Capturar em ${cameraCountdownSeconds}s`)}
             onStart={startCameraCapture}
           />

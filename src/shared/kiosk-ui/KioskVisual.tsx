@@ -129,7 +129,6 @@ type KioskCameraReadyVisualProps = {
   title: ReactNode;
   hint: ReactNode;
   buttonLabel: ReactNode;
-  countdownSeconds: number;
   onStart?: () => void;
 };
 
@@ -664,14 +663,14 @@ export function KioskCameraReadyVisual({
   title,
   hint,
   buttonLabel,
-  countdownSeconds,
   onStart,
 }: KioskCameraReadyVisualProps) {
   return (
     <section className="ff-kiosk-camera-ready">
       <div className="ff-kiosk-camera-ready-card">
-        <Camera />
-        <span>{countdownSeconds}s</span>
+        <div className="ff-kiosk-camera-ready-icon" aria-hidden="true">
+          <Camera />
+        </div>
         <h2>{title}</h2>
         <p>{hint}</p>
         <button type="button" className="ff-kiosk-primary-action is-wide" onClick={onStart}>

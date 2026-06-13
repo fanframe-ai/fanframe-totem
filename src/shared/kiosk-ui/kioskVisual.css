@@ -1746,28 +1746,22 @@
     0 28px 78px rgb(0 0 0 / .56),
     0 0 0 1px rgb(255 255 255 / .06) inset;
   text-align: center;
+  transform: translateY(-32px);
 }
 
-.ff-kiosk-camera-ready-card > svg {
+.ff-kiosk-camera-ready-icon {
+  display: grid;
+  width: 96px;
+  height: 76px;
+  margin: 0 auto 24px;
+  place-items: center;
+  color: #e8c36d;
+}
+
+.ff-kiosk-camera-ready-icon svg {
   width: 74px;
   height: 74px;
-  margin-bottom: 18px;
-  color: #e8c36d;
   filter: drop-shadow(0 0 18px rgb(232 195 109 / .32));
-}
-
-.ff-kiosk-camera-ready-card > span {
-  display: inline-grid;
-  min-width: 96px;
-  min-height: 48px;
-  margin-bottom: 22px;
-  place-items: center;
-  border: 1px solid rgb(232 195 109 / .7);
-  border-radius: 999px;
-  color: #e8c36d;
-  font-size: 24px;
-  font-weight: 950;
-  text-transform: uppercase;
 }
 
 .ff-kiosk-camera-ready-card h2 {
