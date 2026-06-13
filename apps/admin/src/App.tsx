@@ -635,14 +635,14 @@ function RoleGate({ role, allowed, children }: { role: Role | null; allowed: Rol
 
 function Layout({ auth, children }: { auth: AuthState; children: React.ReactNode }) {
   const nav = [
-    { href: "/", Icon: LayoutDashboard, label: "Inicio", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
+    { href: "/", Icon: LayoutDashboard, label: "Visao geral", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
     { href: "/times", Icon: Shirt, label: "Times", roles: ["super_admin", "admin"] as Role[] },
     { href: "/totens", Icon: Monitor, label: "Totens", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/sessoes", Icon: Activity, label: "Vendas", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
     { href: "/fotos", Icon: ImageIcon, label: "Fotos", roles: ["super_admin", "admin", "support", "finance"] as Role[] },
     { href: "/sorteio", Icon: Gift, label: "Sorteio", roles: ["super_admin", "admin", "support"] as Role[] },
     { href: "/problemas", Icon: AlertTriangle, label: "Problemas", roles: ["super_admin", "admin", "support"] as Role[] },
-    { href: "/usuarios", Icon: Users, label: "Usuarios", roles: ["super_admin"] as Role[] },
+    { href: "/usuarios", Icon: Users, label: "Equipe", roles: ["super_admin"] as Role[] },
     { href: "/configuracoes", Icon: Settings, label: "Ajustes", roles: ["super_admin", "admin"] as Role[] },
   ].filter((item) => hasRole(auth.role, item.roles));
 
@@ -689,11 +689,12 @@ function PageHeader({ title, subtitle, action }: { title: string; subtitle?: str
   );
 }
 
-function StatCard({ label, value, tone = "neutral" }: { label: string; value: string | number; tone?: string }) {
+function StatCard({ label, value, tone = "neutral", detail }: { label: string; value: string | number; tone?: string; detail?: string }) {
   return (
     <div className={`stat-card ${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
+      {detail && <small>{detail}</small>}
     </div>
   );
 }
@@ -728,78 +729,111 @@ function Dashboard() {
   const [devices, setDevices] = useState<KioskDevice[]>([]);
   const [sessions, setSessions] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
+  const [generations, setGenerations] = useState<GenerationQueueRow[]>([]);
+  const [rangeDays, setRangeDays] = useState(7);
 
   useEffect(() => {
+    const since = new Date(Date.now() - rangeDays * 86400000).toISOString();
     Promise.all([
       supabase.from("kiosk_devices").select("*, teams(name, slug)").order("last_seen_at", { ascending: false }),
-      supabase.from("kiosk_sessions").select("*, teams(name, slug), kiosk_devices(device_code,label,location)").order("created_at", { ascending: false }).limit(20),
-      supabase.from("kiosk_payments").select("*, teams(name, slug)").order("created_at", { ascending: false }).limit(100),
-    ]).then(([deviceRes, sessionRes, paymentRes]) => {
+      supabase.from("kiosk_sessions").select("*, teams(name, slug), kiosk_devices(device_code,label,location)").gte("created_at", since).order("created_at", { ascending: false }).limit(300),
+      supabase.from("kiosk_payments").select("*, teams(name, slug)").gte("created_at", since).order("created_at", { ascending: false }).limit(300),
+      supabase.from("generation_queue").select("*, teams(name, slug)").gte("created_at", since).order("created_at", { ascending: false }).limit(300),
+    ]).then(([deviceRes, sessionRes, paymentRes, generationRes]) => {
       setDevices((deviceRes.data || []) as KioskDevice[]);
       setSessions((sessionRes.data || []) as KioskSession[]);
       setPayments((paymentRes.data || []) as KioskPayment[]);
+      setGenerations((generationRes.data || []) as GenerationQueueRow[]);
     });
-  }, []);
+  }, [rangeDays]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const paidToday = payments.filter((p) => p.status === "paid" && new Date(p.paid_at || p.created_at) >= today);
-  const revenue = paidToday.reduce((sum, p) => sum + p.amount_cents, 0);
+  const paid = payments.filter((p) => p.status === "paid");
+  const revenue = paid.reduce((sum, p) => sum + p.amount_cents, 0);
+  const todayRevenue = paidToday.reduce((sum, p) => sum + p.amount_cents, 0);
   const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
   const onlineDevices = devices.filter((d) => deviceHealthLabel(d) === "online").length;
   const offlineDevices = devices.filter((d) => isOffline(d.last_seen_at)).length;
   const paymentIssueCount = operationalIssues.filter((issue) => issue.type === "payment").length;
   const aiIssueCount = operationalIssues.filter((issue) => issue.type === "ai").length;
   const versionIssueCount = operationalIssues.filter((issue) => issue.type === "version").length;
+  const pendingPayments = payments.filter((payment) => payment.status === "pending").length;
+  const completedGenerations = generations.filter((row) => row.status === "completed").length;
+  const failedGenerations = generations.filter((row) => row.status === "failed").length;
+  const funnel = buildSalesFunnel(sessions, payments, generations);
+  const revenueSeries = buildRevenueSeries(payments);
+  const topDevices = buildTopBy(sessions, getDeviceLabel);
+  const topTeams = buildTopBy(paid, (payment) => payment.teams?.name || "Time nao informado", (payment) => payment.amount_cents);
+  const attentionTitle = operationalIssues.length
+    ? `${operationalIssues.length} ponto${operationalIssues.length > 1 ? "s" : ""} para revisar`
+    : "Operacao sem alerta critico";
 
   return (
     <>
-      <PageHeader title="Inicio" subtitle="O que precisa de atencao hoje nos seus totens." />
-      <section className="dashboard-hero">
+      <PageHeader
+        title="Visao geral"
+        subtitle="Resumo de vendas, fotos e problemas dos totens."
+        action={
+          <select className="period-select" value={rangeDays} onChange={(event) => setRangeDays(Number(event.target.value))}>
+            <option value="1">Hoje</option>
+            <option value="7">Ultimos 7 dias</option>
+            <option value="30">Ultimos 30 dias</option>
+            <option value="90">Ultimos 90 dias</option>
+          </select>
+        }
+      />
+      <section className="dashboard-hero operations-hero">
         <div>
-          <span>Resumo da operacao</span>
-          <h2>{operationalIssues.length ? `${operationalIssues.length} ponto${operationalIssues.length > 1 ? "s" : ""} para revisar` : "Tudo tranquilo agora"}</h2>
-          <p>{offlineDevices ? `${offlineDevices} totem(ns) sem contato. Veja a fila de problemas antes de mexer em configuracoes.` : "Nenhum totem offline detectado neste momento."}</p>
+          <span>Operacao FanFrame</span>
+          <h2>{attentionTitle}</h2>
+          <p>{offlineDevices ? `${offlineDevices} totem sem contato agora. Priorize isso antes de ajustar times ou campanhas.` : "Totens principais respondendo. Acompanhe vendas, PIX e fotos geradas abaixo."}</p>
         </div>
         <div className="dashboard-hero-actions">
-          <Link className="primary link-button" to="/problemas">Ver problemas</Link>
-          <Link className="secondary link-button" to="/totens">Ver totens</Link>
+          <Link className="primary link-button" to="/sessoes">Ver vendas</Link>
+          <Link className="secondary link-button" to="/problemas">Resolver problemas</Link>
         </div>
       </section>
-      <section className="stats-grid compact-stats">
-        <ProblemMetricCard label="Totens sem contato" value={offlineDevices} tone={offlineDevices ? "danger" : "neutral"} />
-        <ProblemMetricCard label="Pagamentos com erro" value={paymentIssueCount} tone={paymentIssueCount ? "danger" : "neutral"} />
-        <ProblemMetricCard label="IA com falha" value={aiIssueCount} tone={aiIssueCount ? "danger" : "neutral"} />
-        <ProblemMetricCard label="Precisam atualizar" value={versionIssueCount} tone={versionIssueCount ? "warning" : "neutral"} />
-        <StatCard label="Totens online" value={onlineDevices} tone="success" />
-        <StatCard label="Vendas hoje" value={paidToday.length} tone="success" />
-        <StatCard label="Receita hoje" value={money(revenue)} tone="success" />
-        <StatCard label="Times ativos" value={teams.filter((t) => t.is_active).length} />
+      <section className="stats-grid compact-stats executive-stats">
+        <StatCard label="Receita hoje" value={money(todayRevenue)} tone="success" detail={`${paidToday.length} venda(s)`} />
+        <StatCard label={`Receita ${rangeDays}d`} value={money(revenue)} tone="success" detail={`${paid.length} PIX pago(s)`} />
+        <StatCard label="PIX pendentes" value={pendingPayments} tone={pendingPayments ? "warning" : "neutral"} />
+        <StatCard label="Fotos prontas" value={completedGenerations} tone="success" />
+        <StatCard label="Falhas na IA" value={failedGenerations} tone={failedGenerations ? "danger" : "neutral"} />
+        <StatCard label="Totens online" value={`${onlineDevices}/${devices.length || 0}`} tone={offlineDevices ? "warning" : "success"} />
       </section>
-      <section className="panel">
-        <h2>Precisa de atencao</h2>
-        {operationalIssues.length > 0 ? (
-          <div className="issue-card-list">
-            {operationalIssues.slice(0, 8).map((issue) => (
-              <article className="issue-card" key={`${issue.deviceId}-${issue.type}`}>
-                <div>
-                  <Badge value={issue.severity} />
-                  <h3>{issue.deviceLabel}</h3>
-                  <p>{issue.message}</p>
-                </div>
-                <Link className="primary link-button" to={`/totens/${issue.deviceId}`}>Abrir</Link>
-              </article>
-            ))}
+      <section className="dashboard-grid">
+        <div className="panel insight-panel">
+          <div className="section-heading table-heading">
+            <div>
+              <h2>Funil do atendimento</h2>
+              <p>Onde o cliente para dentro do fluxo do totem.</p>
+            </div>
           </div>
-        ) : (
-          <div className="empty-state">Nenhum problema importante detectado agora.</div>
-        )}
+          <SalesFunnel steps={funnel} />
+        </div>
+        <div className="panel insight-panel">
+          <div className="section-heading table-heading">
+            <div>
+              <h2>Receita por dia</h2>
+              <p>PIX aprovados no periodo escolhido.</p>
+            </div>
+          </div>
+          <MiniBarChart data={revenueSeries} valueFormatter={money} />
+        </div>
       </section>
       <section className="two-col">
         <div className="panel">
-          <h2>Vendas recentes</h2>
+          <div className="section-heading table-heading">
+            <div>
+              <h2>Vendas recentes</h2>
+              <p>Ultimos atendimentos do periodo.</p>
+            </div>
+            <Link className="secondary link-button" to="/sessoes">Abrir vendas</Link>
+          </div>
           <div className="compact-list">
-            {sessions.map((s) => (
+            {sessions.slice(0, 10).map((s) => (
               <div className="compact-row" key={s.id}>
                 <div>
                   <strong>{s.teams?.name || "-"}</strong>
@@ -815,20 +849,53 @@ function Dashboard() {
           </div>
         </div>
         <div className="panel">
-          <h2>Totens recentes</h2>
+          <div className="section-heading table-heading">
+            <div>
+              <h2>Ranking do periodo</h2>
+              <p>Times e totens com mais movimento.</p>
+            </div>
+          </div>
           <div className="compact-list">
-            {devices.slice(0, 12).map((d) => (
-              <Link className="compact-row" to={`/totens/${d.id}`} key={d.id}>
-                <div>
-                  <strong>{d.label || d.device_code}</strong>
-                  <span>{d.teams?.name || "-"} - {dateTime(d.last_seen_at)}</span>
-                </div>
-                <Badge value={deviceHealthLabel(d)} />
-              </Link>
+            {topTeams.map((item) => (
+              <div className="compact-row" key={item.label}>
+                <div><strong>{item.label}</strong><span>Receita aprovada</span></div>
+                <strong>{money(item.value)}</strong>
+              </div>
             ))}
-            {devices.length === 0 && <div className="empty-state">Nenhum totem cadastrado.</div>}
+            {topDevices.map((item) => (
+              <div className="compact-row" key={item.label}>
+                <div><strong>{item.label}</strong><span>Atendimentos</span></div>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+            {topTeams.length === 0 && topDevices.length === 0 && <div className="empty-state">Sem ranking neste periodo.</div>}
           </div>
         </div>
+      </section>
+      <section className="panel">
+        <div className="section-heading table-heading">
+          <div>
+            <h2>Precisa de atencao</h2>
+            <p>Lista objetiva do que pode impedir venda ou entrega.</p>
+          </div>
+          <Link className="secondary link-button" to="/problemas">Ver todos</Link>
+        </div>
+        {operationalIssues.length > 0 ? (
+          <div className="issue-card-list dashboard-issue-list">
+            {operationalIssues.slice(0, 6).map((issue) => (
+              <article className="issue-card" key={`${issue.deviceId}-${issue.type}`}>
+                <div>
+                  <Badge value={issue.severity} />
+                  <h3>{issue.deviceLabel}</h3>
+                  <p>{issue.message}</p>
+                </div>
+                <Link className="primary link-button" to={`/totens/${issue.deviceId}`}>Resolver</Link>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">Nenhum problema importante detectado agora.</div>
+        )}
       </section>
     </>
   );
@@ -960,6 +1027,94 @@ function Teams() {
         )}
       </section>
     </>
+  );
+}
+
+function getSessionPayment(session: KioskSession, payments: KioskPayment[]) {
+  return payments.find((item) => item.session_id === session.id || item.id === session.payment_id);
+}
+
+function getSessionGeneration(session: KioskSession, generations: GenerationQueueRow[]) {
+  return generations.find((item) => item.id === session.generation_queue_id);
+}
+
+function getDeviceLabel(session: KioskSession) {
+  return session.kiosk_devices?.label || session.kiosk_devices?.device_code || "Totem nao informado";
+}
+
+function percent(value: number, total: number) {
+  if (!total) return "0%";
+  return `${Math.round((value / total) * 100)}%`;
+}
+
+function buildSalesFunnel(rows: KioskSession[], payments: KioskPayment[], generations: GenerationQueueRow[]) {
+  const total = rows.length;
+  const paid = rows.filter((row) => getSessionPayment(row, payments)?.status === "paid" || ["paid", "completed"].includes(row.status)).length;
+  const captured = rows.filter((row) => Boolean(row.generation_queue_id)).length;
+  const generated = rows.filter((row) => row.status === "completed" || getSessionGeneration(row, generations)?.status === "completed").length;
+  const failed = rows.filter((row) => row.status === "failed" || getSessionGeneration(row, generations)?.status === "failed").length;
+  return [
+    { label: "Atendimentos", value: total },
+    { label: "PIX pago", value: paid },
+    { label: "Foto tirada", value: captured },
+    { label: "Foto pronta", value: generated },
+    { label: "Com erro", value: failed },
+  ];
+}
+
+function buildRevenueSeries(payments: KioskPayment[]) {
+  const buckets = new Map<string, number>();
+  payments
+    .filter((payment) => payment.status === "paid")
+    .forEach((payment) => {
+      const date = new Date(payment.paid_at || payment.created_at);
+      const key = `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
+      buckets.set(key, (buckets.get(key) || 0) + payment.amount_cents);
+    });
+  return Array.from(buckets.entries()).slice(-7).map(([label, value]) => ({ label, value }));
+}
+
+function buildTopBy<T>(items: T[], keyFn: (item: T) => string, valueFn: (item: T) => number = () => 1) {
+  const map = new Map<string, number>();
+  items.forEach((item) => {
+    const key = keyFn(item) || "Nao informado";
+    map.set(key, (map.get(key) || 0) + valueFn(item));
+  });
+  return Array.from(map.entries())
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+}
+
+function MiniBarChart({ data, valueFormatter = String }: { data: { label: string; value: number }[]; valueFormatter?: (value: number) => string }) {
+  const max = Math.max(...data.map((item) => item.value), 1);
+  return (
+    <div className="mini-chart">
+      {data.length === 0 && <div className="empty-state">Sem dados para o periodo.</div>}
+      {data.map((item) => (
+        <div className="mini-chart-row" key={item.label}>
+          <span>{item.label}</span>
+          <div><i style={{ width: `${Math.max(4, (item.value / max) * 100)}%` }} /></div>
+          <strong>{valueFormatter(item.value)}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SalesFunnel({ steps }: { steps: { label: string; value: number }[] }) {
+  const total = steps[0]?.value || 0;
+  return (
+    <div className="sales-funnel">
+      {steps.map((step, index) => (
+        <div className="funnel-step" key={step.label}>
+          <span>{step.label}</span>
+          <strong>{step.value}</strong>
+          <small>{index === 0 ? "base" : percent(step.value, total)}</small>
+          <div><i style={{ width: index === 0 ? "100%" : percent(step.value, total) }} /></div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -3182,35 +3337,78 @@ function Sessions() {
   const revenue = paid.reduce((sum, payment) => sum + payment.amount_cents, 0);
   const pendingPayments = payments.filter((payment) => payment.status === "pending").length;
   const failedGenerations = generations.filter((row) => row.status === "failed").length;
+  const completedGenerations = generations.filter((row) => row.status === "completed").length;
+  const funnel = buildSalesFunnel(rows, payments, generations);
+  const revenueSeries = buildRevenueSeries(payments);
+  const topDevices = buildTopBy(rows, getDeviceLabel);
 
   return (
     <>
-      <PageHeader title="Vendas" subtitle="Atendimentos, pagamentos e fotos em uma tela so." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
-      <section className="stats-grid compact-stats">
+      <PageHeader title="Vendas" subtitle="Acompanhe dinheiro recebido, PIX pendente e fotos entregues." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
+      <section className="stats-grid compact-stats executive-stats">
+        <StatCard label="Receita" value={money(revenue)} tone="success" detail={`${paid.length} PIX pago(s)`} />
         <StatCard label="Atendimentos" value={rows.length} />
-        <StatCard label="Pagas" value={paid.length} tone="success" />
-        <StatCard label="Pendente" value={pendingPayments} tone={pendingPayments ? "warning" : "neutral"} />
-        <StatCard label="Receita" value={money(revenue)} tone="success" />
+        <StatCard label="PIX pendentes" value={pendingPayments} tone={pendingPayments ? "warning" : "neutral"} />
+        <StatCard label="Fotos prontas" value={completedGenerations} tone="success" />
         <StatCard label="Falhas IA" value={failedGenerations} tone={failedGenerations ? "danger" : "neutral"} />
       </section>
       <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
+      <section className="dashboard-grid">
+        <div className="panel insight-panel">
+          <div className="section-heading table-heading">
+            <div>
+              <h2>Funil de vendas</h2>
+              <p>Mostra rapidamente em qual etapa existe perda.</p>
+            </div>
+          </div>
+          <SalesFunnel steps={funnel} />
+        </div>
+        <div className="panel insight-panel">
+          <div className="section-heading table-heading">
+            <div>
+              <h2>Receita por dia</h2>
+              <p>Pagamentos PIX aprovados no periodo.</p>
+            </div>
+          </div>
+          <MiniBarChart data={revenueSeries} valueFormatter={money} />
+        </div>
+      </section>
+      <section className="panel">
+        <div className="section-heading table-heading">
+          <div>
+            <h2>Totens que mais venderam</h2>
+            <p>Ranking por quantidade de atendimentos.</p>
+          </div>
+        </div>
+        <div className="ranking-grid">
+          {topDevices.map((item, index) => (
+            <div className="ranking-card" key={item.label}>
+              <span>{index + 1}</span>
+              <strong>{item.label}</strong>
+              <small>{item.value} atendimento(s)</small>
+            </div>
+          ))}
+          {topDevices.length === 0 && <div className="empty-state">Sem ranking neste filtro.</div>}
+        </div>
+      </section>
       <div className="panel">
         <div className="section-heading table-heading">
           <div>
             <h2>Atendimentos</h2>
-            <p>O caminho completo do cliente: escolha, pagamento, foto e entrega.</p>
+            <p>Cada card representa uma venda ou tentativa de venda.</p>
           </div>
         </div>
         <div className="sales-card-list">
           {rows.map((row) => {
-            const payment = payments.find((item) => item.session_id === row.id);
-            const generation = generations.find((item) => item.id === row.generation_queue_id);
+            const payment = getSessionPayment(row, payments);
+            const generation = getSessionGeneration(row, generations);
+            const imageUrl = row.result_image_url || generation?.result_image_url || "";
             return (
               <article className="sales-card" key={row.id}>
                 <div className="sales-main">
                   <div>
                     <h3>{row.teams?.name || "Time nao informado"}</h3>
-                    <p>{row.kiosk_devices?.label || row.kiosk_devices?.device_code || "Totem nao informado"} - {dateTime(row.created_at)}</p>
+                    <p>{getDeviceLabel(row)} - {dateTime(row.created_at)}</p>
                   </div>
                   <Badge value={row.status} />
                 </div>
@@ -3219,16 +3417,20 @@ function Sessions() {
                   <div><span>Foto IA</span><strong>{generation ? friendly(generation.status) : "Aguardando"}</strong></div>
                   <div><span>Valor</span><strong>{money(row.amount_cents, row.currency)}</strong></div>
                 </div>
+                <div className="sales-quick-actions">
+                  {imageUrl && <a className="secondary link-button" href={imageUrl} target="_blank">Abrir foto</a>}
+                  {payment?.customer_tax_id_last4 && <span>CPF final {payment.customer_tax_id_last4}</span>}
+                </div>
                 {(row.error_message || generation?.error_message) && (
                   <p className="sales-error">{row.error_message || generation?.error_message}</p>
                 )}
                 <details>
-                  <summary>Ver detalhes</summary>
+                  <summary>Detalhes do atendimento</summary>
                   <div className="sales-detail-grid">
                     <div><span>Camisa</span><strong>{row.selected_shirt_id || "-"}</strong></div>
-                    <div><span>Cenario</span><strong>{row.selected_background_id || "-"}</strong></div>
+                    <div><span>CPF</span><strong>{payment?.customer_tax_id_last4 ? `final ${payment.customer_tax_id_last4}` : "-"}</strong></div>
                     <div><span>Pago em</span><strong>{dateTime(payment?.paid_at)}</strong></div>
-                    <div><span>Foto</span><strong>{generation?.result_image_url ? <a href={generation.result_image_url} target="_blank">Abrir</a> : "-"}</strong></div>
+                    <div><span>Foto</span><strong>{imageUrl ? <a href={imageUrl} target="_blank">Abrir</a> : "-"}</strong></div>
                   </div>
                 </details>
               </article>
@@ -3277,6 +3479,7 @@ function Sessions() {
 function PhotosPage() {
   const { teams } = useTeams();
   const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 7 });
+  const [cpfSearch, setCpfSearch] = useState("");
   const [sessions, setSessions] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [generations, setGenerations] = useState<GenerationQueueRow[]>([]);
@@ -3313,18 +3516,21 @@ function PhotosPage() {
     const [sessionRes, paymentRes, generationRes] = await Promise.all([sessionQuery, paymentQuery, generationQuery]);
     const loadedSessions = (sessionRes.data || []) as KioskSession[];
     const loadedGenerations = (generationRes.data || []) as GenerationQueueRow[];
+    const loadedPayments = (paymentRes.data || []) as KioskPayment[];
     const withPhotos = loadedSessions.filter((session) => {
       const generation = loadedGenerations.find((item) => item.id === session.generation_queue_id);
+      const payment = loadedPayments.find((item) => item.session_id === session.id || item.id === session.payment_id);
       const photoStatus = session.status === "completed" || generation?.status === "completed";
       const hasPhoto = Boolean(session.result_image_url || generation?.result_image_url);
       if (filters.status && session.status !== filters.status && generation?.status !== filters.status) return false;
+      if (cpfSearch.trim() && !payment?.customer_tax_id_last4?.includes(cpfSearch.trim())) return false;
       return photoStatus && hasPhoto;
     });
 
     setSessions(withPhotos);
-    setPayments((paymentRes.data || []) as KioskPayment[]);
+    setPayments(loadedPayments);
     setGenerations(loadedGenerations);
-  }, [filters.days, filters.status, filters.teamId]);
+  }, [cpfSearch, filters.days, filters.status, filters.teamId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -3355,7 +3561,18 @@ function PhotosPage() {
   return (
     <>
       <PageHeader title="Fotos" subtitle="Fotos geradas nos totens, com download e novo link para recuperar envio." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
-      <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
+      <section className="stats-grid compact-stats">
+        <StatCard label="Fotos encontradas" value={sessions.length} tone="success" />
+        <StatCard label="Com CPF" value={sessions.filter((session) => getSessionPayment(session, payments)?.customer_tax_id_last4).length} />
+        <StatCard label="Periodo" value={`${filters.days} dias`} />
+      </section>
+      <div className="filter-panel">
+        <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
+        <label className="cpf-filter">
+          Buscar por CPF final
+          <input value={cpfSearch} onChange={(event) => setCpfSearch(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="Ultimos 4 numeros" />
+        </label>
+      </div>
       {message && <div className="panel message-panel">{message}</div>}
       <div className="photo-card-list">
         {sessions.map((session) => {
