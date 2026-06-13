@@ -31,6 +31,11 @@ import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/install
 import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
 import { mergeTutorialAssetsForPublish } from "./lib/kioskDraft";
 import {
+  getConfirmedPagBankPayments,
+  getSessionsWithConfirmedPagBankPayment,
+  isConfirmedPagBankPayment,
+} from "./lib/salesMetrics";
+import {
   KioskCameraVisual,
   KioskCpfVisual,
   KioskGeneratingVisual,
@@ -755,8 +760,10 @@ function Dashboard() {
   const filteredPayments = deviceFilter ? payments.filter((payment) => payment.device_id === deviceFilter) : payments;
   const filteredGenerations = deviceFilter ? generations.filter((row) => filteredSessions.some((session) => session.generation_queue_id === row.id || session.id === row.kiosk_session_id)) : generations;
   const selectedDevice = devices.find((device) => device.id === deviceFilter);
-  const paidToday = filteredPayments.filter((p) => p.status === "paid" && new Date(p.paid_at || p.created_at) >= today);
-  const paid = filteredPayments.filter((p) => p.status === "paid");
+  const paid = getConfirmedPagBankPayments(filteredPayments);
+  const paidToday = paid.filter((p) => new Date(p.paid_at || p.created_at) >= today);
+  const confirmedSessions = getSessionsWithConfirmedPagBankPayment(filteredSessions, filteredPayments);
+  const confirmedGenerationIds = new Set(confirmedSessions.map((session) => session.generation_queue_id).filter(Boolean));
   const revenue = paid.reduce((sum, p) => sum + p.amount_cents, 0);
   const todayRevenue = paidToday.reduce((sum, p) => sum + p.amount_cents, 0);
   const visibleDevices = selectedDevice ? [selectedDevice] : devices;
@@ -767,11 +774,11 @@ function Dashboard() {
   const aiIssueCount = operationalIssues.filter((issue) => issue.type === "ai").length;
   const versionIssueCount = operationalIssues.filter((issue) => issue.type === "version").length;
   const pendingPayments = filteredPayments.filter((payment) => payment.status === "pending").length;
-  const completedGenerations = filteredGenerations.filter((row) => row.status === "completed").length;
-  const failedGenerations = filteredGenerations.filter((row) => row.status === "failed").length;
+  const completedGenerations = filteredGenerations.filter((row) => confirmedGenerationIds.has(row.id) && row.status === "completed").length;
+  const failedGenerations = filteredGenerations.filter((row) => confirmedGenerationIds.has(row.id) && row.status === "failed").length;
   const funnel = buildSalesFunnel(filteredSessions, filteredPayments, filteredGenerations);
   const revenueSeries = buildRevenueSeries(filteredPayments);
-  const topDevices = buildTopBy(filteredSessions, getDeviceLabel);
+  const topDevices = buildTopBy(confirmedSessions, getDeviceLabel);
   const topTeams = buildTopBy(paid, (payment) => payment.teams?.name || "Time nao informado", (payment) => payment.amount_cents);
   const attentionTitle = operationalIssues.length
     ? `${operationalIssues.length} ponto${operationalIssues.length > 1 ? "s" : ""} para revisar`
@@ -848,7 +855,7 @@ function Dashboard() {
             <Link className="secondary link-button" to="/sessoes">Abrir vendas</Link>
           </div>
           <div className="compact-list">
-            {filteredSessions.slice(0, 10).map((s) => (
+            {confirmedSessions.slice(0, 10).map((s) => (
               <div className="compact-row" key={s.id}>
                 <div>
                   <strong>{s.teams?.name || "-"}</strong>
@@ -860,7 +867,7 @@ function Dashboard() {
                 </div>
               </div>
             ))}
-            {filteredSessions.length === 0 && <div className="empty-state">Nenhuma venda recente.</div>}
+            {confirmedSessions.length === 0 && <div className="empty-state">Nenhuma venda real recente.</div>}
           </div>
         </div>
         <div className="panel">
@@ -1074,10 +1081,11 @@ function percent(value: number, total: number) {
 
 function buildSalesFunnel(rows: KioskSession[], payments: KioskPayment[], generations: GenerationQueueRow[]) {
   const total = rows.length;
-  const paid = rows.filter((row) => getSessionPayment(row, payments)?.status === "paid" || ["paid", "completed"].includes(row.status)).length;
-  const captured = rows.filter((row) => Boolean(row.generation_queue_id)).length;
-  const generated = rows.filter((row) => row.status === "completed" || getSessionGeneration(row, generations)?.status === "completed").length;
-  const failed = rows.filter((row) => row.status === "failed" || getSessionGeneration(row, generations)?.status === "failed").length;
+  const confirmedRows = getSessionsWithConfirmedPagBankPayment(rows, payments);
+  const paid = confirmedRows.length;
+  const captured = confirmedRows.filter((row) => Boolean(row.generation_queue_id)).length;
+  const generated = confirmedRows.filter((row) => row.status === "completed" || getSessionGeneration(row, generations)?.status === "completed").length;
+  const failed = confirmedRows.filter((row) => row.status === "failed" || getSessionGeneration(row, generations)?.status === "failed").length;
   return [
     { label: "Atendimentos", value: total },
     { label: "PIX pago", value: paid },
@@ -1089,8 +1097,7 @@ function buildSalesFunnel(rows: KioskSession[], payments: KioskPayment[], genera
 
 function buildRevenueSeries(payments: KioskPayment[]) {
   const buckets = new Map<string, number>();
-  payments
-    .filter((payment) => payment.status === "paid")
+  getConfirmedPagBankPayments(payments)
     .forEach((payment) => {
       const date = new Date(payment.paid_at || payment.created_at);
       const key = `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -3298,7 +3305,7 @@ function FilterBar({ filters, setFilters, teams }: { filters: Filters; setFilter
       <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
         <option value="">Todas as situacoes</option>
         <option value="pending">Pendente</option>
-        <option value="paid">Pago</option>
+        <option value="paid">Pago (PIX real)</option>
         <option value="completed">Concluido</option>
         <option value="failed">Com erro</option>
         <option value="cancelled">Cancelado</option>
@@ -3358,21 +3365,25 @@ function Sessions() {
   }, [filters.days, filters.status, filters.teamId]);
   useEffect(() => { load(); }, [load]);
 
-  const paid = payments.filter((payment) => payment.status === "paid");
+  const paid = getConfirmedPagBankPayments(payments);
+  const confirmedSessions = getSessionsWithConfirmedPagBankPayment(rows, payments);
+  const displayedRows = filters.status === "paid" ? confirmedSessions : rows;
+  const confirmedGenerationIds = new Set(confirmedSessions.map((session) => session.generation_queue_id).filter(Boolean));
+  const simulatedPayments = payments.filter((payment) => payment.provider === "simulated");
   const revenue = paid.reduce((sum, payment) => sum + payment.amount_cents, 0);
   const pendingPayments = payments.filter((payment) => payment.status === "pending").length;
-  const failedGenerations = generations.filter((row) => row.status === "failed").length;
-  const completedGenerations = generations.filter((row) => row.status === "completed").length;
+  const failedGenerations = generations.filter((row) => confirmedGenerationIds.has(row.id) && row.status === "failed").length;
+  const completedGenerations = generations.filter((row) => confirmedGenerationIds.has(row.id) && row.status === "completed").length;
   const funnel = buildSalesFunnel(rows, payments, generations);
   const revenueSeries = buildRevenueSeries(payments);
-  const topDevices = buildTopBy(rows, getDeviceLabel);
+  const topDevices = buildTopBy(confirmedSessions, getDeviceLabel);
 
   return (
     <>
       <PageHeader title="Vendas" subtitle="Acompanhe dinheiro recebido, PIX pendente e fotos entregues." action={<button className="secondary" onClick={load}><RefreshCw size={16} /> Atualizar</button>} />
       <section className="stats-grid compact-stats executive-stats">
         <StatCard label="Receita" value={money(revenue)} tone="success" detail={`${paid.length} PIX pago(s)`} />
-        <StatCard label="Atendimentos" value={rows.length} />
+        <StatCard label="Tentativas" value={rows.length} detail={`${simulatedPayments.length} teste(s)`} />
         <StatCard label="PIX pendentes" value={pendingPayments} tone={pendingPayments ? "warning" : "neutral"} />
         <StatCard label="Fotos prontas" value={completedGenerations} tone="success" />
         <StatCard label="Falhas IA" value={failedGenerations} tone={failedGenerations ? "danger" : "neutral"} />
@@ -3399,18 +3410,18 @@ function Sessions() {
         </div>
       </section>
       <section className="panel">
-        <div className="section-heading table-heading">
-          <div>
-            <h2>Totens que mais venderam</h2>
-            <p>Ranking por quantidade de atendimentos.</p>
+          <div className="section-heading table-heading">
+            <div>
+              <h2>Totens que mais venderam</h2>
+              <p>Ranking somente com pagamentos PIX reais confirmados.</p>
+            </div>
           </div>
-        </div>
         <div className="ranking-grid">
           {topDevices.map((item, index) => (
             <div className="ranking-card" key={item.label}>
               <span>{index + 1}</span>
               <strong>{item.label}</strong>
-              <small>{item.value} atendimento(s)</small>
+              <small>{item.value} venda(s) confirmada(s)</small>
             </div>
           ))}
           {topDevices.length === 0 && <div className="empty-state">Sem ranking neste filtro.</div>}
@@ -3424,10 +3435,12 @@ function Sessions() {
           </div>
         </div>
         <div className="sales-card-list">
-          {rows.map((row) => {
+          {displayedRows.map((row) => {
             const payment = getSessionPayment(row, payments);
             const generation = getSessionGeneration(row, generations);
             const imageUrl = row.result_image_url || generation?.result_image_url || "";
+            const isTestPayment = payment?.provider === "simulated";
+            const isRealSale = isConfirmedPagBankPayment(payment);
             return (
               <article className="sales-card" key={row.id}>
                 <div className="sales-main">
@@ -3435,10 +3448,10 @@ function Sessions() {
                     <h3>{row.teams?.name || "Time nao informado"}</h3>
                     <p>{getDeviceLabel(row)} - {dateTime(row.created_at)}</p>
                   </div>
-                  <Badge value={row.status} />
+                  <Badge value={isTestPayment ? "simulated" : isRealSale ? "paid" : row.status} />
                 </div>
                 <div className="sales-steps">
-                  <div><span>Pagamento</span><strong>{payment ? friendly(payment.status) : "Nao iniciado"}</strong></div>
+                  <div><span>Pagamento</span><strong>{isTestPayment ? "Teste - nao contabilizado" : payment ? friendly(payment.status) : "Nao iniciado"}</strong></div>
                   <div><span>Foto IA</span><strong>{generation ? friendly(generation.status) : "Aguardando"}</strong></div>
                   <div><span>Valor</span><strong>{money(row.amount_cents, row.currency)}</strong></div>
                 </div>
@@ -3461,7 +3474,7 @@ function Sessions() {
               </article>
             );
           })}
-          {rows.length === 0 && <div className="empty-state">Nenhum atendimento neste filtro.</div>}
+          {displayedRows.length === 0 && <div className="empty-state">Nenhum atendimento neste filtro.</div>}
         </div>
       </div>
       <details className="panel advanced-box">
@@ -3474,7 +3487,7 @@ function Sessions() {
               <tr key={row.id}>
                 <td>{row.teams?.name || "-"}</td>
                 <td>{friendly(row.method)}</td>
-                <td><Badge value={row.status} /></td>
+                <td><Badge value={row.provider === "simulated" ? "simulated" : row.status} /></td>
                 <td>{money(row.amount_cents, row.currency)}</td>
                 <td>{dateTime(row.paid_at)}</td>
               </tr>
