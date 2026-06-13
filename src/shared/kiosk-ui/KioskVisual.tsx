@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { CSSProperties, ReactNode, WheelEvent } from "react";
 import { ArrowLeft, Camera, CheckCircle2, ChevronLeft, ChevronRight, Loader2, QrCode, RefreshCw, Shirt } from "lucide-react";
 import "./kioskVisual.css";
@@ -63,6 +63,7 @@ type KioskSelectionVisualProps = {
   canNext?: boolean;
   onPrev?: () => void;
   onNext?: () => void;
+  onFocusChange?: (item: KioskSelectionVisualItem, index: number) => void;
   onSelect?: (item: KioskSelectionVisualItem, index: number) => void;
 };
 
@@ -322,6 +323,7 @@ export function KioskSelectionVisual({
   canNext,
   onPrev,
   onNext,
+  onFocusChange,
   onSelect,
 }: KioskSelectionVisualProps) {
   const isBackground = kind === "background";
@@ -349,12 +351,16 @@ export function KioskSelectionVisual({
   }, [onRailScroll]);
   const handleSelect = useCallback((item: KioskSelectionVisualItem, index: number, element?: HTMLElement | null) => {
     onSelect?.(item, index);
+    if (isShirtCarousel) {
+      localRailRef.current?.scrollTo({ left: 0, behavior: "instant" });
+      return;
+    }
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
       return;
     }
     scrollItemIntoView(item.id);
-  }, [onSelect, scrollItemIntoView]);
+  }, [isShirtCarousel, onSelect, scrollItemIntoView]);
   const handleCarouselStep = useCallback((direction: "prev" | "next") => {
     if (!isShirtCarousel) {
       if (direction === "prev") onPrev?.();
@@ -364,8 +370,13 @@ export function KioskSelectionVisual({
     const nextIndex = Math.min(items.length - 1, Math.max(0, selectedIndex + (direction === "next" ? 1 : -1)));
     const nextItem = items[nextIndex];
     if (!nextItem || nextIndex === selectedIndex) return;
-    handleSelect(nextItem, nextIndex);
-  }, [handleSelect, isShirtCarousel, items, onNext, onPrev, selectedIndex]);
+    onFocusChange?.(nextItem, nextIndex);
+    localRailRef.current?.scrollTo({ left: 0, behavior: "instant" });
+  }, [isShirtCarousel, items, onFocusChange, onNext, onPrev, selectedIndex]);
+  useEffect(() => {
+    if (!isShirtCarousel) return;
+    localRailRef.current?.scrollTo({ left: 0, behavior: "instant" });
+  }, [isShirtCarousel, selectedIndex]);
   const handleRailWheel = (event: WheelEvent<HTMLDivElement>) => {
     if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
     const rail = event.currentTarget;
@@ -438,7 +449,10 @@ export function KioskSelectionVisual({
               type="button"
               aria-label="Anterior"
               disabled={isShirtCarousel ? selectedIndex <= 0 : !canPrev}
-              onClick={() => handleCarouselStep("prev")}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleCarouselStep("prev");
+              }}
               className="ff-kiosk-rail-arrow ff-kiosk-rail-arrow-left"
             >
               <ChevronLeft />
@@ -447,7 +461,10 @@ export function KioskSelectionVisual({
               type="button"
               aria-label="Proximo"
               disabled={isShirtCarousel ? selectedIndex >= items.length - 1 : !canNext}
-              onClick={() => handleCarouselStep("next")}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleCarouselStep("next");
+              }}
               className="ff-kiosk-rail-arrow ff-kiosk-rail-arrow-right"
             >
               <ChevronRight />

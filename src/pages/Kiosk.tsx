@@ -1803,6 +1803,12 @@ export default function KioskPage() {
             canNext={shirtRailScroll.canNext}
             onPrev={() => scrollRail(shirtRailRef.current, "prev")}
             onNext={() => scrollRail(shirtRailRef.current, "next")}
+            onFocusChange={(shirt) => {
+              const fullShirt = visibleShirts.find((item) => item.id === shirt.id);
+              if (fullShirt) {
+                setSelectedShirt(fullShirt);
+              }
+            }}
             onSelect={(shirt) => {
               const fullShirt = visibleShirts.find((item) => item.id === shirt.id);
               if (fullShirt) {
