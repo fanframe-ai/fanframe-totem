@@ -74,6 +74,7 @@ type AuthState = {
 
 type Filters = {
   teamId: string;
+  deviceId: string;
   status: string;
   days: number;
 };
@@ -3295,13 +3296,23 @@ function DeviceDetail({ role }: { role: Role | null }) {
   );
 }
 
-function FilterBar({ filters, setFilters, teams }: { filters: Filters; setFilters: (filters: Filters) => void; teams: TeamRow[] }) {
+function FilterBar({ filters, setFilters, teams, devices }: { filters: Filters; setFilters: (filters: Filters) => void; teams: TeamRow[]; devices?: KioskDevice[] }) {
+  const availableDevices = devices?.filter((device) => !filters.teamId || device.team_id === filters.teamId) || [];
+
   return (
     <div className="filters">
-      <select value={filters.teamId} onChange={(e) => setFilters({ ...filters, teamId: e.target.value })}>
+      <select value={filters.teamId} onChange={(e) => setFilters({ ...filters, teamId: e.target.value, deviceId: "" })}>
         <option value="">Todos os times</option>
         {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
       </select>
+      {devices && (
+        <select value={filters.deviceId} onChange={(e) => setFilters({ ...filters, deviceId: e.target.value })}>
+          <option value="">Todos os totens</option>
+          {availableDevices.map((device) => (
+            <option key={device.id} value={device.id}>{device.label || device.device_code}</option>
+          ))}
+        </select>
+      )}
       <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
         <option value="">Todas as situacoes</option>
         <option value="pending">Pendente</option>
@@ -3322,7 +3333,8 @@ function FilterBar({ filters, setFilters, teams }: { filters: Filters; setFilter
 
 function Sessions() {
   const { teams } = useTeams();
-  const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 7 });
+  const [filters, setFilters] = useState<Filters>({ teamId: "", deviceId: "", status: "", days: 7 });
+  const [devices, setDevices] = useState<KioskDevice[]>([]);
   const [rows, setRows] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [generations, setGenerations] = useState<GenerationQueueRow[]>([]);
@@ -3358,11 +3370,25 @@ function Sessions() {
       generationQuery = generationQuery.eq("status", filters.status);
     }
 
-    const [sessionRes, paymentRes, generationRes] = await Promise.all([sessionQuery, paymentQuery, generationQuery]);
-    setRows((sessionRes.data || []) as KioskSession[]);
+    if (filters.deviceId) {
+      sessionQuery = sessionQuery.eq("device_id", filters.deviceId);
+      paymentQuery = paymentQuery.eq("device_id", filters.deviceId);
+    }
+
+    const [deviceRes, sessionRes, paymentRes, generationRes] = await Promise.all([
+      supabase.from("kiosk_devices").select("*, teams(name, slug)").order("label"),
+      sessionQuery,
+      paymentQuery,
+      generationQuery,
+    ]);
+    const sessionRows = (sessionRes.data || []) as KioskSession[];
+    const sessionIds = new Set(sessionRows.map((session) => session.id));
+    const generationRows = (generationRes.data || []) as GenerationQueueRow[];
+    setDevices((deviceRes.data || []) as KioskDevice[]);
+    setRows(sessionRows);
     setPayments((paymentRes.data || []) as KioskPayment[]);
-    setGenerations((generationRes.data || []) as GenerationQueueRow[]);
-  }, [filters.days, filters.status, filters.teamId]);
+    setGenerations(filters.deviceId ? generationRows.filter((row) => row.kiosk_session_id && sessionIds.has(row.kiosk_session_id)) : generationRows);
+  }, [filters.days, filters.deviceId, filters.status, filters.teamId]);
   useEffect(() => { load(); }, [load]);
 
   const paid = getConfirmedPagBankPayments(payments);
@@ -3388,7 +3414,7 @@ function Sessions() {
         <StatCard label="Fotos prontas" value={completedGenerations} tone="success" />
         <StatCard label="Falhas IA" value={failedGenerations} tone={failedGenerations ? "danger" : "neutral"} />
       </section>
-      <FilterBar filters={filters} setFilters={setFilters} teams={teams} />
+      <FilterBar filters={filters} setFilters={setFilters} teams={teams} devices={devices} />
       <section className="dashboard-grid">
         <div className="panel insight-panel">
           <div className="section-heading table-heading">
@@ -3516,7 +3542,7 @@ function Sessions() {
 
 function PhotosPage() {
   const { teams } = useTeams();
-  const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 7 });
+  const [filters, setFilters] = useState<Filters>({ teamId: "", deviceId: "", status: "", days: 7 });
   const [cpfSearch, setCpfSearch] = useState("");
   const [sessions, setSessions] = useState<KioskSession[]>([]);
   const [payments, setPayments] = useState<KioskPayment[]>([]);
@@ -3652,7 +3678,7 @@ function PhotosPage() {
 
 function StoryDrawPage() {
   const { teams } = useTeams();
-  const [filters, setFilters] = useState<Filters>({ teamId: "", status: "", days: 30 });
+  const [filters, setFilters] = useState<Filters>({ teamId: "", deviceId: "", status: "", days: 30 });
   const [consentLogs, setConsentLogs] = useState<ConsentLogRow[]>([]);
 
   const load = useCallback(async () => {
