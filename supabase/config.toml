@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.recover-kiosk-photos]
 verify_jwt = false
+
+[functions.manage-kiosk-test-links]
+verify_jwt = false
+
+[functions.mark-kiosk-session-error]
+verify_jwt = false

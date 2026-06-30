@@ -26,7 +26,7 @@ import {
   Users,
 } from "lucide-react";
 import { supabase, publicAssetUrl, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./lib/supabase";
-import { createInstallCode, enqueueDeviceCommand, logAdminAudit, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
+import { createInstallCode, createKioskTestLink, enqueueDeviceCommand, logAdminAudit, revokeKioskTestLink, rotateDeviceSupportPin, sha256 } from "./lib/deviceOperations";
 import { buildOwnerInstallMessage, buildOwnerUpdateMessage } from "./lib/installInstructions";
 import { applyDesignRecipe, createDesignRecipeFromTeam } from "./lib/designRecipe";
 import { mergeTutorialAssetsForPublish } from "./lib/kioskDraft";
@@ -51,6 +51,7 @@ import {
   getOperationalIssues,
   isDeviceOffline,
 } from "./lib/operationalHealth";
+import type { OperationalIssue } from "./lib/operationalHealth";
 import type {
   CommandType,
   KioskDevice,
@@ -182,6 +183,15 @@ function getKioskRuntimePreviewUrl(teamSlug?: string | null) {
   const params = new URLSearchParams({ preview: "admin" });
   if (teamSlug) params.set("team_slug", teamSlug);
   return `${origin}/kiosk?${params.toString()}`;
+}
+
+function getKioskTestUrl(token: string) {
+  const configuredOrigin = String(import.meta.env.VITE_KIOSK_TEST_ORIGIN || "").replace(/\/$/, "");
+  const localOrigin = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8080"
+    : "";
+  const origin = configuredOrigin || localOrigin || "https://fanframe-kiosk-web.vercel.app";
+  return origin ? `${origin}/teste-totem/${encodeURIComponent(token)}` : "";
 }
 
 function getDeviceInstallerUrl(device?: Pick<KioskDevice, "config"> | null) {
@@ -352,6 +362,7 @@ const friendlyLabels: Record<string, string> = {
   ok: "Ok",
   online: "Online",
   paid: "Pago",
+  paid_without_generation: "Pago sem geracao",
   paired: "Instalado",
   pairing: "Instalacao",
   pagbank_pix: "PIX PagBank",
@@ -1073,6 +1084,27 @@ function getSessionGeneration(session: KioskSession, generations: GenerationQueu
 
 function getDeviceLabel(session: KioskSession) {
   return session.kiosk_devices?.label || session.kiosk_devices?.device_code || "Totem nao informado";
+}
+
+function getPaidWithoutGenerationIssues(sessions: KioskSession[], payments: KioskPayment[]): OperationalIssue[] {
+  return sessions
+    .filter((session) => {
+      const payment = getSessionPayment(session, payments);
+      const payment_status = payment?.status;
+      return (
+        session.status === "paid" &&
+        !session.generation_queue_id &&
+        payment_status === "paid" &&
+        payment?.provider !== "simulated"
+      );
+    })
+    .map((session) => ({
+      type: "paid_without_generation",
+      severity: "danger",
+      deviceId: session.device_id || "",
+      deviceLabel: getDeviceLabel(session),
+      message: `${getDeviceLabel(session)} recebeu pagamento, mas nao iniciou geracao.`,
+    }));
 }
 
 function percent(value: number, total: number) {
@@ -2419,6 +2451,8 @@ function Devices({ role }: { role: Role | null }) {
   const [deviceSearch, setDeviceSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [healthFilter, setHealthFilter] = useState("");
+  const [testLinks, setTestLinks] = useState<Record<string, string>>({});
+  const [testLinkBusy, setTestLinkBusy] = useState<string | null>(null);
   const canEditDevices = canManageBusiness(role);
   const canOperate = canSupportOperations(role);
   const filteredDevices = devices.filter((device) => {
@@ -2544,6 +2578,41 @@ function Devices({ role }: { role: Role | null }) {
     setMessage(`Totem "${device.label || device.device_code}" excluido.`);
     if (installCode?.deviceLabel === (device.label || device.device_code)) setInstallCode(null);
     load();
+  }
+
+  async function generateTestLink(device: KioskDevice) {
+    setMessage("");
+    setTestLinkBusy(device.id);
+    try {
+      const result = await createKioskTestLink(device.id);
+      const url = getKioskTestUrl(result.token);
+      if (!url) throw new Error("Configure VITE_KIOSK_TEST_ORIGIN no painel para definir o endereco do kiosk web.");
+      setTestLinks((current) => ({ ...current, [device.id]: url }));
+      await navigator.clipboard.writeText(url).catch(() => undefined);
+      setMessage(`Link de teste criado para ${device.label || device.device_code} e copiado.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao criar link de teste.");
+    } finally {
+      setTestLinkBusy(null);
+    }
+  }
+
+  async function disableTestLink(device: KioskDevice) {
+    setMessage("");
+    setTestLinkBusy(device.id);
+    try {
+      await revokeKioskTestLink(device.id);
+      setTestLinks((current) => {
+        const next = { ...current };
+        delete next[device.id];
+        return next;
+      });
+      setMessage(`Link de teste desativado para ${device.label || device.device_code}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Erro ao desativar link de teste.");
+    } finally {
+      setTestLinkBusy(null);
+    }
   }
 
   return (
@@ -2720,6 +2789,19 @@ function Devices({ role }: { role: Role | null }) {
               </div>
               <div className="device-card-actions">
                 <Link className="primary link-button" to={`/totens/${d.id}`}>Abrir controle</Link>
+                {canEditDevices && !testLinks[d.id] && (
+                  <button className="secondary" type="button" disabled={testLinkBusy === d.id} onClick={() => generateTestLink(d)}>
+                    {testLinkBusy === d.id ? "Criando..." : "Criar link de teste"}
+                  </button>
+                )}
+                {canEditDevices && testLinks[d.id] && (
+                  <>
+                    <a className="secondary link-button" href={testLinks[d.id]} target="_blank" rel="noreferrer">Abrir teste</a>
+                    <button className="secondary" type="button" onClick={() => navigator.clipboard.writeText(testLinks[d.id])}><Copy size={14} /> Copiar link</button>
+                    <button className="secondary" type="button" disabled={testLinkBusy === d.id} onClick={() => generateTestLink(d)}>Regenerar link</button>
+                    <button className="danger" type="button" disabled={testLinkBusy === d.id} onClick={() => disableTestLink(d)}>Desativar link</button>
+                  </>
+                )}
                 {canEditDevices && <button className="secondary" onClick={() => generateInstall(d)}>Instalar</button>}
                 {canOperate && d.status === "maintenance" && <button className="secondary" onClick={() => sendCommand(d.id, "exit_maintenance")}>Liberar venda</button>}
                 {canOperate && d.status !== "maintenance" && <button className="danger" onClick={() => sendCommand(d.id, "enter_maintenance")}>Pausar</button>}
@@ -3757,13 +3839,21 @@ function StoryDrawPage() {
 function ProblemsPage() {
   const [alerts, setAlerts] = useState<SystemAlertRow[]>([]);
   const [devices, setDevices] = useState<KioskDevice[]>([]);
+  const [sessions, setSessions] = useState<KioskSession[]>([]);
+  const [payments, setPayments] = useState<KioskPayment[]>([]);
   const [auditEvents, setAuditEvents] = useState<AdminAuditEvent[]>([]);
   useEffect(() => {
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
     supabase.from("system_alerts").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAlerts((data || []) as SystemAlertRow[]));
     supabase.from("kiosk_devices").select("*, teams(name, slug)").order("last_seen_at", { ascending: false }).then(({ data }) => setDevices((data || []) as KioskDevice[]));
+    supabase.from("kiosk_sessions").select("*, teams(name, slug), kiosk_devices(device_code,label,location)").gte("created_at", since).order("created_at", { ascending: false }).limit(300).then(({ data }) => setSessions((data || []) as KioskSession[]));
+    supabase.from("kiosk_payments").select("*, teams(name, slug)").gte("created_at", since).order("created_at", { ascending: false }).limit(300).then(({ data }) => setPayments((data || []) as KioskPayment[]));
     supabase.from("kiosk_admin_audit_events").select("*").order("created_at", { ascending: false }).limit(100).then(({ data }) => setAuditEvents((data || []) as AdminAuditEvent[]));
   }, []);
-  const operationalIssues = devices.flatMap((device) => getOperationalIssues(device));
+  const operationalIssues = [
+    ...devices.flatMap((device) => getOperationalIssues(device)),
+    ...getPaidWithoutGenerationIssues(sessions, payments),
+  ];
   const issuesBySeverity = {
     danger: operationalIssues.filter((issue) => issue.severity === "danger"),
     warning: operationalIssues.filter((issue) => issue.severity === "warning"),

@@ -11,6 +11,32 @@
   color: hsl(var(--foreground, 0 0% 100%));
 }
 
+.ff-kiosk-test-mode-badge {
+  position: fixed;
+  z-index: 80;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  padding: 8px 16px;
+  border: 1px solid rgb(255 255 255 / .48);
+  border-radius: 999px;
+  background: rgb(0 0 0 / .78);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 700px) {
+  .ff-kiosk-shell {
+    min-height: 100dvh;
+  }
+
+  .ff-kiosk-test-mode-badge {
+    font-size: 11px;
+  }
+}
+
 .ff-kiosk-bg-layer {
   pointer-events: none;
   position: fixed;
@@ -1415,6 +1441,21 @@
   aspect-ratio: 2 / 3;
   object-fit: cover;
   background: #111;
+}
+
+.ff-kiosk-recovery-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  padding: 1rem;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .ff-kiosk-recovery-card span {

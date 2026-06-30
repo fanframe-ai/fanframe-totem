@@ -27,6 +27,7 @@ const App = () => (
 
           {/* Dedicated desktop kiosk route */}
           <Route path="/kiosk" element={<KioskPage />} />
+          <Route path="/teste-totem/:token" element={<KioskPage />} />
           
           {/* Team provador route */}
           <Route path="/:slug" element={<TeamProvadorPage />} />

@@ -19,8 +19,10 @@ $functions = @(
   "create-delivery-link",
   "manage-admin-users",
   "redeem-kiosk-install-code",
+  "recover-kiosk-photos",
   "report-kiosk-health",
-  "poll-kiosk-commands"
+  "poll-kiosk-commands",
+  "mark-kiosk-session-error"
 )
 
 if ($IncludePagBank) {

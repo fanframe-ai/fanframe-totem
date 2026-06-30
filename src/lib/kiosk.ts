@@ -28,6 +28,34 @@ export type DeviceIdentity = {
   deviceSecret: string;
 };
 
+export type KioskTestLinkIdentity = {
+  deviceId: string;
+  deviceCode: string;
+  deviceLabel: string;
+  teamSlug: string;
+  teamName: string;
+  expiresAt: string;
+  simulatePayments: true;
+};
+
+export async function resolveKioskTestLink(token: string) {
+  const { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } = await import("@/integrations/supabase/client");
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/manage-kiosk-test-links`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ action: "resolve", token }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data?.error) {
+    throw new Error(String(data?.error || "Nao foi possivel abrir este link de teste."));
+  }
+  return data as KioskTestLinkIdentity;
+}
+
 export type RemoteKioskDeviceState = {
   teamSlug?: string | null;
   config?: Record<string, unknown> | null;
@@ -91,8 +119,10 @@ export function shouldResetKioskForInactivity(step: string) {
 
 export type RecoveredKioskPhoto = {
   sessionId: string;
-  imageUrl: string;
+  imageUrl?: string | null;
   completedAt: string;
+  status?: "completed" | "paid_failed";
+  label?: string;
 };
 
 export async function searchKioskPhotos(identity: DeviceIdentity, cpf: string) {
@@ -113,6 +143,25 @@ export async function createRecoveredPhotoLink(identity: DeviceIdentity, cpf: st
   });
   if (error || data?.error) throw new Error(data?.error || error?.message || "Nao foi possivel recuperar a foto.");
   return data as { deliveryUrl: string; imageUrl: string; expiresAt: string };
+}
+
+export async function markKioskSessionError(
+  identity: DeviceIdentity,
+  body: {
+    session_id: string;
+    payment_id?: string | null;
+    error_code: string;
+    error_message: string;
+    step?: string;
+  },
+) {
+  const { supabase } = await import("@/integrations/supabase/client");
+  const { data, error } = await supabase.functions.invoke("mark-kiosk-session-error", {
+    headers: buildDeviceAuthHeaders(identity),
+    body,
+  });
+  if (error || data?.error) throw new Error(data?.error || error?.message || "Nao foi possivel registrar o erro da sessao.");
+  return data as { ok: true };
 }
 
 export function classifyKioskError(message: string): KioskFriendlyError {
@@ -149,7 +198,9 @@ export function classifyKioskError(message: string): KioskFriendlyError {
     return {
       code: "IA-001",
       title: "Geracao indisponivel",
-      action: "Aguarde alguns minutos e tente novamente.",
+      action: text.includes("generation_start_failed") || text.includes("geracao da foto")
+        ? "Nao cobre novamente. Tente gerar a foto outra vez ou chame o suporte."
+        : "Aguarde alguns minutos e tente novamente.",
     };
   }
   return {

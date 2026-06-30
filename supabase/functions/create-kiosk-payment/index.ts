@@ -27,6 +27,7 @@ interface KioskPaymentRequest {
   selected_shirt_id?: string;
   selected_background_id?: string;
   simulate?: boolean;
+  test_link_token?: string;
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -195,6 +196,28 @@ async function resolveDevice(
   return existing;
 }
 
+async function resolveWebTestDevice(
+  supabase: ReturnType<typeof createClient>,
+  teamId: string,
+  token = "",
+) {
+  if (!token) throw new Error("Link de teste nao informado.");
+  const tokenHash = await sha256Hex(token);
+  const { data: link, error } = await supabase
+    .from("kiosk_test_links")
+    .select("device_id, expires_at, kiosk_devices!inner(*)")
+    .eq("token_hash", tokenHash)
+    .eq("enabled", true)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (error) throw error;
+  const device = Array.isArray(link?.kiosk_devices) ? link.kiosk_devices[0] : link?.kiosk_devices;
+  if (!device || device.team_id !== teamId || device.status !== "active") {
+    throw new Error("Link de teste invalido ou expirado.");
+  }
+  return device;
+}
+
 async function createPixOrder(params: {
   referenceId: string;
   teamName: string;
@@ -259,7 +282,10 @@ async function createPixOrder(params: {
 async function createPayment(req: KioskPaymentRequest) {
   const supabase = getSupabaseClient();
   const team = await resolveTeam(supabase, req.team_slug);
-  const device = await resolveDevice(supabase, team.id, req.device_code, req.device_secret);
+  const isWebTest = Boolean(req.test_link_token);
+  const device = isWebTest
+    ? await resolveWebTestDevice(supabase, team.id, req.test_link_token)
+    : await resolveDevice(supabase, team.id, req.device_code, req.device_secret);
   const requestedMethod = req.method || "pix";
   if (requestedMethod !== "pix") {
     throw new Error("Este totem aceita apenas pagamento por PIX.");
@@ -271,7 +297,7 @@ async function createPayment(req: KioskPaymentRequest) {
   }
   const currency = team.kiosk_currency || "BRL";
   const referenceId = `kiosk-${crypto.randomUUID()}`;
-  const shouldSimulate = req.simulate || Deno.env.get("KIOSK_SIMULATE_PAYMENTS") === "true";
+  const shouldSimulate = isWebTest || req.simulate || Deno.env.get("KIOSK_SIMULATE_PAYMENTS") === "true";
   const customerCpf = cleanCpf(req.customer_cpf);
   if (!isValidCpf(customerCpf)) {
     throw new Error("CPF invalido.");
@@ -292,6 +318,7 @@ async function createPayment(req: KioskPaymentRequest) {
       amount_cents: amountCents,
       currency,
       metadata: {
+        source: isWebTest ? "web_test" : "kiosk",
         team_slug: team.slug,
         published_config_version: team.published_config_version || 1,
         config_snapshot: {

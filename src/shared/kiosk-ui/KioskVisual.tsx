@@ -99,8 +99,10 @@ type KioskCpfVisualProps = {
 
 type KioskRecoveryPhoto = {
   sessionId: string;
-  imageUrl: string;
+  imageUrl?: string | null;
   completedAt: string;
+  status?: "completed" | "paid_failed";
+  label?: string;
 };
 
 type KioskRecoveryResultsVisualProps = {
@@ -595,19 +597,26 @@ export function KioskRecoveryResultsVisual({
         <p>{hint}</p>
         {error && <p className="ff-kiosk-error">{error}</p>}
         <div className="ff-kiosk-recovery-grid">
-          {photos.map((photo) => (
-            <button
-              type="button"
-              key={photo.sessionId}
-              className="ff-kiosk-recovery-card"
-              disabled={Boolean(busySessionId)}
-              onClick={() => onSelect(photo)}
-            >
-              <img src={photo.imageUrl} alt="Foto gerada anteriormente" />
-              <span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(photo.completedAt))}</span>
-              <strong>{busySessionId === photo.sessionId ? "Preparando QR Code..." : "Abrir esta foto"}</strong>
-            </button>
-          ))}
+          {photos.map((photo) => {
+            const hasImage = Boolean(photo.imageUrl);
+            return (
+              <button
+                type="button"
+                key={photo.sessionId}
+                className={`ff-kiosk-recovery-card ${hasImage ? "" : "is-pending"}`.trim()}
+                disabled={Boolean(busySessionId) || !hasImage}
+                onClick={() => onSelect(photo)}
+              >
+                {hasImage ? (
+                  <img src={photo.imageUrl || ""} alt="Foto gerada anteriormente" />
+                ) : (
+                  <div className="ff-kiosk-recovery-placeholder">Pagamento encontrado</div>
+                )}
+                <span>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(photo.completedAt))}</span>
+                <strong>{busySessionId === photo.sessionId ? "Preparando QR Code..." : photo.label || "Abrir esta foto"}</strong>
+              </button>
+            );
+          })}
         </div>
       </div>
     </section>

@@ -26,10 +26,12 @@ import {
   classifyKioskError,
   createRecoveredPhotoLink,
   friendlyPaymentError,
+  markKioskSessionError,
   pollKioskCommand,
   pollKioskState,
   redeemInstallCode,
   reportKioskHealth,
+  resolveKioskTestLink,
   searchKioskPhotos,
   filterVisibleAssets,
   formatCurrencyFromCents,
@@ -356,6 +358,12 @@ function useProgress(isActive: boolean) {
 export default function KioskPage() {
   const { team, isLoading: teamLoading, error: teamError, setSlug } = useTeam();
   const [config, setConfig] = useState<KioskRuntimeConfig | null>(null);
+  const webTestToken = useMemo(() => {
+    const match = window.location.pathname.match(/^\/teste-totem\/([^/]+)$/);
+    return match ? decodeURIComponent(match[1]) : "";
+  }, []);
+  const isWebTestMode = Boolean(webTestToken);
+  const [webTestDeviceId, setWebTestDeviceId] = useState("");
   const [identity, setIdentity] = useState<StoredDeviceIdentity | null>(null);
   const [step, setStep] = useState<KioskStep>("boot");
   const [error, setError] = useState<string | null>(null);
@@ -428,6 +436,7 @@ export default function KioskPage() {
     deviceSecret: identity?.deviceSecret || config?.deviceSecret || "",
   }), [config?.deviceCode, config?.deviceSecret, identity?.deviceCode, identity?.deviceSecret]);
   const hasDeviceAuth = Boolean(activeDevice.deviceCode && activeDevice.deviceSecret);
+  const canUseKioskFlow = hasDeviceAuth || Boolean(isWebTestMode && webTestDeviceId && activeDevice.deviceCode);
 
   useEffect(() => {
     setSelectedBackground(visibleBackgrounds[0] || null);
@@ -761,6 +770,21 @@ export default function KioskPage() {
 
   useEffect(() => {
     const init = async () => {
+      if (isWebTestMode) {
+        const testLink = await resolveKioskTestLink(webTestToken);
+        setWebTestDeviceId(testLink.deviceId);
+        setIdentity(null);
+        setConfig({
+          ...browserPreviewConfig,
+          teamSlug: testLink.teamSlug,
+          deviceCode: testLink.deviceCode,
+          deviceSecret: "",
+          simulatePayments: true,
+        });
+        setSlug(testLink.teamSlug);
+        return;
+      }
+
       const params = new URLSearchParams(window.location.search);
       const previewTeam = params.get("team_slug") || params.get("team") || "";
       const urlTeam = previewTeam || localStorage.getItem("fanframe:kiosk-team") || "";
@@ -819,7 +843,7 @@ export default function KioskPage() {
       setError(err instanceof Error ? err.message : "Erro ao carregar configuracao do totem.");
       setStep("maintenance");
     });
-  }, [clearLocalPairing, setSlug]);
+  }, [clearLocalPairing, isWebTestMode, setSlug, webTestToken]);
 
   useEffect(() => {
     return window.fanframeKiosk?.onOpenTechnicalMode?.(() => {
@@ -1104,6 +1128,10 @@ export default function KioskPage() {
 
   const recoverPhoto = async (photo: RecoveredKioskPhoto) => {
     if (!isValidCpf(recoveryCpf) || !hasDeviceAuth) return;
+    if (!photo.imageUrl) {
+      setRecoveryError(photo.label || "Foto ainda nao foi gerada para este pagamento.");
+      return;
+    }
     setRecoveryBusySessionId(photo.sessionId);
     setRecoveryError(null);
     try {
@@ -1120,7 +1148,7 @@ export default function KioskPage() {
 
   const startPayment = async (method: PaymentMethod) => {
     const backgroundForGeneration = selectedBackground || visibleBackgrounds[0] || null;
-    if (!team || !config || !selectedShirt || !backgroundForGeneration || !hasDeviceAuth || !isValidCpf(customerCpf)) {
+    if (!team || !config || !selectedShirt || !backgroundForGeneration || !canUseKioskFlow || !isValidCpf(customerCpf)) {
       setCustomerCpfTouched(true);
       setStep("cpf");
       return;
@@ -1137,11 +1165,12 @@ export default function KioskPage() {
         team_slug: team.slug,
         device_code: activeDevice.deviceCode,
         device_secret: activeDevice.deviceSecret,
+        test_link_token: isWebTestMode ? webTestToken : undefined,
         method,
         customer_cpf: cleanCpf(customerCpf),
         selected_shirt_id: selectedShirt.id,
         selected_background_id: backgroundForGeneration.id,
-        simulate: config.simulatePayments && method === "pix",
+        simulate: (isWebTestMode || config.simulatePayments) && method === "pix",
       });
     } catch (paymentError) {
       setPaymentBusy(false);
@@ -1292,26 +1321,58 @@ export default function KioskPage() {
     generationSettledRef.current = false;
     setStep("generating");
 
-    const { data, error: fnError } = await supabase.functions.invoke("generate-tryon", {
-      body: {
-        userImageBase64: userImage,
-        shirtAssetUrl: getAssetFullUrl(selectedShirt.assetPath),
-        backgroundAssetUrl: getAssetFullUrl(backgroundForGeneration.assetPath),
-        shirtId: selectedShirt.id,
-        team_slug: team.slug,
-        kiosk_session_id: sessionId,
-        payment_id: paymentId,
-        source: "kiosk",
-      },
-    });
+    let responseData: unknown = null;
+    let responseError: unknown = null;
 
-    if (fnError || data?.error || !data?.queueId) {
-      setError(data?.error || fnError?.message || "Erro ao iniciar geracao.");
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("generate-tryon", {
+        body: {
+          userImageBase64: userImage,
+          shirtAssetUrl: getAssetFullUrl(selectedShirt.assetPath),
+          backgroundAssetUrl: getAssetFullUrl(backgroundForGeneration.assetPath),
+          shirtId: selectedShirt.id,
+          team_slug: team.slug,
+          kiosk_session_id: sessionId,
+          payment_id: paymentId,
+          source: isWebTestMode ? "web_test" : "kiosk",
+        },
+      });
+      responseData = data;
+      responseError = fnError;
+    } catch (generationError) {
+      responseError = generationError;
+    }
+
+    const data = responseData as { queueId?: string; error?: string; generationId?: string; stage?: string } | null;
+    const rawMessage = data?.error || (responseError instanceof Error ? responseError.message : "Erro ao iniciar geracao da foto.");
+
+    if (responseError || data?.error || !data?.queueId) {
+      const message = `generation_start_failed: ${rawMessage}`;
+      if (hasDeviceAuth) {
+        await markKioskSessionError(activeDevice, {
+          session_id: sessionId,
+          payment_id: paymentId,
+          error_code: "generation_start_failed",
+          error_message: message,
+          step: "generating",
+        }).catch(() => undefined);
+      }
+      setError(message);
       setStep("maintenance");
       return;
     }
 
     setQueueId(data.queueId);
+  };
+
+  const retryPaidGeneration = () => {
+    if (!sessionId || !paymentId || !userImage) {
+      resetFlow();
+      return;
+    }
+    setError(null);
+    generationSettledRef.current = false;
+    void startGeneration();
   };
 
   const pairDevice = async (event: FormEvent) => {
@@ -1730,6 +1791,11 @@ export default function KioskPage() {
           <p className="text-2xl leading-relaxed text-muted-foreground mb-10">
             {maintenanceError?.action || error || "Chame o suporte se o problema continuar."}
           </p>
+          {sessionId && paymentId && userImage && maintenanceError?.code === "IA-001" && (
+            <KioskButton onClick={retryPaidGeneration} className="w-full mb-4">
+              Tentar gerar novamente
+            </KioskButton>
+          )}
           <KioskButton variant="secondary" onClick={retryBoot} className="w-full">
             Tentar novamente
           </KioskButton>
@@ -1759,6 +1825,7 @@ export default function KioskPage() {
       technicalHotspot={renderTechnicalHotspot()}
       technicalOverlay={renderTechnicalOverlay()}
     >
+        {isWebTestMode && <div className="ff-kiosk-test-mode-badge">MODO DE TESTE</div>}
 
         {step === "home" && (
           <KioskHomeVisual
@@ -1778,7 +1845,7 @@ export default function KioskPage() {
             cta={(
               <div className="ff-kiosk-home-actions">
                 <KioskButton onClick={startSelection} className="w-full">{copy("kiosk_home_cta", "Comecar", "welcome_cta")}</KioskButton>
-                <button type="button" className="ff-kiosk-home-recovery-action" onClick={openPhotoRecovery}>Recuperar minha foto</button>
+                {!isWebTestMode && <button type="button" className="ff-kiosk-home-recovery-action" onClick={openPhotoRecovery}>Recuperar minha foto</button>}
               </div>
             )}
           />

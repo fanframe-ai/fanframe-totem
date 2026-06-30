@@ -549,6 +549,19 @@ serve(async (req) => {
   const generationId = crypto.randomUUID();
   let supabase: ReturnType<typeof createClient> | null = null;
   let stage = "init";
+  let requestContext: {
+    kioskSessionId: string | null;
+    paymentId: string | null;
+    source: "web" | "kiosk" | "web_test";
+    shirtId: string | null;
+    teamId: string | null;
+  } = {
+    kioskSessionId: null,
+    paymentId: null,
+    source: "web",
+    shirtId: null,
+    teamId: null,
+  };
 
   try {
     console.log(`[${generationId}] Request received: ${req.method}`);
@@ -596,7 +609,14 @@ serve(async (req) => {
       payment_id?: string;
       source?: string;
     };
-    const requestSource = source === "kiosk" ? "kiosk" : "web";
+    const requestSource = source === "kiosk" || source === "web_test" ? source : "web";
+    requestContext = {
+      kioskSessionId: kiosk_session_id || null,
+      paymentId: payment_id || null,
+      source: requestSource,
+      shirtId: shirtId || null,
+      teamId: null,
+    };
 
     console.log(`[${generationId}] Parsed payload:`, {
       hasUserImage: Boolean(userImageBase64),
@@ -658,13 +678,25 @@ serve(async (req) => {
       );
     }
 
+    stage = "resolve_team_id";
+    const teamId = await getTeamId(supabase, team_slug);
+    requestContext.teamId = teamId;
+
+    if ((requestSource === "kiosk" || requestSource === "web_test") && kiosk_session_id) {
+      await supabase
+        .from("kiosk_sessions")
+        .update({
+          status: "generating",
+          error_message: null,
+          payment_id: payment_id || null,
+        })
+        .eq("id", kiosk_session_id);
+    }
+
     // Upload user image to storage
     stage = "upload_user_image";
     const userImageUrl = await uploadToStorage(supabase, userImageBase64, "user-photo.png", generationId);
     console.log(`[${generationId}] User image uploaded to temp storage`);
-
-    stage = "resolve_team_id";
-    const teamId = await getTeamId(supabase, team_slug);
 
     // Create queue entry
     stage = "create_queue_entry";
@@ -684,7 +716,7 @@ serve(async (req) => {
     });
     console.log(`[${generationId}] Queue entry created`);
 
-    if (requestSource === "kiosk" && kiosk_session_id) {
+    if ((requestSource === "kiosk" || requestSource === "web_test") && kiosk_session_id) {
       await supabase
         .from("kiosk_sessions")
         .update({
@@ -770,7 +802,7 @@ serve(async (req) => {
         processing_time_ms: Date.now() - startTime,
       });
 
-      if (requestSource === "kiosk" && kiosk_session_id) {
+      if ((requestSource === "kiosk" || requestSource === "web_test") && kiosk_session_id) {
         await supabase
           .from("kiosk_sessions")
           .update({
@@ -838,12 +870,25 @@ serve(async (req) => {
       });
 
       await logGeneration(supabase, generationId, {
-        shirt_id: "unknown",
+        shirt_id: requestContext.shirtId || "unknown",
         status: "failed",
-        source: "web",
+        team_id: requestContext.teamId,
+        kiosk_session_id: requestContext.kioskSessionId,
+        payment_id: requestContext.paymentId,
+        source: requestContext.source,
         error_message: error instanceof Error ? error.message : "Unknown error",
         processing_time_ms: processingTime,
       });
+
+      if (requestContext.kioskSessionId && (requestContext.source === "kiosk" || requestContext.source === "web_test")) {
+        await supabase
+          .from("kiosk_sessions")
+          .update({
+            status: "failed",
+            error_message: error instanceof Error ? error.message : "Unknown error",
+          })
+          .eq("id", requestContext.kioskSessionId);
+      }
     }
 
     return new Response(

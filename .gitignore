@@ -32,3 +32,5 @@ kiosk-portrait-*.png
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

@@ -55,6 +55,7 @@ Gere app novo quando mudar:
 
 - codigo do totem;
 - fluxo de telas;
+- retry/recuperacao de pagamento PIX aprovado sem foto gerada;
 - integracao local do Windows;
 - camera;
 - atualizador;
@@ -73,3 +74,20 @@ Nao precisa gerar app novo quando mudar apenas configuracao remota:
 - habilitar/desabilitar filtros.
 
 Nesses casos, publique a configuracao no painel e use o comando remoto de atualizacao/sincronizacao do totem.
+
+## Kiosk web para testes
+
+O kiosk web usa o mesmo app React do Electron e deve ser publicado em um projeto Vercel separado com:
+
+```text
+Build command: npm run build
+Output directory: dist
+```
+
+No projeto do painel, configure:
+
+```text
+VITE_KIOSK_TEST_ORIGIN=https://endereco-do-kiosk-web.vercel.app
+```
+
+Os links criados no painel sempre usam pagamento simulado e registram as sessoes com origem `web_test`.

@@ -1,6 +1,30 @@
 import { supabase } from "./supabase";
 import type { CommandType } from "./types";
 
+export type KioskTestLinkResult = {
+  token: string;
+  link: {
+    id: string;
+    expires_at: string;
+    created_at: string;
+  };
+};
+
+export async function createKioskTestLink(deviceId: string, daysValid = 30) {
+  const { data, error } = await supabase.functions.invoke("manage-kiosk-test-links", {
+    body: { action: "create", device_id: deviceId, days_valid: daysValid },
+  });
+  if (error || data?.error) throw new Error(data?.error || error?.message || "Nao foi possivel criar o link de teste.");
+  return data as KioskTestLinkResult;
+}
+
+export async function revokeKioskTestLink(deviceId: string) {
+  const { data, error } = await supabase.functions.invoke("manage-kiosk-test-links", {
+    body: { action: "revoke", device_id: deviceId },
+  });
+  if (error || data?.error) throw new Error(data?.error || error?.message || "Nao foi possivel desativar o link.");
+}
+
 export function generateHumanInstallCode(label: string) {
   const normalized = label
     .toUpperCase()

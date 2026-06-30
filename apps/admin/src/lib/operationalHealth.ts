@@ -1,6 +1,6 @@
 import type { KioskDevice } from "./types";
 
-export type OperationalIssueType = "offline" | "error" | "version" | "pairing" | "maintenance" | "payment" | "ai" | "pin";
+export type OperationalIssueType = "offline" | "error" | "version" | "pairing" | "maintenance" | "payment" | "ai" | "pin" | "paid_without_generation";
 export type OperationalIssueSeverity = "ok" | "warning" | "danger";
 
 export type OperationalIssue = {

@@ -97,7 +97,7 @@ serve(async (req) => {
     const since = new Date(Date.now() - RECOVERY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const { data: payments, error: paymentError } = await supabase
       .from("kiosk_payments")
-      .select("session_id, paid_at, created_at")
+      .select("session_id, status, paid_at, created_at")
       .eq("device_id", device.id)
       .eq("customer_tax_id", cpf)
       .eq("status", "paid")
@@ -108,32 +108,43 @@ serve(async (req) => {
 
     const sessionIds = (payments || []).map((payment) => payment.session_id).filter(Boolean);
     if (sessionIds.length === 0) return json({ photos: [] });
+    const paymentBySessionId = new Map((payments || []).filter((payment) => payment.session_id).map((payment) => [payment.session_id, payment]));
 
     const { data: sessions, error: sessionError } = await supabase
       .from("kiosk_sessions")
-      .select("id, result_image_url, completed_at, created_at")
+      .select("id, status, result_image_url, completed_at, created_at")
       .in("id", sessionIds)
       .eq("device_id", device.id)
       .eq("team_id", device.team_id)
-      .eq("status", "completed")
-      .not("result_image_url", "is", null)
+      .in("status", ["completed", "failed", "paid"])
       .order("created_at", { ascending: false })
       .limit(5);
     if (sessionError) throw sessionError;
+    const recoverableSessions = (sessions || []).filter((session) => {
+      const payment = paymentBySessionId.get(session.id);
+      const isPaidFailed = session.status !== "completed" && payment?.status === "paid" && !session.result_image_url;
+      return Boolean(session.result_image_url) || isPaidFailed;
+    });
 
     if (body.action !== "recover") {
       return json({
-        photos: (sessions || []).map((session) => ({
-          sessionId: session.id,
-          imageUrl: session.result_image_url,
-          completedAt: session.completed_at || session.created_at,
-        })),
+        photos: recoverableSessions.map((session) => {
+          const payment = paymentBySessionId.get(session.id);
+          const isPaidFailed = session.status !== "completed" && payment?.status === "paid" && !session.result_image_url;
+          return {
+            sessionId: session.id,
+            imageUrl: session.result_image_url,
+            completedAt: session.completed_at || payment?.paid_at || session.created_at,
+            status: isPaidFailed ? "paid_failed" : "completed",
+            label: isPaidFailed ? "Pagamento encontrado. Chame o suporte." : "Abrir esta foto",
+          };
+        }),
       });
     }
 
     const sessionId = String(body.session_id || "");
-    const session = (sessions || []).find((item) => item.id === sessionId);
-    if (!session?.result_image_url) return json({ error: "Foto nao encontrada para este CPF." }, 404);
+    const session = recoverableSessions.find((item) => item.id === sessionId);
+    if (!session?.result_image_url) return json({ error: "Foto ainda nao foi gerada para este pagamento." }, 404);
 
     const token = createToken();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
