@@ -1,6 +1,6 @@
 # FanFrame Context Map
 
-Gerado por `npm run context:map` a partir de arquivos rastreados e novos nao ignorados (commit 44e12d9).
+Gerado por `npm run context:map` a partir de arquivos rastreados e novos nao ignorados (commit ad93bec).
 Use `docs/architecture/INDEX.md` para escolher o fluxo antes de abrir codigo.
 
 ## Admin remoto
@@ -27,7 +27,7 @@ Use `docs/architecture/INDEX.md` para escolher o fluxo antes de abrir codigo.
 | `apps/admin/src/lib/kioskTestLinks.test.ts` | 21 | - |
 | ... | +9 arquivos | use `rg --files` no dominio |
 
-Testes proximos: `apps/admin/src/lib/kioskTestLinks.test.ts`, `apps/admin/src/lib/paidStuckSessions.test.ts`, `apps/admin/src/lib/designRecipe.test.ts`, `apps/admin/src/lib/installInstructions.test.ts`, `apps/admin/src/lib/kioskDraft.test.ts`, `apps/admin/src/lib/operationalHealth.test.ts`, `apps/admin/src/lib/salesDeviceFilter.test.ts`, `apps/admin/src/lib/salesMetrics.test.ts`
+Testes proximos: `apps/admin/src/lib/designRecipe.test.ts`, `apps/admin/src/lib/installInstructions.test.ts`, `apps/admin/src/lib/kioskDraft.test.ts`, `apps/admin/src/lib/kioskTestLinks.test.ts`, `apps/admin/src/lib/operationalHealth.test.ts`, `apps/admin/src/lib/paidStuckSessions.test.ts`, `apps/admin/src/lib/salesDeviceFilter.test.ts`, `apps/admin/src/lib/salesMetrics.test.ts`
 
 ## Kiosk runtime
 
@@ -36,7 +36,7 @@ Testes proximos: `apps/admin/src/lib/kioskTestLinks.test.ts`, `apps/admin/src/li
 | `src/pages/Kiosk.tsx` | 2014 | `KioskPage`, `function` |
 | `src/features/kiosk/AGENTS.md` | 24 | - |
 
-Testes proximos: `src/lib/kioskOnlineTestArchitecture.test.ts`, `src/lib/kioskPaidGenerationRecovery.test.ts`, `electron/kiosk-config.test.ts`, `electron/kiosk-hardening.test.ts`, `electron/kiosk-package-security.test.ts`, `electron/kiosk-payments.test.ts`, `electron/kiosk-updates.test.ts`, `src/contexts/TeamContext.test.ts`, `src/lib/adminBuilderArchitecture.test.ts`, `src/lib/cameraReadyVisual.test.ts`, `src/lib/cpf.test.ts`, `src/lib/edgeFunctionsArchitecture.test.ts`
+Testes proximos: `electron/kiosk-config.test.ts`, `electron/kiosk-hardening.test.ts`, `electron/kiosk-package-security.test.ts`, `electron/kiosk-payments.test.ts`, `electron/kiosk-updates.test.ts`, `src/contexts/TeamContext.test.ts`, `src/lib/adminBuilderArchitecture.test.ts`, `src/lib/cameraReadyVisual.test.ts`, `src/lib/cpf.test.ts`, `src/lib/edgeFunctionsArchitecture.test.ts`, `src/lib/kiosk.test.ts`, `src/lib/kioskOnlineTestArchitecture.test.ts`
 
 ## UI compartilhada
 
@@ -46,7 +46,7 @@ Testes proximos: `src/lib/kioskOnlineTestArchitecture.test.ts`, `src/lib/kioskPa
 | `src/shared/kiosk-ui/KioskVisual.tsx` | 766 | `KioskVisualShell`, `KioskHomeVisual`, `KioskSelectionVisual`, `KioskPaymentVisual`, `KioskCpfVisual`, `KioskRecoveryResultsVisual`, `KioskCameraVisual`, `KioskCameraReadyVisual` |
 | `src/shared/kiosk-ui/AGENTS.md` | 25 | - |
 
-Testes proximos: `src/lib/kioskOnlineTestArchitecture.test.ts`, `src/lib/kioskPaidGenerationRecovery.test.ts`, `electron/kiosk-config.test.ts`, `electron/kiosk-hardening.test.ts`, `electron/kiosk-package-security.test.ts`, `electron/kiosk-payments.test.ts`, `electron/kiosk-updates.test.ts`, `src/contexts/TeamContext.test.ts`, `src/lib/adminBuilderArchitecture.test.ts`, `src/lib/cameraReadyVisual.test.ts`, `src/lib/cpf.test.ts`, `src/lib/edgeFunctionsArchitecture.test.ts`
+Testes proximos: `electron/kiosk-config.test.ts`, `electron/kiosk-hardening.test.ts`, `electron/kiosk-package-security.test.ts`, `electron/kiosk-payments.test.ts`, `electron/kiosk-updates.test.ts`, `src/contexts/TeamContext.test.ts`, `src/lib/adminBuilderArchitecture.test.ts`, `src/lib/cameraReadyVisual.test.ts`, `src/lib/cpf.test.ts`, `src/lib/edgeFunctionsArchitecture.test.ts`, `src/lib/kiosk.test.ts`, `src/lib/kioskOnlineTestArchitecture.test.ts`
 
 ## Electron
 
@@ -123,6 +123,7 @@ Testes proximos: `scripts/check-affected.test.ts`, `scripts/generate-context-map
 | Arquivo | Linhas | Exports principais |
 | --- | ---: | --- |
 | `docs/superpowers/plans/2026-05-10-kiosk-network-operations.md` | 1486 | `normalizeInstallCode`, `buildDeviceAuthHeaders`, `shouldReportHealth`, `classifyKioskError`, `generateHumanInstallCode`, `InstallStatus`, `CommandStatus`, `CommandType` |
+| `docs/superpowers/plans/2026-07-03-project-handoff-documentation.md` | 916 | - |
 | `docs/superpowers/plans/2026-06-30-kiosk-paid-session-generation-recovery.md` | 773 | - |
 | `docs/superpowers/plans/2026-06-01-foreground-person-filter.md` | 737 | `DetectedPerson`, `ForegroundFilterConfig`, `ForegroundDecision`, `chooseForegroundPeople`, `detectPeopleFromImage`, `loadImageFromDataUrl`, `processForegroundPhoto`, `renderForegroundOnlyImage` |
 | `docs/superpowers/plans/2026-05-22-production-hardening-and-operations.md` | 567 | - |
@@ -131,16 +132,15 @@ Testes proximos: `scripts/check-affected.test.ts`, `scripts/generate-context-map
 | `docs/DOCUMENTATION.md` | 392 | - |
 | `docs/design-system.md` | 225 | - |
 | `docs/superpowers/specs/2026-05-10-kiosk-network-operations-design.md` | 185 | - |
+| `docs/OPERATIONS.md` | 124 | - |
+| `docs/DEVELOPMENT.md` | 121 | - |
 | `docs/kiosk-totem.md` | 120 | - |
 | `docs/windows-kiosk-release.md` | 109 | - |
-| `docs/release-automation.md` | 94 | - |
+| `docs/release-automation.md` | 98 | - |
+| `docs/HANDOFF.md` | 92 | - |
 | `docs/go-live-checklist.md` | 85 | - |
 | `docs/superpowers/plans/2026-06-25-kiosk-online-test-links.md` | 74 | - |
-| `docs/kiosk-installation-owner-guide.md` | 67 | - |
-| `README.md` | 58 | - |
-| `docs/superpowers/plans/2026-05-14-admin-ux-simplification.md` | 57 | - |
-| `docs/superpowers/plans/2026-06-11-kiosk-photo-recovery.md` | 54 | - |
-| ... | +10 arquivos | use `rg --files` no dominio |
+| ... | +17 arquivos | use `rg --files` no dominio |
 
 ## Outros
 
@@ -166,4 +166,4 @@ Testes proximos: `scripts/check-affected.test.ts`, `scripts/generate-context-map
 | `src/pages/Index.tsx` | 211 | `Index` |
 | ... | +108 arquivos | use `rg --files` no dominio |
 
-Testes proximos: `src/lib/kioskOnlineTestArchitecture.test.ts`, `src/lib/kioskPaidGenerationRecovery.test.ts`, `src/contexts/TeamContext.test.ts`, `src/lib/adminBuilderArchitecture.test.ts`, `src/lib/cameraReadyVisual.test.ts`, `src/lib/cpf.test.ts`, `src/lib/edgeFunctionsArchitecture.test.ts`, `src/lib/kiosk.test.ts`, `src/lib/kioskPairing.test.ts`, `src/lib/photoRecoveryArchitecture.test.ts`, `src/pages/Kiosk.pairing.test.ts`
+Testes proximos: `src/contexts/TeamContext.test.ts`, `src/lib/adminBuilderArchitecture.test.ts`, `src/lib/cameraReadyVisual.test.ts`, `src/lib/cpf.test.ts`, `src/lib/edgeFunctionsArchitecture.test.ts`, `src/lib/kiosk.test.ts`, `src/lib/kioskOnlineTestArchitecture.test.ts`, `src/lib/kioskPaidGenerationRecovery.test.ts`, `src/lib/kioskPairing.test.ts`, `src/lib/photoRecoveryArchitecture.test.ts`, `src/pages/Kiosk.pairing.test.ts`
