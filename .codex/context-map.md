@@ -1,6 +1,6 @@
 # FanFrame Context Map
 
-Gerado por `npm run context:map` a partir de arquivos rastreados e novos nao ignorados (commit ad93bec).
+Gerado por `npm run context:map` a partir de arquivos rastreados e novos nao ignorados (commit 0af5ca3).
 Use `docs/architecture/INDEX.md` para escolher o fluxo antes de abrir codigo.
 
 ## Admin remoto
@@ -76,7 +76,6 @@ Testes proximos: `electron/kiosk-config.test.ts`, `electron/kiosk-hardening.test
 | `supabase/functions/create-delivery-link/index.ts` | 392 | - |
 | `supabase/functions/health-check/index.ts` | 375 | - |
 | `supabase/functions/replicate-webhook/index.ts` | 333 | - |
-| `supabase/functions/deploy-functions/index.ts` | 236 | - |
 | `supabase/functions/recover-kiosk-photos/index.ts` | 175 | - |
 | `supabase/migrations/20260104231020_efc41291-ad63-4c1f-a491-c59a7aa8b125.sql` | 172 | - |
 | `supabase/functions/manage-kiosk-test-links/index.ts` | 168 | - |
@@ -89,7 +88,8 @@ Testes proximos: `electron/kiosk-config.test.ts`, `electron/kiosk-hardening.test
 | `supabase/migrations/20260510120000_add_kiosk_pairing_operations.sql` | 126 | - |
 | `supabase/functions/create-first-admin/index.ts` | 115 | - |
 | `supabase/functions/pagbank-webhook/index.ts` | 107 | - |
-| ... | +45 arquivos | use `rg --files` no dominio |
+| `supabase/functions/mark-kiosk-session-error/index.ts` | 94 | - |
+| ... | +44 arquivos | use `rg --files` no dominio |
 
 Testes proximos: `supabase/functions/mark-kiosk-session-error/index.test.ts`, `supabase/functions/recover-kiosk-photos/index.test.ts`
 
@@ -97,11 +97,10 @@ Testes proximos: `supabase/functions/mark-kiosk-session-error/index.test.ts`, `s
 
 | Arquivo | Linhas | Exports principais |
 | --- | ---: | --- |
-| `scripts/deploy-edge-functions.ts` | 330 | - |
 | `scripts/release-kiosk.ps1` | 199 | - |
 | `scripts/test-pagbank-sandbox.ps1` | 177 | - |
 | `package.json` | 166 | - |
-| `scripts/generate-context-map.mjs` | 163 | `shouldIncludeFile`, `classifyDomain`, `buildContextMap`, `generateContextMap` |
+| `scripts/generate-context-map.mjs` | 161 | `shouldIncludeFile`, `classifyDomain`, `buildContextMap`, `generateContextMap` |
 | `scripts/check-affected.mjs` | 99 | `matchesPattern`, `selectChecks` |
 | `scripts/check-kiosk-package-security.mjs` | 61 | - |
 | `scripts/affected-rules.json` | 59 | - |
@@ -129,7 +128,7 @@ Testes proximos: `scripts/check-affected.test.ts`, `scripts/generate-context-map
 | `docs/superpowers/plans/2026-05-22-production-hardening-and-operations.md` | 567 | - |
 | `docs/replicate-integration.md` | 484 | `useQueueSubscription` |
 | `docs/superpowers/plans/2026-06-11-codex-context-efficiency.md` | 405 | - |
-| `docs/DOCUMENTATION.md` | 392 | - |
+| `docs/DOCUMENTATION.md` | 390 | - |
 | `docs/design-system.md` | 225 | - |
 | `docs/superpowers/specs/2026-05-10-kiosk-network-operations-design.md` | 185 | - |
 | `docs/OPERATIONS.md` | 124 | - |

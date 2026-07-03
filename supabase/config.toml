@@ -9,9 +9,6 @@ verify_jwt = false
 [functions.replicate-webhook]
 verify_jwt = false
 
-[functions.deploy-functions]
-verify_jwt = true
-
 [functions.health-check]
 verify_jwt = false
 

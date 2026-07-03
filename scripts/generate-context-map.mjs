@@ -35,8 +35,6 @@ const IGNORED_PREFIXES = [
 
 const IGNORED_NAMES = new Set([
   "package-lock.json",
-  "bun.lock",
-  "bun.lockb",
   ".env",
   "context-map.md",
 ]);

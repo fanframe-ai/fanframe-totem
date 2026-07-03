@@ -297,10 +297,8 @@ Acessível em `/admin` com autenticação via Supabase Auth.
 - **Configurações** — Settings globais
 
 ### Acesso Admin
-```
-Email: admin@franframe.com
-Senha: Admin123@
-```
+
+Credenciais de admin nao ficam em documentacao nem em Git. Solicite acesso pelo canal seguro do projeto e consulte `docs/ACCESS.md`.
 
 ---
 
