@@ -5,6 +5,10 @@ Este projeto tem duas entregas diferentes:
 - Painel web: deploy pela Vercel a partir do GitHub.
 - App Windows do totem: release GitHub com instalador `.exe` e arquivos de atualizacao.
 
+## Responsabilidade De Release
+
+Mudancas no app Windows do totem precisam gerar uma nova GitHub Release com instalador, portable, blockmap e `latest.yml`. O runbook operacional completo fica em `docs/OPERATIONS.md`.
+
 ## Release do app Windows
 
 Use este comando para validar o que sera executado, sem alterar arquivos nem publicar:

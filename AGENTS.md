@@ -12,6 +12,10 @@ Este repositorio contem quatro dominios ativos:
 
 Comece por `docs/architecture/INDEX.md`. Abra somente o fluxo relacionado a tarefa.
 
+## Handoff First
+
+Para um novo dev ou nova thread Codex, comece por `docs/HANDOFF.md`, depois use `docs/architecture/INDEX.md` para abrir somente o fluxo da tarefa. Nao carregue threads antigas gigantes como fonte primaria de contexto.
+
 ## Fontes De Verdade
 
 - Admin oficial: `apps/admin`. `src/pages/admin` e legado e nao deve receber features novas.
@@ -56,4 +60,3 @@ Use o menor check que prove a mudanca. `check:all` e obrigatorio somente para re
 - Mudancas visuais sao verificadas no viewport vertical 1080x1920.
 - Mudancas de release passam em `npm run release:kiosk:verify`.
 - O diff nao contem secrets, artefatos de build ou refatoracao nao solicitada.
-

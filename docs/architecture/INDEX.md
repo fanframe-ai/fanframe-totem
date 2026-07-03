@@ -2,6 +2,14 @@
 
 Use este arquivo como roteador de contexto. Abra apenas o documento e os arquivos da linha relacionada a tarefa.
 
+## Documentos De Entrada
+
+- Novo dev assumindo o projeto: `../HANDOFF.md`
+- Ambiente local e checks: `../DEVELOPMENT.md`
+- Operacao, deploy e incidentes: `../OPERATIONS.md`
+- Acessos necessarios sem secrets: `../ACCESS.md`
+- Inventario de docs: `../DOCS_INDEX.md`
+
 | Quero alterar | Leia primeiro | Arquivos de entrada | Check |
 | --- | --- | --- | --- |
 | Fluxo/telas do kiosk | `kiosk-flow.md` | `src/pages/Kiosk.tsx`, `src/shared/kiosk-ui/` | `npm run check:kiosk` |
@@ -22,4 +30,3 @@ Use este arquivo como roteador de contexto. Abra apenas o documento e os arquivo
 - `kiosk_session_id`, `payment_id` e `generation_queue` conectam venda, geracao e entrega.
 
 Se uma mudanca tocar mais de um contrato transversal, execute `npm run check:all` antes da entrega.
-

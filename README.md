@@ -4,10 +4,12 @@ Sistema FanFrame adaptado para rede de totens Windows multi-time.
 
 ## Comece Aqui
 
-- Mapa para desenvolvimento e manutencao: `docs/architecture/INDEX.md`
+- Handoff completo para novo dev: `docs/HANDOFF.md`
+- Mapa de documentacao: `docs/DOCS_INDEX.md`
+- Guia de desenvolvimento: `docs/DEVELOPMENT.md`
+- Operacao e incidentes: `docs/OPERATIONS.md`
+- Mapa para manutencao por fluxo: `docs/architecture/INDEX.md`
 - Regras para agentes/Codex: `AGENTS.md`
-- Guia de operacao: `docs/kiosk-totem.md`
-- Release Windows: `docs/release-automation.md`
 
 ## Apps
 
