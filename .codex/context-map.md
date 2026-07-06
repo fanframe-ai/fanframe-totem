@@ -1,6 +1,6 @@
 # FanFrame Context Map
 
-Gerado por `npm run context:map` a partir de arquivos rastreados e novos nao ignorados (commit 0af5ca3).
+Gerado por `npm run context:map` a partir de arquivos rastreados e novos nao ignorados (commit eed5c7d).
 Use `docs/architecture/INDEX.md` para escolher o fluxo antes de abrir codigo.
 
 ## Admin remoto
@@ -33,7 +33,7 @@ Testes proximos: `apps/admin/src/lib/designRecipe.test.ts`, `apps/admin/src/lib/
 
 | Arquivo | Linhas | Exports principais |
 | --- | ---: | --- |
-| `src/pages/Kiosk.tsx` | 2014 | `KioskPage`, `function` |
+| `src/pages/Kiosk.tsx` | 2008 | `KioskPage`, `function` |
 | `src/features/kiosk/AGENTS.md` | 24 | - |
 
 Testes proximos: `electron/kiosk-config.test.ts`, `electron/kiosk-hardening.test.ts`, `electron/kiosk-package-security.test.ts`, `electron/kiosk-payments.test.ts`, `electron/kiosk-updates.test.ts`, `src/contexts/TeamContext.test.ts`, `src/lib/adminBuilderArchitecture.test.ts`, `src/lib/cameraReadyVisual.test.ts`, `src/lib/cpf.test.ts`, `src/lib/edgeFunctionsArchitecture.test.ts`, `src/lib/kiosk.test.ts`, `src/lib/kioskOnlineTestArchitecture.test.ts`
@@ -151,10 +151,10 @@ Testes proximos: `scripts/check-affected.test.ts`, `scripts/generate-context-map
 | `src/components/ui/sidebar.tsx` | 638 | - |
 | `src/components/wizard/ResultScreen.tsx` | 573 | `ResultScreen` |
 | `src/index.css` | 518 | - |
+| `src/lib/kiosk.ts` | 409 | `formatCurrencyFromCents`, `filterVisibleAssets`, `normalizeKioskTimeout`, `buildDeliveryUrl`, `normalizeInstallCode`, `buildDeviceAuthHeaders`, `shouldReportHealth`, `shouldReloadForRemoteKioskState` |
 | `src/contexts/TeamContext.tsx` | 337 | `useTeam`, `normalizeTutorialAssets`, `TeamProvider`, `TeamShirt`, `TeamBackground`, `TeamTextOverrides`, `TeamWaitingSlide`, `TeamTutorialAssets` |
 | `src/pages/admin/Assets.tsx` | 319 | `AdminAssets`, `function` |
 | `src/hooks/useQueueSubscription.ts` | 316 | `useQueueSubscription`, `useQueueStatusCheck` |
-| `src/lib/kiosk.ts` | 310 | `formatCurrencyFromCents`, `filterVisibleAssets`, `normalizeKioskTimeout`, `buildDeliveryUrl`, `normalizeInstallCode`, `buildDeviceAuthHeaders`, `shouldReportHealth`, `shouldReloadForRemoteKioskState` |
 | `src/components/wizard/UploadScreen.tsx` | 305 | `UploadScreen` |
 | `src/components/ui/chart.tsx` | 304 | `ChartConfig` |
 | `src/components/wizard/TestResultScreen.tsx` | 284 | `TestResultScreen` |

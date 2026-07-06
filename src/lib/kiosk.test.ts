@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDeliveryUrl,
+  buildKioskCameraConstraints,
+  choosePreferredKioskCameraDevice,
   filterVisibleAssets,
   formatCurrencyFromCents,
+  isBlockedKioskCameraDevice,
   isSafeKioskReloadStep,
   normalizeKioskTimeout,
   shouldResetKioskForInactivity,
@@ -66,5 +69,27 @@ describe("kiosk helpers", () => {
     expect(isSafeKioskReloadStep("recovery-results")).toBe(false);
     expect(shouldResetKioskForInactivity("recovery-cpf")).toBe(true);
     expect(shouldResetKioskForInactivity("recovery-results")).toBe(true);
+  });
+
+  it("blocks OBS virtual cameras and prefers a real webcam", () => {
+    const devices = [
+      { kind: "videoinput", deviceId: "obs", label: "OBS Virtual Camera" },
+      { kind: "audioinput", deviceId: "mic", label: "Microfone" },
+      { kind: "videoinput", deviceId: "webcam", label: "Logitech Brio" },
+    ] as MediaDeviceInfo[];
+
+    expect(isBlockedKioskCameraDevice(devices[0])).toBe(true);
+    expect(choosePreferredKioskCameraDevice(devices)?.deviceId).toBe("webcam");
+  });
+
+  it("uses an exact device id when a physical camera is selected", () => {
+    expect(buildKioskCameraConstraints({ deviceId: "webcam", width: 1440, height: 1920 })).toEqual({
+      video: {
+        deviceId: { exact: "webcam" },
+        width: { ideal: 1440 },
+        height: { ideal: 1920 },
+      },
+      audio: false,
+    });
   });
 });

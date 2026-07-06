@@ -117,6 +117,105 @@ export function shouldResetKioskForInactivity(step: string) {
   return ["shirt", "cpf", "camera", "recovery-cpf", "recovery-results"].includes(step);
 }
 
+export type KioskCameraDevice = Pick<MediaDeviceInfo, "kind" | "deviceId" | "label">;
+
+const blockedCameraLabelPatterns = [
+  /\bobs\b/i,
+  /obs[-_\s]*virtual/i,
+  /virtual\s+camera/i,
+];
+
+export function isBlockedKioskCameraDevice(device: KioskCameraDevice | null | undefined) {
+  if (!device || device.kind !== "videoinput") return false;
+  const label = String(device.label || "");
+  return blockedCameraLabelPatterns.some((pattern) => pattern.test(label));
+}
+
+export function choosePreferredKioskCameraDevice(
+  devices: KioskCameraDevice[],
+  excludeDeviceId?: string | null,
+) {
+  return devices.find((device) => (
+    device.kind === "videoinput" &&
+    Boolean(device.deviceId) &&
+    device.deviceId !== excludeDeviceId &&
+    !isBlockedKioskCameraDevice(device)
+  )) || null;
+}
+
+type KioskCameraConstraintsOptions = {
+  deviceId?: string | null;
+  width?: number;
+  height?: number;
+  facingMode?: string;
+};
+
+export function buildKioskCameraConstraints(options: KioskCameraConstraintsOptions = {}): MediaStreamConstraints {
+  const video: MediaTrackConstraints = {
+    width: { ideal: options.width || 1280 },
+    height: { ideal: options.height || 720 },
+  };
+  if (options.deviceId) {
+    video.deviceId = { exact: options.deviceId };
+  } else if (options.facingMode) {
+    video.facingMode = options.facingMode;
+  }
+  return { video, audio: false };
+}
+
+function getStreamVideoTrack(stream: MediaStream) {
+  return stream.getVideoTracks()[0] || null;
+}
+
+async function enumerateVideoInputDevices() {
+  if (!navigator.mediaDevices?.enumerateDevices) return [];
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  return devices.filter((device) => device.kind === "videoinput");
+}
+
+function createBlockedCameraError(label?: string) {
+  const suffix = label ? ` (${label})` : "";
+  return new Error(`Camera virtual OBS detectada${suffix}. Feche/desative a camera virtual do OBS ou conecte uma webcam fisica.`);
+}
+
+export async function openKioskCameraStream(options: KioskCameraConstraintsOptions = {}) {
+  const initialDevices = await enumerateVideoInputDevices().catch(() => []);
+  const preferredDevice = choosePreferredKioskCameraDevice(initialDevices);
+  const hasOnlyBlockedLabeledCameras = initialDevices.length > 0 && initialDevices.every((device) => device.label && isBlockedKioskCameraDevice(device));
+  if (hasOnlyBlockedLabeledCameras) {
+    throw createBlockedCameraError(initialDevices[0]?.label);
+  }
+
+  let stream = await navigator.mediaDevices.getUserMedia(buildKioskCameraConstraints({
+    ...options,
+    deviceId: preferredDevice?.deviceId || options.deviceId,
+  }));
+  let track = getStreamVideoTrack(stream);
+  if (!track || !isBlockedKioskCameraDevice({ kind: "videoinput", deviceId: track.getSettings().deviceId || "", label: track.label || "" })) {
+    return stream;
+  }
+
+  const blockedDeviceId = track.getSettings().deviceId || "";
+  const blockedLabel = track.label || "";
+  stream.getTracks().forEach((item) => item.stop());
+
+  const devicesAfterPermission = await enumerateVideoInputDevices().catch(() => []);
+  const fallbackDevice = choosePreferredKioskCameraDevice(devicesAfterPermission, blockedDeviceId);
+  if (!fallbackDevice) throw createBlockedCameraError(blockedLabel);
+
+  stream = await navigator.mediaDevices.getUserMedia(buildKioskCameraConstraints({
+    ...options,
+    deviceId: fallbackDevice.deviceId,
+  }));
+  track = getStreamVideoTrack(stream);
+  if (track && isBlockedKioskCameraDevice({ kind: "videoinput", deviceId: track.getSettings().deviceId || "", label: track.label || "" })) {
+    const label = track.label || fallbackDevice.label;
+    stream.getTracks().forEach((item) => item.stop());
+    throw createBlockedCameraError(label);
+  }
+  return stream;
+}
+
 export type RecoveredKioskPhoto = {
   sessionId: string;
   imageUrl?: string | null;

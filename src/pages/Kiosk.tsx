@@ -27,6 +27,7 @@ import {
   createRecoveredPhotoLink,
   friendlyPaymentError,
   markKioskSessionError,
+  openKioskCameraStream,
   pollKioskCommand,
   pollKioskState,
   redeemInstallCode,
@@ -934,14 +935,7 @@ export default function KioskPage() {
 
     const startCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "user",
-            width: { ideal: 1440 },
-            height: { ideal: 1920 },
-          },
-          audio: false,
-        });
+        const stream = await openKioskCameraStream({ facingMode: "user", width: 1440, height: 1920 });
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -1491,7 +1485,7 @@ export default function KioskPage() {
   const testCamera = async () => {
     setTechnicalCheck("camera", { status: "running", message: "Abrindo camera..." });
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const stream = await openKioskCameraStream();
       const [track] = stream.getVideoTracks();
       const label = track?.label || "Camera detectada";
       stream.getTracks().forEach((item) => item.stop());
@@ -1508,7 +1502,7 @@ export default function KioskPage() {
     setTechnicalCheck("camera", { status: "running", message: "Abrindo preview da camera..." });
     try {
       stopTechnicalCameraPreview();
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const stream = await openKioskCameraStream();
       technicalCameraStreamRef.current = stream;
       setTechnicalCameraPreview(true);
       window.setTimeout(() => {

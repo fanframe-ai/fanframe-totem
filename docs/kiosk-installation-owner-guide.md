@@ -22,6 +22,7 @@
 - O time exibido esta correto.
 - A internet aparece como online no modo tecnico.
 - A camera foi detectada no modo tecnico.
+- A camera detectada e a webcam fisica, nao `OBS Virtual Camera`.
 - O diagnostico foi enviado para o painel.
 - A maquininha PlugPag esta conectada quando houver pagamento por cartao real.
 - O administrador confirmou que o totem aparece online no painel.
@@ -39,6 +40,8 @@ Use:
 - Testar pagamentos.
 - Sincronizar agora.
 - Reiniciar app.
+
+Para gravar o uso do totem com OBS, capture a tela ou janela do aplicativo. Nao use a camera virtual do OBS como entrada do FanFrame Kiosk.
 
 ## Trocar O Pareamento
 
