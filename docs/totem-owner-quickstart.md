@@ -18,7 +18,7 @@ Abra o modo tecnico com o PIN enviado pelo administrador e toque em `Testar tudo
 
 Se a camera estiver invertida, use `Corrigir camera invertida` no modo tecnico.
 
-Se for gravar com OBS, grave a tela/janela do app. Nao ative nem selecione `OBS Virtual Camera` como webcam do totem.
+Se for gravar com OBS, grave a tela/janela do app. Nao inicie `OBS Virtual Camera` e nao adicione a webcam fisica como fonte no OBS enquanto o totem usa a webcam.
 
 ## 5. Atualizar
 
@@ -28,7 +28,7 @@ Quando o administrador avisar, abra o modo tecnico e toque em `Atualizar app`.
 
 - Sem internet: verifique Wi-Fi ou cabo.
 - Camera nao aparece: feche outros programas que usam camera.
-- Camera abriu no OBS: desative a camera virtual do OBS e teste novamente a webcam fisica.
+- Camera abriu no OBS: pare/desative `OBS Virtual Camera`, remova a webcam fisica das fontes do OBS e teste novamente.
 - PIX nao aparece: chame o administrador.
 - App abriu no time errado: chame o administrador para trocar o time pelo painel.
 

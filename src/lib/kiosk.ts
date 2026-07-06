@@ -143,6 +143,19 @@ export function choosePreferredKioskCameraDevice(
   )) || null;
 }
 
+export function getKioskCameraCandidates(
+  devices: KioskCameraDevice[],
+  excludeDeviceIds: string[] = [],
+) {
+  const excluded = new Set(excludeDeviceIds.filter(Boolean));
+  return devices.filter((device) => (
+    device.kind === "videoinput" &&
+    Boolean(device.deviceId) &&
+    !excluded.has(device.deviceId) &&
+    !isBlockedKioskCameraDevice(device)
+  ));
+}
+
 type KioskCameraConstraintsOptions = {
   deviceId?: string | null;
   width?: number;
@@ -175,45 +188,54 @@ async function enumerateVideoInputDevices() {
 
 function createBlockedCameraError(label?: string) {
   const suffix = label ? ` (${label})` : "";
-  return new Error(`Camera virtual OBS detectada${suffix}. Feche/desative a camera virtual do OBS ou conecte uma webcam fisica.`);
+  return new Error(`Camera virtual OBS detectada${suffix}. No OBS, grave por Captura de Tela ou Captura de Janela, pare/desative a Camera Virtual e nao use a webcam fisica como fonte do OBS.`);
 }
 
 export async function openKioskCameraStream(options: KioskCameraConstraintsOptions = {}) {
   const initialDevices = await enumerateVideoInputDevices().catch(() => []);
-  const preferredDevice = choosePreferredKioskCameraDevice(initialDevices);
-  const hasOnlyBlockedLabeledCameras = initialDevices.length > 0 && initialDevices.every((device) => device.label && isBlockedKioskCameraDevice(device));
-  if (hasOnlyBlockedLabeledCameras) {
-    throw createBlockedCameraError(initialDevices[0]?.label);
-  }
+  const triedDeviceIds: string[] = [];
+  let blockedLabel = "";
+  let lastError: unknown = null;
 
-  let stream = await navigator.mediaDevices.getUserMedia(buildKioskCameraConstraints({
-    ...options,
-    deviceId: preferredDevice?.deviceId || options.deviceId,
-  }));
-  let track = getStreamVideoTrack(stream);
-  if (!track || !isBlockedKioskCameraDevice({ kind: "videoinput", deviceId: track.getSettings().deviceId || "", label: track.label || "" })) {
+  const tryOpenStream = async (deviceId?: string | null) => {
+    const stream = await navigator.mediaDevices.getUserMedia(buildKioskCameraConstraints({ ...options, deviceId }));
+    const track = getStreamVideoTrack(stream);
+    const trackDeviceId = track?.getSettings().deviceId || deviceId || "";
+    if (trackDeviceId) triedDeviceIds.push(trackDeviceId);
+    if (track && isBlockedKioskCameraDevice({ kind: "videoinput", deviceId: trackDeviceId, label: track.label || "" })) {
+      blockedLabel = track.label || blockedLabel;
+      stream.getTracks().forEach((item) => item.stop());
+      throw createBlockedCameraError(blockedLabel);
+    }
     return stream;
+  };
+
+  for (const device of getKioskCameraCandidates(initialDevices)) {
+    try {
+      return await tryOpenStream(device.deviceId);
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const blockedDeviceId = track.getSettings().deviceId || "";
-  const blockedLabel = track.label || "";
-  stream.getTracks().forEach((item) => item.stop());
+  try {
+    return await tryOpenStream(options.deviceId || null);
+  } catch (error) {
+    lastError = error;
+  }
 
   const devicesAfterPermission = await enumerateVideoInputDevices().catch(() => []);
-  const fallbackDevice = choosePreferredKioskCameraDevice(devicesAfterPermission, blockedDeviceId);
-  if (!fallbackDevice) throw createBlockedCameraError(blockedLabel);
-
-  stream = await navigator.mediaDevices.getUserMedia(buildKioskCameraConstraints({
-    ...options,
-    deviceId: fallbackDevice.deviceId,
-  }));
-  track = getStreamVideoTrack(stream);
-  if (track && isBlockedKioskCameraDevice({ kind: "videoinput", deviceId: track.getSettings().deviceId || "", label: track.label || "" })) {
-    const label = track.label || fallbackDevice.label;
-    stream.getTracks().forEach((item) => item.stop());
-    throw createBlockedCameraError(label);
+  for (const device of getKioskCameraCandidates(devicesAfterPermission, triedDeviceIds)) {
+    try {
+      return await tryOpenStream(device.deviceId);
+    } catch (error) {
+      lastError = error;
+    }
   }
-  return stream;
+
+  if (blockedLabel) throw createBlockedCameraError(blockedLabel);
+  if (lastError instanceof Error) throw lastError;
+  throw new Error("Camera nao encontrada. Conecte uma webcam fisica e teste novamente.");
 }
 
 export type RecoveredKioskPhoto = {

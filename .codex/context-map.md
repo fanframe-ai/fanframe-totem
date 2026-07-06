@@ -1,6 +1,6 @@
 # FanFrame Context Map
 
-Gerado por `npm run context:map` a partir de arquivos rastreados e novos nao ignorados (commit eed5c7d).
+Gerado por `npm run context:map` a partir de arquivos rastreados e novos nao ignorados (commit ecbf732).
 Use `docs/architecture/INDEX.md` para escolher o fluxo antes de abrir codigo.
 
 ## Admin remoto
@@ -151,7 +151,7 @@ Testes proximos: `scripts/check-affected.test.ts`, `scripts/generate-context-map
 | `src/components/ui/sidebar.tsx` | 638 | - |
 | `src/components/wizard/ResultScreen.tsx` | 573 | `ResultScreen` |
 | `src/index.css` | 518 | - |
-| `src/lib/kiosk.ts` | 409 | `formatCurrencyFromCents`, `filterVisibleAssets`, `normalizeKioskTimeout`, `buildDeliveryUrl`, `normalizeInstallCode`, `buildDeviceAuthHeaders`, `shouldReportHealth`, `shouldReloadForRemoteKioskState` |
+| `src/lib/kiosk.ts` | 431 | `formatCurrencyFromCents`, `filterVisibleAssets`, `normalizeKioskTimeout`, `buildDeliveryUrl`, `normalizeInstallCode`, `buildDeviceAuthHeaders`, `shouldReportHealth`, `shouldReloadForRemoteKioskState` |
 | `src/contexts/TeamContext.tsx` | 337 | `useTeam`, `normalizeTutorialAssets`, `TeamProvider`, `TeamShirt`, `TeamBackground`, `TeamTextOverrides`, `TeamWaitingSlide`, `TeamTutorialAssets` |
 | `src/pages/admin/Assets.tsx` | 319 | `AdminAssets`, `function` |
 | `src/hooks/useQueueSubscription.ts` | 316 | `useQueueSubscription`, `useQueueStatusCheck` |

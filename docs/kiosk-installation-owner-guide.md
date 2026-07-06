@@ -41,7 +41,7 @@ Use:
 - Sincronizar agora.
 - Reiniciar app.
 
-Para gravar o uso do totem com OBS, capture a tela ou janela do aplicativo. Nao use a camera virtual do OBS como entrada do FanFrame Kiosk.
+Para gravar o uso do totem com OBS, capture a tela ou janela do aplicativo. Nao inicie `OBS Virtual Camera` e nao adicione a webcam fisica como fonte no OBS enquanto o FanFrame Kiosk usa a webcam.
 
 ## Trocar O Pareamento
 

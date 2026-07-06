@@ -5,6 +5,7 @@ import {
   choosePreferredKioskCameraDevice,
   filterVisibleAssets,
   formatCurrencyFromCents,
+  getKioskCameraCandidates,
   isBlockedKioskCameraDevice,
   isSafeKioskReloadStep,
   normalizeKioskTimeout,
@@ -80,6 +81,16 @@ describe("kiosk helpers", () => {
 
     expect(isBlockedKioskCameraDevice(devices[0])).toBe(true);
     expect(choosePreferredKioskCameraDevice(devices)?.deviceId).toBe("webcam");
+  });
+
+  it("keeps unlabeled video devices as possible physical camera candidates", () => {
+    const devices = [
+      { kind: "videoinput", deviceId: "obs", label: "OBS Virtual Camera" },
+      { kind: "videoinput", deviceId: "hidden-webcam", label: "" },
+      { kind: "videoinput", deviceId: "webcam", label: "USB Camera" },
+    ] as MediaDeviceInfo[];
+
+    expect(getKioskCameraCandidates(devices).map((device) => device.deviceId)).toEqual(["hidden-webcam", "webcam"]);
   });
 
   it("uses an exact device id when a physical camera is selected", () => {
